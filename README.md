@@ -1,36 +1,124 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Piktor V1
+
+An AI-powered web application for generating consistent furniture product images. Upload images and 3D models of desks to create professional packshots, lifestyle images, and social media visuals.
+
+## Features
+
+### Core Functionality
+- **File Upload**: Drag-and-drop interface for images (PNG/JPEG) and 3D models (OBJ/FBX)
+- **Image Analysis**: Automatic extraction of visual attributes (color, material, dimensions, style)
+- **JSON Prompt Generation**: AI-optimized prompts for GPT-4o image generation
+- **Brand Templates**: Pre-designed templates for consistent styling
+- **Image Preview**: Real-time preview of uploaded content and generated images
+
+### Tech Stack
+- **Framework**: Next.js 14 with App Router
+- **Language**: TypeScript
+- **UI Components**: Shadcn/ui
+- **Styling**: Tailwind CSS
+- **3D Rendering**: Three.js with React Three Fiber
+- **File Upload**: React Dropzone
+- **AI Integration**: OpenAI API (placeholder implementation)
 
 ## Getting Started
 
-First, run the development server:
+### Installation
+
+```bash
+npm install
+```
+
+### Environment Setup
+
+1. Create a `.env.local` file in the root directory
+2. Add your OpenAI API key:
+
+```bash
+OPENAI_API_KEY=your_openai_api_key_here
+```
+
+To get an OpenAI API key:
+1. Go to [OpenAI Platform](https://platform.openai.com/)
+2. Sign up or log in to your account
+3. Navigate to API Keys section
+4. Create a new API key
+5. Copy and paste it into your `.env.local` file
+
+### Development
+
+Run the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) to view the application.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Build
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build
+npm start
+```
 
-## Learn More
+## Project Structure
 
-To learn more about Next.js, take a look at the following resources:
+```
+src/
+├── app/                    # Next.js App Router pages
+│   ├── api/               # API routes
+│   ├── upload/            # Upload page
+│   ├── templates/         # Templates page
+│   ├── preview/           # Preview page
+│   └── layout.tsx         # Root layout
+├── components/
+│   ├── layout/            # Layout components
+│   ├── upload/            # Upload-related components
+│   └── ui/                # Shadcn UI components
+└── lib/
+    └── utils.ts           # Utility functions
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## API Endpoints
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `POST /api/analyze-image` - Analyze uploaded images
+- `POST /api/generate-prompt` - Generate JSON prompts from analysis
+- `POST /api/openai-preview` - Generate AI image previews (mock)
 
-## Deploy on Vercel
+## Features Overview
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Upload Page
+- Drag-and-drop file upload
+- Image and 3D model preview
+- JSON prompt editor with form and raw JSON views
+- Copy/download prompt functionality
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Templates Page
+- Pre-designed brand templates
+- Template categories (Packshot, Lifestyle, Instagram)
+- Custom template creation
+
+### Preview Page
+- Generation queue tracking
+- Image preview and comparison
+- Download and sharing options
+
+## Development Notes
+
+- The application uses mock data for image analysis and AI generation
+- 3D model viewing is implemented with Three.js
+- All UI components follow accessibility best practices via Shadcn
+- Responsive design optimized for desktop and mobile
+
+## Future Enhancements
+
+- Real image analysis using computer vision APIs
+- Actual OpenAI API integration
+- User authentication and project management
+- Advanced 3D model processing
+- Batch processing capabilities
+- Export to various formats
+
+## License
+
+MIT License
