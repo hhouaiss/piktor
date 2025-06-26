@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileUpload } from "@/components/upload/file-upload";
 import { JsonEditor } from "@/components/upload/json-editor";
@@ -10,9 +11,23 @@ interface UploadedFile extends File {
   id: string;
 }
 
+interface AnalysisData {
+  product?: {
+    name?: string;
+    material?: string;
+    color?: string;
+    dimensions?: string | object;
+    style?: string;
+  };
+  output?: {
+    type?: "packshot" | "lifestyle" | "instagram";
+    aspect_ratio?: string;
+  };
+}
+
 export default function UploadPage() {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
-  const [analysisData, setAnalysisData] = useState<any>(null);
+  const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-screen-2xl">
@@ -57,10 +72,12 @@ export default function UploadPage() {
                         className="aspect-square bg-muted/50 rounded-lg overflow-hidden flex items-center justify-center"
                       >
                         {file.preview ? (
-                          <img
+                          <Image
                             src={file.preview}
                             alt={file.name}
-                            className="w-full h-full object-cover"
+                            fill
+                            className="object-cover"
+                            unoptimized
                           />
                         ) : (
                           <div className="text-center p-4">
@@ -81,7 +98,7 @@ export default function UploadPage() {
           </div>
 
           <div>
-            <JsonEditor initialData={analysisData} />
+            <JsonEditor initialData={analysisData || undefined} />
           </div>
         </div>
       </div>

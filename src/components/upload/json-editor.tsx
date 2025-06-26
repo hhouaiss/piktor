@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Copy, Download, RefreshCw } from "lucide-react";
+import { Copy, Download } from "lucide-react";
 
 interface PromptData {
   product: {
@@ -30,8 +30,32 @@ interface PromptData {
   };
 }
 
+interface DimensionsObject {
+  width?: string | number;
+  depth?: string | number;
+  height?: string | number;
+}
+
+interface InitialProduct {
+  name?: string;
+  material?: string;
+  color?: string;
+  dimensions?: string | DimensionsObject;
+  style?: string;
+}
+
+interface InitialOutput {
+  type?: "packshot" | "lifestyle" | "instagram";
+  aspect_ratio?: string;
+}
+
+interface InitialData {
+  product?: InitialProduct;
+  output?: InitialOutput;
+}
+
 interface JsonEditorProps {
-  initialData?: Partial<PromptData>;
+  initialData?: InitialData;
   onDataChange?: (data: PromptData) => void;
 }
 
@@ -78,7 +102,7 @@ export function JsonEditor({ initialData, onDataChange }: JsonEditorProps) {
           material: initialData.product.material || defaultPromptData.product.material,
           color: initialData.product.color || defaultPromptData.product.color,
           dimensions: (initialData.product.dimensions && typeof initialData.product.dimensions === 'object')
-            ? `${(initialData.product.dimensions as any).width}x${(initialData.product.dimensions as any).depth}x${(initialData.product.dimensions as any).height}`
+            ? `${(initialData.product.dimensions as DimensionsObject).width}x${(initialData.product.dimensions as DimensionsObject).depth}x${(initialData.product.dimensions as DimensionsObject).height}`
             : (typeof initialData.product.dimensions === 'string' ? initialData.product.dimensions : defaultPromptData.product.dimensions),
           style: initialData.product.style || defaultPromptData.product.style,
         };
@@ -89,7 +113,7 @@ export function JsonEditor({ initialData, onDataChange }: JsonEditorProps) {
           type: initialData.output.type || defaultPromptData.output.type,
           background: "white studio background",
           lighting: "soft professional lighting",
-          aspectRatio: (initialData.output as any).aspect_ratio || defaultPromptData.output.aspectRatio,
+          aspectRatio: initialData.output.aspect_ratio || defaultPromptData.output.aspectRatio,
         };
       }
 
@@ -275,7 +299,7 @@ Please create a high-quality, professional image that emphasizes the furniture's
                       id="type"
                       className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                       value={promptData.output.type}
-                      onChange={(e) => updateOutput("type", e.target.value as any)}
+                      onChange={(e) => updateOutput("type", e.target.value as "packshot" | "lifestyle" | "instagram")}
                     >
                       <option value="packshot">Packshot</option>
                       <option value="lifestyle">Lifestyle</option>

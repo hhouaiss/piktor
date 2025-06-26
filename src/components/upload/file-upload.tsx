@@ -2,6 +2,7 @@
 
 import { useCallback, useState, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
+import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { X, Upload, File, Image as ImageIcon, Sparkles, Loader2 } from "lucide-react";
@@ -11,9 +12,23 @@ interface UploadedFile extends File {
   id: string;
 }
 
+interface AnalysisResult {
+  product?: {
+    name?: string;
+    material?: string;
+    color?: string;
+    dimensions?: string | object;
+    style?: string;
+  };
+  output?: {
+    type?: "packshot" | "lifestyle" | "instagram";
+    aspect_ratio?: string;
+  };
+}
+
 interface FileUploadProps {
   onFilesChange?: (files: UploadedFile[]) => void;
-  onAnalysisComplete?: (analysis: any) => void;
+  onAnalysisComplete?: (analysis: AnalysisResult) => void;
 }
 
 export function FileUpload({ onFilesChange, onAnalysisComplete }: FileUploadProps) {
@@ -131,10 +146,13 @@ export function FileUpload({ onFilesChange, onAnalysisComplete }: FileUploadProp
                   <div className="flex-shrink-0">
                     {file.preview ? (
                       <div className="w-12 h-12 rounded bg-muted flex items-center justify-center overflow-hidden">
-                        <img
+                        <Image
                           src={file.preview}
                           alt={file.name}
+                          width={48}
+                          height={48}
                           className="w-full h-full object-cover"
+                          unoptimized
                         />
                       </div>
                     ) : (

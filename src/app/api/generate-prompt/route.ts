@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 
+interface Analysis {
+  material?: { type?: string };
+  colors?: { dominant?: string };
+  dimensions?: { estimated?: string };
+  style?: { keywords?: string[] };
+  background?: { type?: string };
+  lighting?: { type?: string };
+}
+
 interface PromptRequest {
-  analysis?: any;
+  analysis?: Analysis;
   userInput?: {
     productName?: string;
     outputType?: "packshot" | "lifestyle" | "instagram";

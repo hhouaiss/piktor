@@ -13,17 +13,17 @@ interface ModelViewerProps {
 function Model({ url }: { url: string }) {
   const meshRef = useRef<Mesh>(null);
   
-  try {
-    const { scene } = useGLTF(url);
-    
-    useFrame((state) => {
-      if (meshRef.current) {
-        meshRef.current.rotation.y = state.clock.elapsedTime * 0.2;
-      }
-    });
+  // Always call hooks at the top level - no conditional hook calls
+  const gltf = useGLTF(url);
+  
+  useFrame((state) => {
+    if (meshRef.current) {
+      meshRef.current.rotation.y = state.clock.elapsedTime * 0.2;
+    }
+  });
 
-    return <primitive ref={meshRef} object={scene} scale={1} />;
-  } catch (error) {
+  // Handle missing scene
+  if (!gltf?.scene) {
     return (
       <mesh>
         <boxGeometry args={[2, 1, 0.1]} />
@@ -31,6 +31,8 @@ function Model({ url }: { url: string }) {
       </mesh>
     );
   }
+
+  return <primitive ref={meshRef} object={gltf.scene} scale={1} />;
 }
 
 function DefaultDesk() {
