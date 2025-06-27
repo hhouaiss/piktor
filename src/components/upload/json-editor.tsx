@@ -480,7 +480,7 @@ Please create a high-quality, professional image that emphasizes the furniture's
                           <div className="text-center py-6 text-muted-foreground border rounded-lg mt-2">
                             <Ruler className="h-6 w-6 mx-auto mb-2 opacity-50" />
                             <p>No dimensions added yet</p>
-                            <p className="text-sm">Click "Add Dimension" to specify measurements</p>
+                            <p className="text-sm">Click &quot;Add Dimension&quot; to specify measurements</p>
                           </div>
                         ) : (
                           <div className="space-y-2 mt-2">
@@ -582,7 +582,7 @@ Please create a high-quality, professional image that emphasizes the furniture's
                   <div className="text-center py-8 text-muted-foreground">
                     <Settings className="h-8 w-8 mx-auto mb-2 opacity-50" />
                     <p>No features added yet</p>
-                    <p className="text-sm">Click "Add Feature" to describe special features of your furniture</p>
+                    <p className="text-sm">Click &quot;Add Feature&quot; to describe special features of your furniture</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
