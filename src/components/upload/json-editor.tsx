@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Copy, Download } from "lucide-react";
+import { Copy, Download, Camera, Eye, RotateCcw, RotateCw, MoveUp, MoveDown, Move3D } from "lucide-react";
 
 interface PromptData {
   product: {
@@ -23,6 +23,7 @@ interface PromptData {
     background: string;
     lighting: string;
     aspectRatio: string;
+    cameraAngle: string;
   };
   branding: {
     aesthetic: string;
@@ -47,6 +48,7 @@ interface InitialProduct {
 interface InitialOutput {
   type?: "packshot" | "lifestyle" | "instagram";
   aspect_ratio?: string;
+  camera_angle?: string;
 }
 
 interface InitialData {
@@ -73,6 +75,7 @@ const defaultPromptData: PromptData = {
     background: "white studio",
     lighting: "soft professional lighting",
     aspectRatio: "16:9",
+    cameraAngle: "front_center",
   },
   branding: {
     aesthetic: "modern, cozy, professional",
@@ -114,6 +117,7 @@ export function JsonEditor({ initialData, onDataChange }: JsonEditorProps) {
           background: "white studio background",
           lighting: "soft professional lighting",
           aspectRatio: initialData.output.aspect_ratio || defaultPromptData.output.aspectRatio,
+          cameraAngle: initialData.output.camera_angle || defaultPromptData.output.cameraAngle,
         };
       }
 
@@ -192,6 +196,7 @@ Image Settings:
 - Background: ${promptData.output.background}
 - Lighting: ${promptData.output.lighting}
 - Aspect Ratio: ${promptData.output.aspectRatio}
+- Camera Angle: ${promptData.output.cameraAngle}
 
 Brand Aesthetic: ${promptData.branding.aesthetic}
 Mood: ${promptData.branding.moodKeywords.join(", ")}
@@ -335,6 +340,42 @@ Please create a high-quality, professional image that emphasizes the furniture's
                       <option value="1:1">1:1 (Square)</option>
                       <option value="9:16">9:16 (Portrait)</option>
                     </select>
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label htmlFor="cameraAngle" className="flex items-center gap-2">
+                      <Camera className="h-4 w-4" />
+                      Camera Angle
+                    </Label>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
+                      {[
+                        { value: "front_center", label: "Front Center", icon: Eye, description: "Direct front view" },
+                        { value: "front_left", label: "Front Left", icon: RotateCcw, description: "Front view from left" },
+                        { value: "front_right", label: "Front Right", icon: RotateCw, description: "Front view from right" },
+                        { value: "three_quarter_left", label: "3/4 Left", icon: Move3D, description: "Three-quarter left angle" },
+                        { value: "three_quarter_right", label: "3/4 Right", icon: Move3D, description: "Three-quarter right angle" },
+                        { value: "side_left", label: "Side Left", icon: MoveDown, description: "Full left side view" },
+                        { value: "side_right", label: "Side Right", icon: MoveUp, description: "Full right side view" },
+                        { value: "back", label: "Back", icon: RotateCcw, description: "Rear view" },
+                      ].map((angle) => {
+                        const IconComponent = angle.icon;
+                        return (
+                          <button
+                            key={angle.value}
+                            type="button"
+                            className={`flex flex-col items-center gap-1 p-3 rounded-lg border-2 transition-all hover:bg-muted/50 ${
+                              promptData.output.cameraAngle === angle.value
+                                ? "border-primary bg-primary/10"
+                                : "border-border"
+                            }`}
+                            onClick={() => updateOutput("cameraAngle", angle.value)}
+                            title={angle.description}
+                          >
+                            <IconComponent className="h-5 w-5" />
+                            <span className="text-xs text-center font-medium">{angle.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               </div>

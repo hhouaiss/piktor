@@ -51,9 +51,10 @@ export async function POST(request: NextRequest) {
   },
   "output": {
     "type": "packshot",
-    "prompt": "detailed prompt for generating a packshot image",
+    "prompt": "Generate a photorealistic packshot of the Supreme wall-mounted desk, fully open. Do not include any surrounding furniture or duplicated desks. Match the dimensions, materials, and design precisely. Show the desk against a neutral studio background with soft lighting.",
     "aspect_ratio": "16:9",
-    "resolution": "2048x1536"
+    "resolution": "2048x1536",
+    "camera_angle": "front_center"
   }
 }
 
@@ -125,7 +126,8 @@ Be precise. Do not invent elements that aren't visible. This desk must be the on
         type: "packshot",
         prompt: "A high-resolution packshot of a modern minimalist oak desk, 140x70x75cm, #C19A6B color, matte finish, front angle, transparent background, soft even lighting, no shadows",
         aspect_ratio: "16:9",
-        resolution: "2048x1536"
+        resolution: "2048x1536",
+        camera_angle: "front_center"
       }
     };
 
