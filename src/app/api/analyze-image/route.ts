@@ -44,10 +44,34 @@ export async function POST(request: NextRequest) {
   "product": {
     "type": "desk",
     "name": "descriptive name based on style and material",
-    "dimensions": {"width": "estimate in cm", "depth": "estimate in cm", "height": "estimate in cm"},
+    "dimensions": [
+      {
+        "name": "width",
+        "value": "estimate number",
+        "unit": "cm"
+      },
+      {
+        "name": "depth", 
+        "value": "estimate number",
+        "unit": "cm"
+      },
+      {
+        "name": "height",
+        "value": "estimate number", 
+        "unit": "cm"
+      }
+    ],
     "material": "detailed material description",
     "color": "hex color code of dominant wood/surface color",
-    "style": "style category (modern minimalist, industrial, etc.)"
+    "style": "style category (modern minimalist, industrial, etc.)",
+    "features": [
+      {
+        "name": "feature name if visible",
+        "description": "detailed description of the feature",
+        "location": "where the feature is located",
+        "visibility": "how visible/prominent the feature is"
+      }
+    ]
   },
   "output": {
     "type": "packshot",
@@ -117,10 +141,34 @@ Be precise. Do not invent elements that aren't visible. This desk must be the on
       product: {
         type: "desk",
         name: "Modern Oak Desk",
-        dimensions: {"width": "140cm", "depth": "70cm", "height": "75cm"},
+        dimensions: [
+          {
+            "name": "width",
+            "value": "140",
+            "unit": "cm"
+          },
+          {
+            "name": "depth",
+            "value": "70", 
+            "unit": "cm"
+          },
+          {
+            "name": "height",
+            "value": "75",
+            "unit": "cm"
+          }
+        ],
         material: "solid oak, matte lacquer",
         color: "#C19A6B",
-        style: "modern minimalist"
+        style: "modern minimalist",
+        features: [
+          {
+            "name": "Cable management",
+            "description": "Built-in cable routing system for organized workspace",
+            "location": "rear panel",
+            "visibility": "subtle"
+          }
+        ]
       },
       output: {
         type: "packshot",
