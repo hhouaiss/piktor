@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
           content: [
             {
               type: "text",
-              text: `Analyze this furniture image and provide a detailed JSON profile. Focus on desks and office furniture. Return ONLY a valid JSON object with this exact structure:
+              text: `Analyze this furniture image and generate a JSON profile matching the structure below. This is a wall-mounted fold-down desk, so avoid describing any floor-based furniture. Do not invent or add unrelated elements. Focus only on the visible structure and material. Provide realistic outputs and constrain hallucinations. Return ONLY a valid JSON object with this exact structure:
 
 {
   "product": {
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-Be specific about materials, colors, and style. Estimate realistic dimensions for desk furniture.`
+Be precise. Do not invent elements that aren't visible. This desk must be the only object in the scene.`
             },
             {
               type: "image_url",

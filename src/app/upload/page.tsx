@@ -69,7 +69,7 @@ export default function UploadPage() {
                     {uploadedFiles.map((file) => (
                       <div
                         key={file.id}
-                        className="aspect-square bg-muted/50 rounded-lg overflow-hidden flex items-center justify-center"
+                        className="aspect-square bg-muted/50 rounded-lg overflow-hidden flex items-center justify-center relative max-h-64"
                       >
                         {file.preview ? (
                           <Image
