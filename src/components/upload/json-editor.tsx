@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Copy, Download, Camera, Eye, RotateCcw, RotateCw, MoveUp, MoveDown, Move3D, Plus, Trash2, Settings, Ruler, ChevronDown, ChevronRight } from "lucide-react";
+import { Copy, Download, Camera, Eye, RotateCcw, RotateCw, MoveUp, MoveDown, Move3D, Plus, Trash2, Settings, Ruler, ChevronDown, ChevronRight, Shield } from "lucide-react";
 
 interface Feature {
   name: string;
@@ -19,6 +19,16 @@ interface Dimension {
   name: string;
   value: string;
   unit: string;
+}
+
+interface Constraints {
+  strict_mode: boolean;
+  must_be_wall_mounted: boolean;
+  no_furniture_on_floor: boolean;
+  no_extra_objects: boolean;
+  respect_all_dimensions: boolean;
+  no_text_in_image: boolean;
+  no_labels: boolean;
 }
 
 interface PromptData {
@@ -42,6 +52,7 @@ interface PromptData {
     aesthetic: string;
     moodKeywords: string[];
   };
+  constraints: Constraints;
 }
 
 interface DimensionsObject {
@@ -68,6 +79,7 @@ interface InitialOutput {
 interface InitialData {
   product?: InitialProduct;
   output?: InitialOutput;
+  constraints?: Constraints;
 }
 
 interface JsonEditorProps {
@@ -100,6 +112,15 @@ const defaultPromptData: PromptData = {
     aesthetic: "modern, cozy, professional",
     moodKeywords: ["clean", "organized", "productive", "home office"],
   },
+  constraints: {
+    strict_mode: true,
+    must_be_wall_mounted: true,
+    no_furniture_on_floor: true,
+    no_extra_objects: true,
+    respect_all_dimensions: true,
+    no_text_in_image: true,
+    no_labels: true,
+  },
 };
 
 export function JsonEditor({ initialData, onDataChange }: JsonEditorProps) {
@@ -111,7 +132,8 @@ export function JsonEditor({ initialData, onDataChange }: JsonEditorProps) {
     dimensions: true,
     features: false,
     output: true,
-    branding: false
+    branding: false,
+    constraints: false
   });
 
   useEffect(() => {
@@ -165,6 +187,13 @@ export function JsonEditor({ initialData, onDataChange }: JsonEditorProps) {
         };
       }
 
+      if (initialData.constraints) {
+        mappedData.constraints = {
+          ...defaultPromptData.constraints,
+          ...initialData.constraints,
+        };
+      }
+
       setPromptData({
         ...defaultPromptData,
         ...mappedData,
@@ -190,6 +219,13 @@ export function JsonEditor({ initialData, onDataChange }: JsonEditorProps) {
     setPromptData((prev) => ({
       ...prev,
       branding: { ...prev.branding, [field]: value },
+    }));
+  };
+
+  const updateConstraints = (field: keyof PromptData["constraints"], value: boolean) => {
+    setPromptData((prev) => ({
+      ...prev,
+      constraints: { ...prev.constraints, [field]: value },
     }));
   };
 
@@ -327,6 +363,15 @@ Image Settings:
 
 Brand Aesthetic: ${promptData.branding.aesthetic}
 Mood: ${promptData.branding.moodKeywords.join(", ")}
+
+Constraints:
+- Strict Mode: ${promptData.constraints.strict_mode ? 'Enabled' : 'Disabled'}
+- Wall Mounted Only: ${promptData.constraints.must_be_wall_mounted ? 'Required' : 'Optional'}
+- No Floor Furniture: ${promptData.constraints.no_furniture_on_floor ? 'Enforced' : 'Allowed'}
+- No Extra Objects: ${promptData.constraints.no_extra_objects ? 'Prohibited' : 'Allowed'}
+- Respect Dimensions: ${promptData.constraints.respect_all_dimensions ? 'Strict' : 'Flexible'}
+- No Text in Image: ${promptData.constraints.no_text_in_image ? 'Prohibited' : 'Allowed'}
+- No Labels: ${promptData.constraints.no_labels ? 'Prohibited' : 'Allowed'}
 
 Please create a high-quality, professional image that emphasizes the furniture's craftsmanship and fits a home office environment.`;
   };
@@ -742,6 +787,114 @@ Please create a high-quality, professional image that emphasizes the furniture's
                           )
                         }
                       />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <button
+                  type="button"
+                  onClick={() => toggleSection('constraints')}
+                  className="flex items-center justify-between w-full p-3 text-left bg-muted/30 hover:bg-muted/50 rounded-lg transition-colors"
+                >
+                  <Label className="text-base font-medium cursor-pointer flex items-center gap-2">
+                    <Shield className="h-4 w-4" />
+                    Generation Constraints
+                  </Label>
+                  {expandedSections.constraints ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                </button>
+                {expandedSections.constraints && (
+                  <div className="mt-4 space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="strict_mode"
+                          checked={promptData.constraints.strict_mode}
+                          onChange={(e) => updateConstraints("strict_mode", e.target.checked)}
+                          className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                        />
+                        <Label htmlFor="strict_mode" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                          Strict Mode
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="must_be_wall_mounted"
+                          checked={promptData.constraints.must_be_wall_mounted}
+                          onChange={(e) => updateConstraints("must_be_wall_mounted", e.target.checked)}
+                          className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                        />
+                        <Label htmlFor="must_be_wall_mounted" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                          Must Be Wall Mounted
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="no_furniture_on_floor"
+                          checked={promptData.constraints.no_furniture_on_floor}
+                          onChange={(e) => updateConstraints("no_furniture_on_floor", e.target.checked)}
+                          className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                        />
+                        <Label htmlFor="no_furniture_on_floor" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                          No Furniture on Floor
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="no_extra_objects"
+                          checked={promptData.constraints.no_extra_objects}
+                          onChange={(e) => updateConstraints("no_extra_objects", e.target.checked)}
+                          className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                        />
+                        <Label htmlFor="no_extra_objects" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                          No Extra Objects
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="respect_all_dimensions"
+                          checked={promptData.constraints.respect_all_dimensions}
+                          onChange={(e) => updateConstraints("respect_all_dimensions", e.target.checked)}
+                          className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                        />
+                        <Label htmlFor="respect_all_dimensions" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                          Respect All Dimensions
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="no_text_in_image"
+                          checked={promptData.constraints.no_text_in_image}
+                          onChange={(e) => updateConstraints("no_text_in_image", e.target.checked)}
+                          className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                        />
+                        <Label htmlFor="no_text_in_image" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                          No Text in Image
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2 md:col-span-2">
+                        <input
+                          type="checkbox"
+                          id="no_labels"
+                          checked={promptData.constraints.no_labels}
+                          onChange={(e) => updateConstraints("no_labels", e.target.checked)}
+                          className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                        />
+                        <Label htmlFor="no_labels" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                          No Labels
+                        </Label>
+                      </div>
                     </div>
                   </div>
                 )}

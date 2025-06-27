@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
           content: [
             {
               type: "text",
-              text: `Analyze this furniture image and generate a JSON profile matching the structure below. This is a wall-mounted fold-down desk, so avoid describing any floor-based furniture. Do not invent or add unrelated elements. Focus only on the visible structure and material. Provide realistic outputs and constrain hallucinations. Return ONLY a valid JSON object with this exact structure:
+              text: `Analyze this furniture image and generate a JSON profile matching the structure below. This is a wall-mounted fold-down desk, so avoid describing any floor-based furniture. Do not invent or add unrelated elements. Focus only on the visible structure and material. Provide realistic outputs and constrain hallucinations. Do not add any text, labels, or written information in the image. Return ONLY a valid JSON object with this exact structure:
 
 {
   "product": {
@@ -79,10 +79,17 @@ export async function POST(request: NextRequest) {
     "aspect_ratio": "16:9",
     "resolution": "2048x1536",
     "camera_angle": "front_center"
+  },
+  "constraints": {
+    "strict_mode": true,
+    "must_be_wall_mounted": true,
+    "no_furniture_on_floor": true,
+    "no_extra_objects": true,
+    "respect_all_dimensions": true
   }
 }
 
-Be precise. Do not invent elements that aren't visible. This desk must be the only object in the scene.`
+Be precise. Do not add any text, labels, or written information in the image. Do not invent elements that aren't visible. This desk must be the only object in the scene. Treat this like a product image for a real e-commerce website. Accuracy is critical and nothing should be invented.`
             },
             {
               type: "image_url",
@@ -176,6 +183,13 @@ Be precise. Do not invent elements that aren't visible. This desk must be the on
         aspect_ratio: "16:9",
         resolution: "2048x1536",
         camera_angle: "front_center"
+      },
+      constraints: {
+        strict_mode: true,
+        must_be_wall_mounted: true,
+        no_furniture_on_floor: true,
+        no_extra_objects: true,
+        respect_all_dimensions: true
       }
     };
 

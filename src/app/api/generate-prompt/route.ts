@@ -63,7 +63,7 @@ Image Settings:
 Brand Aesthetic: ${data.branding.aesthetic}
 Mood: ${data.branding.moodKeywords.join(", ")}
 
-Please create a high-quality, professional image that emphasizes the furniture's craftsmanship and fits a home office environment.`;
+Generate a photorealistic image of the desk exactly as shown. Include only the open wall-mounted fold-down desk, without any additional desks or chairs. Match the shape, proportions, features and texture. Avoid adding any surrounding furniture or duplicate elements. Treat this like a product image for a real e-commerce website. Accuracy is critical and nothing should be invented.`;
     };
 
     return NextResponse.json({
