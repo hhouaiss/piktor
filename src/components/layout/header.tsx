@@ -28,6 +28,12 @@ export function Header() {
               Upload
             </Link>
             <Link
+              href="/generate"
+              className="transition-colors hover:text-foreground/80 text-foreground/60"
+            >
+              Generate
+            </Link>
+            <Link
               href="/templates"
               className="transition-colors hover:text-foreground/80 text-foreground/60"
             >
