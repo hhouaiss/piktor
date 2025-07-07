@@ -6,15 +6,17 @@ const openai = new OpenAI({
 });
 
 export async function POST(request: NextRequest) {
+  const formData = await request.formData();
+  const file = formData.get("file") as File;
+  const outputType = formData.get("outputType") as string;
+  const textOverlay = formData.get("textOverlay") as string;
+  
   try {
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json({ 
         error: "OpenAI API key not configured. Please add OPENAI_API_KEY to your .env.local file" 
       }, { status: 500 });
     }
-
-    const formData = await request.formData();
-    const file = formData.get("file") as File;
     
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
@@ -128,6 +130,24 @@ Be precise. Do not add any text, labels, or written information in the image. Do
       throw new Error("Invalid JSON response from OpenAI");
     }
 
+    // Check if JSON profile generation is requested
+    if (outputType === "json_profile") {
+      const jsonProfile = generateJsonProfileFromAnalysis(analysisResult, textOverlay);
+      return NextResponse.json({
+        success: true,
+        analysis: analysisResult,
+        profile: jsonProfile,
+        metadata: {
+          filename: file.name,
+          size: file.size,
+          type: file.type,
+          processedAt: new Date().toISOString(),
+          model: "gpt-4o",
+          outputType: "json_profile",
+        },
+      });
+    }
+
     return NextResponse.json({
       success: true,
       analysis: analysisResult,
@@ -193,6 +213,25 @@ Be precise. Do not add any text, labels, or written information in the image. Do
       }
     };
 
+    // Check if JSON profile generation is requested for fallback too
+    if (outputType === "json_profile") {
+      const jsonProfile = generateJsonProfileFromAnalysis(mockAnalysis, textOverlay);
+      return NextResponse.json({
+        success: true,
+        analysis: mockAnalysis,
+        profile: jsonProfile,
+        metadata: {
+          filename: "unknown",
+          size: 0,
+          type: "unknown",
+          processedAt: new Date().toISOString(),
+          fallback: true,
+          error: error instanceof Error ? error.message : "Unknown error",
+          outputType: "json_profile",
+        },
+      });
+    }
+
     return NextResponse.json({
       success: true,
       analysis: mockAnalysis,
@@ -206,4 +245,120 @@ Be precise. Do not add any text, labels, or written information in the image. Do
       },
     });
   }
+}
+
+function generateJsonProfileFromAnalysis(analysis: any, textOverlayStr?: string) {
+  // Parse text overlay if provided
+  let textOverlay = null;
+  if (textOverlayStr) {
+    try {
+      textOverlay = JSON.parse(textOverlayStr);
+    } catch (e) {
+      console.error("Failed to parse text overlay:", e);
+    }
+  }
+
+  // Determine format based on aspect ratio or default to website
+  const aspectRatio = analysis.output?.aspect_ratio || "1:1";
+  const formatConfig = aspectRatio === "1:1" ? {
+    format: "website_square",
+    dimensions: { width: 1024, height: 1024 },
+    platform: "website",
+    use_case: "product_showcase"
+  } : {
+    format: "instagram_square", 
+    dimensions: { width: 1080, height: 1080 },
+    platform: "instagram",
+    use_case: "social_media"
+  };
+
+  // Build comprehensive JSON profile
+  const profile = {
+    meta: {
+      format: formatConfig.format,
+      platform: formatConfig.platform,
+      use_case: formatConfig.use_case,
+      generated_at: new Date().toISOString(),
+      version: "1.0"
+    },
+    product: {
+      name: analysis.product?.name || "Unknown Product",
+      category: analysis.product?.type || "furniture",
+      material: analysis.product?.material || "unknown material",
+      color: analysis.product?.color || "#000000",
+      style: analysis.product?.style || "modern",
+      dimensions: analysis.product?.dimensions || [],
+      features: analysis.product?.features || []
+    },
+    visual: {
+      dimensions: formatConfig.dimensions,
+      aspect_ratio: aspectRatio,
+      background: analysis.output?.background || "clean white studio",
+      lighting: analysis.output?.lighting || "soft natural lighting",
+      camera_angle: analysis.output?.camera_angle || "front_center",
+      branding: {
+        aesthetic: "modern minimalist",
+        mood_keywords: ["clean", "professional", "sophisticated"]
+      }
+    },
+    text_content: textOverlay?.enabled ? {
+      enabled: true,
+      content: textOverlay.content || "",
+      position: textOverlay.position || "bottom",
+      style: textOverlay.style || {
+        font_family: "Arial",
+        font_size: "20px",
+        font_weight: "bold",
+        color: "#333333"
+      },
+      rendering_instructions: `Render the text "${textOverlay.content}" in ${textOverlay.position} position with specified styling`
+    } : {
+      enabled: false,
+      content: null,
+      rendering_instructions: "No text overlay required"
+    },
+    generation_prompt: generatePromptFromAnalysis(analysis, textOverlay),
+    constraints: analysis.constraints || {
+      strict_mode: true,
+      no_extra_objects: true,
+      respect_all_dimensions: true
+    },
+    export_settings: {
+      format: "PNG",
+      quality: "high",
+      compression: "lossless",
+      color_profile: "sRGB",
+      metadata: {
+        title: analysis.product?.name || "Product Image",
+        description: `${formatConfig.use_case} image for ${analysis.product?.name || "product"}`,
+        keywords: [
+          analysis.product?.type || "furniture",
+          analysis.product?.style || "modern",
+          "product",
+          "commercial"
+        ],
+        creator: "Piktor AI"
+      }
+    }
+  };
+
+  return profile;
+}
+
+function generatePromptFromAnalysis(analysis: any, textOverlay?: any): string {
+  const product = analysis.product || {};
+  
+  let basePrompt = `Create a high-quality 1:1 product image of ${product.name || "furniture item"} (${product.type || "furniture"}) in ${product.style || "modern"} style, made of ${product.material || "quality materials"} in ${product.color || "natural"} color.`;
+  
+  if (textOverlay?.enabled && textOverlay.content) {
+    basePrompt += ` Include text overlay with the exact text: "${textOverlay.content}" positioned at ${textOverlay.position?.replace(/_/g, ' ') || 'bottom'} of the image.`;
+    
+    if (textOverlay.style) {
+      basePrompt += ` Text should use ${textOverlay.style.font_family || 'Arial'} font, ${textOverlay.style.font_size || '20px'} size, ${textOverlay.style.font_weight || 'bold'} weight, in ${textOverlay.style.color || '#333333'} color.`;
+    }
+  }
+  
+  basePrompt += ` Background: clean white studio. Lighting: soft natural lighting. Camera angle: front center. Professional product photography style.`;
+  
+  return basePrompt;
 }

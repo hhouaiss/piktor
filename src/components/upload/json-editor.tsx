@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Copy, Download, Camera, Eye, RotateCcw, RotateCw, MoveUp, MoveDown, Move3D, Plus, Trash2, Settings, Ruler, ChevronDown, ChevronRight, Shield } from "lucide-react";
+import { Copy, Download, Camera, Eye, RotateCcw, RotateCw, MoveUp, MoveDown, Move3D, Plus, Trash2, Settings, Ruler, ChevronDown, ChevronRight, Shield, Type } from "lucide-react";
 
 interface Feature {
   name: string;
@@ -31,6 +31,20 @@ interface Constraints {
   no_labels: boolean;
 }
 
+interface TextOverlay {
+  enabled: boolean;
+  content: string;
+  position: "top" | "bottom" | "center" | "top-left" | "top-right" | "bottom-left" | "bottom-right";
+  style: {
+    font_family: string;
+    font_size: string;
+    font_weight: string;
+    color: string;
+    background_color?: string;
+    opacity?: number;
+  };
+}
+
 interface PromptData {
   product: {
     name: string;
@@ -53,6 +67,7 @@ interface PromptData {
     moodKeywords: string[];
   };
   constraints: Constraints;
+  text_overlay?: TextOverlay;
 }
 
 interface DimensionsObject {
@@ -121,6 +136,19 @@ const defaultPromptData: PromptData = {
     no_text_in_image: true,
     no_labels: true,
   },
+  text_overlay: {
+    enabled: false,
+    content: "",
+    position: "bottom",
+    style: {
+      font_family: "Arial",
+      font_size: "20px",
+      font_weight: "bold",
+      color: "#333333",
+      background_color: "#FFFFFF",
+      opacity: 0.9,
+    },
+  },
 };
 
 export function JsonEditor({ initialData, onDataChange }: JsonEditorProps) {
@@ -133,7 +161,8 @@ export function JsonEditor({ initialData, onDataChange }: JsonEditorProps) {
     features: false,
     output: true,
     branding: false,
-    constraints: false
+    constraints: false,
+    textOverlay: false
   });
 
   useEffect(() => {
@@ -227,6 +256,35 @@ export function JsonEditor({ initialData, onDataChange }: JsonEditorProps) {
       ...prev,
       constraints: { ...prev.constraints, [field]: value },
     }));
+  };
+
+  const updateTextOverlay = (field: keyof TextOverlay, value: any) => {
+    setPromptData((prev) => ({
+      ...prev,
+      text_overlay: { ...prev.text_overlay!, [field]: value },
+    }));
+  };
+
+  const updateTextOverlayStyle = (field: keyof TextOverlay["style"], value: string | number) => {
+    setPromptData((prev) => ({
+      ...prev,
+      text_overlay: {
+        ...prev.text_overlay!,
+        style: { ...prev.text_overlay!.style, [field]: value },
+      },
+    }));
+  };
+
+  const toggleTextOverlay = () => {
+    setPromptData((prev) => {
+      const newEnabled = !prev.text_overlay?.enabled;
+      // Automatically update no_text_in_image constraint
+      return {
+        ...prev,
+        text_overlay: { ...prev.text_overlay!, enabled: newEnabled },
+        constraints: { ...prev.constraints, no_text_in_image: !newEnabled },
+      };
+    });
   };
 
   const addFeature = () => {
@@ -896,6 +954,214 @@ Please create a high-quality, professional image that emphasizes the furniture's
                         </Label>
                       </div>
                     </div>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <button
+                  type="button"
+                  onClick={() => toggleSection('textOverlay')}
+                  className="flex items-center justify-between w-full p-3 text-left bg-muted/30 hover:bg-muted/50 rounded-lg transition-colors"
+                >
+                  <Label className="text-base font-medium cursor-pointer flex items-center gap-2">
+                    <Type className="h-4 w-4" />
+                    Text Overlay
+                    {promptData.text_overlay?.enabled && (
+                      <span className="text-xs bg-primary/20 text-primary px-2 py-1 rounded-full">
+                        Enabled
+                      </span>
+                    )}
+                  </Label>
+                  {expandedSections.textOverlay ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                </button>
+                {expandedSections.textOverlay && (
+                  <div className="mt-4 space-y-4">
+                    <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="text_overlay_enabled"
+                          checked={promptData.text_overlay?.enabled || false}
+                          onChange={toggleTextOverlay}
+                          className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                        />
+                        <Label htmlFor="text_overlay_enabled" className="text-sm font-medium">
+                          Enable Text Overlay
+                        </Label>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {promptData.text_overlay?.enabled ? "Text will be added to your image" : "No text overlay"}
+                      </div>
+                    </div>
+
+                    {promptData.text_overlay?.enabled && (
+                      <div className="space-y-4 p-4 border rounded-lg bg-background">
+                        <div>
+                          <Label htmlFor="text_content">Text Content</Label>
+                          <Input
+                            id="text_content"
+                            placeholder="Enter the exact text you want to appear..."
+                            value={promptData.text_overlay.content}
+                            onChange={(e) => updateTextOverlay("content", e.target.value)}
+                            className="mt-1"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            This exact text will appear on your image
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="text_position">Position</Label>
+                            <select
+                              id="text_position"
+                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                              value={promptData.text_overlay.position}
+                              onChange={(e) => updateTextOverlay("position", e.target.value)}
+                            >
+                              <option value="top">Top Center</option>
+                              <option value="top-left">Top Left</option>
+                              <option value="top-right">Top Right</option>
+                              <option value="center">Center</option>
+                              <option value="bottom-left">Bottom Left</option>
+                              <option value="bottom">Bottom Center</option>
+                              <option value="bottom-right">Bottom Right</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <Label htmlFor="font_family">Font Family</Label>
+                            <select
+                              id="font_family"
+                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                              value={promptData.text_overlay.style.font_family}
+                              onChange={(e) => updateTextOverlayStyle("font_family", e.target.value)}
+                            >
+                              <option value="Arial">Arial</option>
+                              <option value="Helvetica">Helvetica</option>
+                              <option value="Times New Roman">Times New Roman</option>
+                              <option value="Georgia">Georgia</option>
+                              <option value="Roboto">Roboto</option>
+                              <option value="Open Sans">Open Sans</option>
+                              <option value="Lato">Lato</option>
+                              <option value="Montserrat">Montserrat</option>
+                              <option value="Poppins">Poppins</option>
+                              <option value="Inter">Inter</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <Label htmlFor="font_size">Font Size</Label>
+                            <select
+                              id="font_size"
+                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                              value={promptData.text_overlay.style.font_size}
+                              onChange={(e) => updateTextOverlayStyle("font_size", e.target.value)}
+                            >
+                              <option value="12px">12px - Small</option>
+                              <option value="14px">14px - Small</option>
+                              <option value="16px">16px - Medium</option>
+                              <option value="18px">18px - Medium</option>
+                              <option value="20px">20px - Large</option>
+                              <option value="24px">24px - Large</option>
+                              <option value="28px">28px - Extra Large</option>
+                              <option value="32px">32px - Extra Large</option>
+                              <option value="36px">36px - Huge</option>
+                              <option value="48px">48px - Huge</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <Label htmlFor="font_weight">Font Weight</Label>
+                            <select
+                              id="font_weight"
+                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                              value={promptData.text_overlay.style.font_weight}
+                              onChange={(e) => updateTextOverlayStyle("font_weight", e.target.value)}
+                            >
+                              <option value="normal">Normal</option>
+                              <option value="bold">Bold</option>
+                              <option value="100">100 - Thin</option>
+                              <option value="300">300 - Light</option>
+                              <option value="400">400 - Regular</option>
+                              <option value="500">500 - Medium</option>
+                              <option value="600">600 - Semi Bold</option>
+                              <option value="700">700 - Bold</option>
+                              <option value="800">800 - Extra Bold</option>
+                              <option value="900">900 - Black</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <Label htmlFor="text_color">Text Color</Label>
+                            <div className="flex gap-2">
+                              <Input
+                                id="text_color"
+                                type="color"
+                                value={promptData.text_overlay.style.color}
+                                onChange={(e) => updateTextOverlayStyle("color", e.target.value)}
+                                className="w-16 h-10 p-1"
+                              />
+                              <Input
+                                placeholder="#333333"
+                                value={promptData.text_overlay.style.color}
+                                onChange={(e) => updateTextOverlayStyle("color", e.target.value)}
+                                className="flex-1"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <Label htmlFor="bg_color">Background Color (Optional)</Label>
+                            <div className="flex gap-2">
+                              <Input
+                                id="bg_color"
+                                type="color"
+                                value={promptData.text_overlay.style.background_color || "#FFFFFF"}
+                                onChange={(e) => updateTextOverlayStyle("background_color", e.target.value)}
+                                className="w-16 h-10 p-1"
+                              />
+                              <Input
+                                placeholder="#FFFFFF (optional)"
+                                value={promptData.text_overlay.style.background_color || ""}
+                                onChange={(e) => updateTextOverlayStyle("background_color", e.target.value || undefined)}
+                                className="flex-1"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="md:col-span-2">
+                            <Label htmlFor="opacity">Opacity</Label>
+                            <div className="flex items-center gap-4">
+                              <input
+                                type="range"
+                                id="opacity"
+                                min="0"
+                                max="1"
+                                step="0.1"
+                                value={promptData.text_overlay.style.opacity || 1}
+                                onChange={(e) => updateTextOverlayStyle("opacity", parseFloat(e.target.value))}
+                                className="flex-1"
+                              />
+                              <span className="text-sm text-muted-foreground w-12">
+                                {Math.round((promptData.text_overlay.style.opacity || 1) * 100)}%
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                          <p className="text-sm text-blue-800">
+                            <strong>Preview:</strong> "{promptData.text_overlay.content || "Your text here"}" will appear in {promptData.text_overlay.position.replace(/-/g, ' ')} position using {promptData.text_overlay.style.font_family} font.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
