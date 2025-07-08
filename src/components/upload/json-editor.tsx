@@ -258,7 +258,7 @@ export function JsonEditor({ initialData, onDataChange }: JsonEditorProps) {
     }));
   };
 
-  const updateTextOverlay = (field: keyof TextOverlay, value: any) => {
+  const updateTextOverlay = (field: keyof TextOverlay, value: string | boolean) => {
     setPromptData((prev) => ({
       ...prev,
       text_overlay: { ...prev.text_overlay!, [field]: value },
@@ -1129,7 +1129,7 @@ Please create a high-quality, professional image that emphasizes the furniture's
                               <Input
                                 placeholder="#FFFFFF (optional)"
                                 value={promptData.text_overlay.style.background_color || ""}
-                                onChange={(e) => updateTextOverlayStyle("background_color", e.target.value || undefined)}
+                                onChange={(e) => updateTextOverlayStyle("background_color", e.target.value || "")}
                                 className="flex-1"
                               />
                             </div>
@@ -1157,7 +1157,7 @@ Please create a high-quality, professional image that emphasizes the furniture's
 
                         <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
                           <p className="text-sm text-blue-800">
-                            <strong>Preview:</strong> "{promptData.text_overlay.content || "Your text here"}" will appear in {promptData.text_overlay.position.replace(/-/g, ' ')} position using {promptData.text_overlay.style.font_family} font.
+                            <strong>Preview:</strong> &quot;{promptData.text_overlay.content || "Your text here"}&quot; will appear in {promptData.text_overlay.position.replace(/-/g, ' ')} position using {promptData.text_overlay.style.font_family} font.
                           </p>
                         </div>
                       </div>

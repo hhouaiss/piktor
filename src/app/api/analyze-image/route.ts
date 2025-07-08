@@ -247,7 +247,39 @@ Be precise. Do not add any text, labels, or written information in the image. Do
   }
 }
 
-function generateJsonProfileFromAnalysis(analysis: any, textOverlayStr?: string) {
+interface AnalysisData {
+  product?: {
+    name?: string;
+    type?: string;
+    material?: string;
+    color?: string;
+    style?: string;
+    dimensions?: Array<{
+      name: string;
+      value: string;
+      unit: string;
+    }>;
+    features?: Array<{
+      name: string;
+      description: string;
+      location: string;
+      visibility: string;
+    }>;
+  };
+  output?: {
+    aspect_ratio?: string;
+    background?: string;
+    lighting?: string;
+    camera_angle?: string;
+  };
+  constraints?: {
+    strict_mode?: boolean;
+    no_extra_objects?: boolean;
+    respect_all_dimensions?: boolean;
+  };
+}
+
+function generateJsonProfileFromAnalysis(analysis: AnalysisData, textOverlayStr?: string) {
   // Parse text overlay if provided
   let textOverlay = null;
   if (textOverlayStr) {
@@ -345,7 +377,21 @@ function generateJsonProfileFromAnalysis(analysis: any, textOverlayStr?: string)
   return profile;
 }
 
-function generatePromptFromAnalysis(analysis: any, textOverlay?: any): string {
+interface TextOverlayData {
+  enabled?: boolean;
+  content?: string;
+  position?: string;
+  style?: {
+    font_family?: string;
+    font_size?: string;
+    font_weight?: string;
+    color?: string;
+    background_color?: string;
+    opacity?: number;
+  };
+}
+
+function generatePromptFromAnalysis(analysis: AnalysisData, textOverlay?: TextOverlayData): string {
   const product = analysis.product || {};
   
   let basePrompt = `Create a high-quality 1:1 product image of ${product.name || "furniture item"} (${product.type || "furniture"}) in ${product.style || "modern"} style, made of ${product.material || "quality materials"} in ${product.color || "natural"} color.`;
