@@ -34,6 +34,12 @@ export function Header() {
               Generate
             </Link>
             <Link
+              href="/usp-overlay"
+              className="transition-colors hover:text-foreground/80 text-foreground/60"
+            >
+              USP Overlay
+            </Link>
+            <Link
               href="/templates"
               className="transition-colors hover:text-foreground/80 text-foreground/60"
             >
