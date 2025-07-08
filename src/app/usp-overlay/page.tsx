@@ -27,7 +27,7 @@ export default function USPOverlayPage() {
     content: "",
     position: "bottom-center",
     font_family: "Arial",
-    font_size: "24px",
+    font_size: "24",
     font_weight: "bold",
     color: "#FFFFFF",
     background_color: "#000000",
@@ -138,6 +138,7 @@ export default function USPOverlayPage() {
                   onChange={handleUSPConfigChange}
                   onGenerateJSON={generateJSON}
                   disabled={!uploadedImage || !uspConfig.content.trim()}
+                  generatedJSON={generatedJSON}
                 />
               </CardContent>
             </Card>

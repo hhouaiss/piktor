@@ -101,41 +101,57 @@ export function ImageUploadCanvas({ onImageUpload, uspConfig }: ImageUploadCanva
       
       // Clear canvas
       canvas.clear();
+      setImageLoaded(false);
       
       // Create image element
       const imgElement = new Image();
       imgElement.crossOrigin = "anonymous";
+      
       imgElement.onload = () => {
-        // Calculate dimensions to fit canvas while maintaining aspect ratio
-        const maxWidth = 600;
-        const maxHeight = 400;
-        const aspectRatio = imgElement.width / imgElement.height;
-        
-        let canvasWidth = maxWidth;
-        let canvasHeight = maxWidth / aspectRatio;
-        
-        if (canvasHeight > maxHeight) {
-          canvasHeight = maxHeight;
-          canvasWidth = maxHeight * aspectRatio;
+        try {
+          // Calculate dimensions to fit canvas while maintaining aspect ratio
+          const maxWidth = 600;
+          const maxHeight = 400;
+          const aspectRatio = imgElement.width / imgElement.height;
+          
+          let canvasWidth = maxWidth;
+          let canvasHeight = maxWidth / aspectRatio;
+          
+          if (canvasHeight > maxHeight) {
+            canvasHeight = maxHeight;
+            canvasWidth = maxHeight * aspectRatio;
+          }
+          
+          // Resize canvas
+          canvas.setDimensions({ width: canvasWidth, height: canvasHeight });
+          
+          // Add image to canvas using Fabric.js Image.fromURL method
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (window as any).fabric.Image.fromURL(uploadedImage.url, (fabricImage: any) => {
+            fabricImage.set({
+              left: 0,
+              top: 0,
+              scaleX: canvasWidth / fabricImage.width,
+              scaleY: canvasHeight / fabricImage.height,
+              selectable: false,
+              evented: false,
+            });
+            
+            canvas.add(fabricImage);
+            canvas.renderAll();
+            setImageLoaded(true);
+          }, {
+            crossOrigin: 'anonymous'
+          });
+        } catch (error) {
+          console.error('Error loading image into canvas:', error);
+          setImageLoaded(false);
         }
-        
-        // Resize canvas
-        canvas.setDimensions({ width: canvasWidth, height: canvasHeight });
-        
-        // Add image to canvas
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const fabricImage = new (window as any).fabric.Image(imgElement, {
-          left: 0,
-          top: 0,
-          scaleX: canvasWidth / imgElement.width,
-          scaleY: canvasHeight / imgElement.height,
-          selectable: false,
-          evented: false,
-        });
-        
-        canvas.add(fabricImage);
-        canvas.renderAll();
-        setImageLoaded(true);
+      };
+      
+      imgElement.onerror = () => {
+        console.error('Failed to load image');
+        setImageLoaded(false);
       };
       
       imgElement.src = uploadedImage.url;
@@ -225,8 +241,9 @@ export function ImageUploadCanvas({ onImageUpload, uspConfig }: ImageUploadCanva
     // Create text with background if specified
     if (uspConfig.background_color) {
       // Create background rectangle
-      const textWidth = uspConfig.content.length * parseInt(uspConfig.font_size) * 0.6;
-      const textHeight = parseInt(uspConfig.font_size) * 1.2;
+      const fontSize = parseInt(uspConfig.font_size.replace('px', ''));
+      const textWidth = uspConfig.content.length * fontSize * 0.6;
+      const textHeight = fontSize * 1.2;
       
       let bgLeft = left;
       let bgTop = top;
@@ -257,7 +274,7 @@ export function ImageUploadCanvas({ onImageUpload, uspConfig }: ImageUploadCanva
       left,
       top,
       fontFamily: uspConfig.font_family,
-      fontSize: parseInt(uspConfig.font_size),
+      fontSize: parseInt(uspConfig.font_size.replace('px', '')),
       fontWeight: uspConfig.font_weight,
       fill: uspConfig.color,
       opacity: uspConfig.background_color ? 1 : uspConfig.opacity,

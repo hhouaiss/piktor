@@ -22,9 +22,10 @@ interface USPControlsProps {
   onChange: (config: Partial<USPTextConfig>) => void;
   onGenerateJSON: () => void;
   disabled: boolean;
+  generatedJSON?: string;
 }
 
-export function USPControls({ config, onChange, onGenerateJSON, disabled }: USPControlsProps) {
+export function USPControls({ config, onChange, onGenerateJSON, disabled, generatedJSON }: USPControlsProps) {
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -40,14 +41,36 @@ export function USPControls({ config, onChange, onGenerateJSON, disabled }: USPC
         <Label htmlFor="usp_content">USP Text Content</Label>
         <Textarea
           id="usp_content"
-          placeholder="Enter your compelling marketing message..."
+          placeholder="Enter your compelling marketing message...&#10;&#10;✨ Supports basic formatting:&#10;• Use line breaks for multiple lines&#10;• Add emojis: 🚀 💪 ⭐ 🔥&#10;• UPPERCASE for emphasis&#10;• Mix different styles"
           value={config.content}
           onChange={(e) => onChange({ content: e.target.value })}
-          className="mt-1 min-h-[80px]"
+          className="mt-1 min-h-[120px] font-mono text-sm"
         />
-        <p className="text-xs text-muted-foreground mt-1">
-          This text will appear as an overlay on your product image
-        </p>
+        <div className="mt-2 space-y-2">
+          <p className="text-xs text-muted-foreground">
+            <strong>Formatting Tips:</strong>
+          </p>
+          <div className="text-xs text-muted-foreground space-y-1">
+            <p>• Use line breaks to create multi-line text</p>
+            <p>• Add emojis for visual appeal: 🚀 💪 ⭐ 🔥 💡 ✨</p>
+            <p>• Use UPPERCASE for strong emphasis</p>
+            <p>• Mix fonts and weights using the controls below</p>
+          </div>
+          <div className="flex flex-wrap gap-1 mt-2">
+            <span className="text-xs text-muted-foreground">Quick emojis:</span>
+            {['🚀', '💪', '⭐', '🔥', '💡', '✨', '🎯', '💰', '⚡', '🏆'].map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                onClick={() => onChange({ content: config.content + emoji })}
+                className="text-sm hover:bg-muted px-1 py-0.5 rounded transition-colors"
+                title={`Add ${emoji}`}
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Position */}
@@ -95,24 +118,20 @@ export function USPControls({ config, onChange, onGenerateJSON, disabled }: USPC
         </div>
 
         <div>
-          <Label htmlFor="font_size">Font Size</Label>
-          <select
+          <Label htmlFor="font_size">Font Size (px)</Label>
+          <Input
             id="font_size"
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 mt-1"
-            value={config.font_size}
+            type="number"
+            min="8"
+            max="200"
+            placeholder="24"
+            value={parseInt(config.font_size.replace('px', '')) || 24}
             onChange={(e) => onChange({ font_size: e.target.value })}
-          >
-            <option value="14">14px - Small</option>
-            <option value="16">16px - Small</option>
-            <option value="18">18px - Medium</option>
-            <option value="20">20px - Medium</option>
-            <option value="24">24px - Large</option>
-            <option value="28">28px - Large</option>
-            <option value="32">32px - Extra Large</option>
-            <option value="36">36px - Extra Large</option>
-            <option value="48">48px - Huge</option>
-            <option value="56">56px - Huge</option>
-          </select>
+            className="mt-1"
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Enter size in pixels (8-200px)
+          </p>
         </div>
 
         <div>
@@ -241,17 +260,19 @@ export function USPControls({ config, onChange, onGenerateJSON, disabled }: USPC
           Generate JSON & Prompt
         </Button>
         
-        <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => copyToClipboard(config.content)}
-            className="flex-1"
-          >
-            <Copy className="h-4 w-4 mr-2" />
-            Copy USP Text
-          </Button>
-        </div>
+        {generatedJSON && (
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => copyToClipboard(generatedJSON)}
+              className="flex-1"
+            >
+              <Copy className="h-4 w-4 mr-2" />
+              Copy Generated JSON
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Instructions */}
