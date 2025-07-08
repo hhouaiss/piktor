@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Copy, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 
 interface USPTextConfig {
   content: string;
@@ -22,17 +22,9 @@ interface USPControlsProps {
   onChange: (config: Partial<USPTextConfig>) => void;
   onGenerateJSON: () => void;
   disabled: boolean;
-  generatedJSON?: string;
 }
 
-export function USPControls({ config, onChange, onGenerateJSON, disabled, generatedJSON }: USPControlsProps) {
-  const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch (err) {
-      console.error("Failed to copy:", err);
-    }
-  };
+export function USPControls({ config, onChange, onGenerateJSON, disabled }: USPControlsProps) {
 
   return (
     <div className="space-y-6">
@@ -260,19 +252,6 @@ export function USPControls({ config, onChange, onGenerateJSON, disabled, genera
           Generate JSON & Prompt
         </Button>
         
-        {generatedJSON && (
-          <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => copyToClipboard(generatedJSON)}
-              className="flex-1"
-            >
-              <Copy className="h-4 w-4 mr-2" />
-              Copy Generated JSON
-            </Button>
-          </div>
-        )}
       </div>
 
       {/* Instructions */}

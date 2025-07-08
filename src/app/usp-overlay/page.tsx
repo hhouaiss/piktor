@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { ImageUploadCanvas } from "@/components/usp/image-upload-canvas";
 import { USPControls } from "@/components/usp/usp-controls";
+import { Copy } from "lucide-react";
 
 interface USPTextConfig {
   content: string;
@@ -94,6 +96,14 @@ export default function USPOverlayPage() {
     setGeneratedJSON(JSON.stringify(jsonOutput, null, 2));
   };
 
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(generatedJSON);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-screen-2xl">
       <div className="max-w-7xl mx-auto">
@@ -138,7 +148,6 @@ export default function USPOverlayPage() {
                   onChange={handleUSPConfigChange}
                   onGenerateJSON={generateJSON}
                   disabled={!uploadedImage || !uspConfig.content.trim()}
-                  generatedJSON={generatedJSON}
                 />
               </CardContent>
             </Card>
@@ -155,6 +164,17 @@ export default function USPOverlayPage() {
                   <pre className="bg-muted p-4 rounded-lg text-sm overflow-auto max-h-96 whitespace-pre-wrap">
                     {generatedJSON}
                   </pre>
+                  <div className="flex justify-end mt-4">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={copyToClipboard}
+                      className="flex items-center gap-2"
+                    >
+                      <Copy className="h-4 w-4" />
+                      Copy Generated JSON
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             )}
