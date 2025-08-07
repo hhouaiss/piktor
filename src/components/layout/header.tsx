@@ -40,6 +40,18 @@ export function Header() {
               USP Overlay
             </Link>
             <Link
+              href="/product-page-builder"
+              className="transition-colors hover:text-foreground/80 text-foreground/60"
+            >
+              Page Builder
+            </Link>
+            <Link
+              href="/hero-image-generator"
+              className="transition-colors hover:text-foreground/80 text-foreground/60"
+            >
+              Hero Images
+            </Link>
+            <Link
               href="/templates"
               className="transition-colors hover:text-foreground/80 text-foreground/60"
             >
