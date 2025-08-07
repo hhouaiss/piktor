@@ -35,11 +35,6 @@ export function FileUpload({ onProductsGenerated, onCancel }: FileUploadProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const acceptedTypes = {
-    'text/csv': ['.csv'],
-    'application/pdf': ['.pdf'],
-    'image/*': ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
-  };
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -110,8 +105,8 @@ export function FileUpload({ onProductsGenerated, onCancel }: FileUploadProps) {
       } else {
         throw new Error('Invalid response from extraction API');
       }
-    } catch (error) {
-      console.error('File extraction error:', error);
+    } catch {
+      console.error('File extraction error');
       
       // Fallback to mock data if API fails
       const baseProduct = {
@@ -149,7 +144,7 @@ export function FileUpload({ onProductsGenerated, onCancel }: FileUploadProps) {
             ? { ...f, status: 'completed', extractedData } 
             : f
         ));
-      } catch (error) {
+      } catch {
         setUploadedFiles(prev => prev.map(f => 
           f.id === uploadedFile.id 
             ? { ...f, status: 'error', error: 'Failed to extract data' } 

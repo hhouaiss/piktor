@@ -106,7 +106,7 @@ Guidelines:
       }
       
       productContent = JSON.parse(cleanContent);
-    } catch (parseError) {
+    } catch {
       console.error("Failed to parse OpenAI response:", content);
       throw new Error("Invalid JSON response from OpenAI");
     }
