@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectOption } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Upload, CheckCircle, Image, Settings, FileJson } from "lucide-react";
@@ -424,15 +424,19 @@ export default function AdvancedHeroImageGeneratorPage() {
                   <div className="space-y-2">
                     <Label htmlFor="use-case">Use Case</Label>
                     <Select
-                      id="use-case"
                       value={useCase}
-                      onChange={(e) => setUseCase(e.target.value)}
+                      onValueChange={setUseCase}
                     >
-                      {USE_CASES.map((option) => (
-                        <SelectOption key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectOption>
-                      ))}
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {USE_CASES.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
                     </Select>
                   </div>
 
@@ -440,15 +444,19 @@ export default function AdvancedHeroImageGeneratorPage() {
                   <div className="space-y-2">
                     <Label htmlFor="position">Product Position</Label>
                     <Select
-                      id="position"
                       value={position}
-                      onChange={(e) => setPosition(e.target.value)}
+                      onValueChange={setPosition}
                     >
-                      {POSITIONS.map((option) => (
-                        <SelectOption key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectOption>
-                      ))}
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {POSITIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
                     </Select>
                   </div>
 
@@ -456,15 +464,19 @@ export default function AdvancedHeroImageGeneratorPage() {
                   <div className="space-y-2">
                     <Label htmlFor="reserved-zone">Text Reserved Zone</Label>
                     <Select
-                      id="reserved-zone"
                       value={reservedZone}
-                      onChange={(e) => setReservedZone(e.target.value)}
+                      onValueChange={setReservedZone}
                     >
-                      {RESERVED_ZONES.map((option) => (
-                        <SelectOption key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectOption>
-                      ))}
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {RESERVED_ZONES.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
                     </Select>
                   </div>
 
@@ -472,15 +484,19 @@ export default function AdvancedHeroImageGeneratorPage() {
                   <div className="space-y-2">
                     <Label htmlFor="background-style">Background Style</Label>
                     <Select
-                      id="background-style"
                       value={backgroundStyle}
-                      onChange={(e) => setBackgroundStyle(e.target.value)}
+                      onValueChange={setBackgroundStyle}
                     >
-                      {BACKGROUND_STYLES.map((option) => (
-                        <SelectOption key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectOption>
-                      ))}
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {BACKGROUND_STYLES.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
                     </Select>
                   </div>
                 </CardContent>
@@ -517,30 +533,38 @@ export default function AdvancedHeroImageGeneratorPage() {
                   <div className="space-y-2">
                     <Label htmlFor="aspect-ratio">Aspect Ratio</Label>
                     <Select
-                      id="aspect-ratio"
                       value={aspectRatio}
-                      onChange={(e) => setAspectRatio(e.target.value)}
+                      onValueChange={setAspectRatio}
                     >
-                      {ASPECT_RATIOS.map((option) => (
-                        <SelectOption key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectOption>
-                      ))}
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ASPECT_RATIOS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
                     </Select>
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="resolution">Resolution</Label>
                     <Select
-                      id="resolution"
                       value={resolution}
-                      onChange={(e) => setResolution(e.target.value)}
+                      onValueChange={setResolution}
                     >
-                      {RESOLUTION_PRESETS.map((option) => (
-                        <SelectOption key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectOption>
-                      ))}
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {RESOLUTION_PRESETS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
                     </Select>
                   </div>
 

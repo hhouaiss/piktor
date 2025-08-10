@@ -1,160 +1,244 @@
 "use client";
 
-import { useState } from "react";
-import Image from "next/image";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { FileUpload } from "@/components/upload/file-upload";
-import { JsonEditor } from "@/components/upload/json-editor";
-import { Sparkles, Download, Loader2, ImageIcon, CheckCircle, AlertCircle } from "lucide-react";
-
-interface UploadedFile extends File {
-  preview?: string;
-  id: string;
-}
-
-interface Feature {
-  name: string;
-  description: string;
-  location: string;
-  visibility: string;
-}
-
-interface Dimension {
-  name: string;
-  value: string;
-  unit: string;
-}
-
-interface Constraints {
-  strict_mode: boolean;
-  must_be_wall_mounted: boolean;
-  no_furniture_on_floor: boolean;
-  no_extra_objects: boolean;
-  respect_all_dimensions: boolean;
-  no_text_in_image: boolean;
-  no_labels: boolean;
-}
-
-interface AnalysisData {
-  product?: {
-    name?: string;
-    material?: string;
-    color?: string;
-    dimensions?: string | object;
-    style?: string;
-    features?: Feature[];
-  };
-  output?: {
-    type?: "packshot" | "lifestyle" | "instagram";
-    aspect_ratio?: string;
-    camera_angle?: string;
-    prompt?: string;
-  };
-  constraints?: Constraints;
-}
-
-interface PromptData {
-  product: {
-    name: string;
-    category: string;
-    material: string;
-    color: string;
-    dimensions: Dimension[];
-    style: string;
-    features: Feature[];
-  };
-  output: {
-    type: "packshot" | "lifestyle" | "instagram";
-    background: string;
-    lighting: string;
-    aspectRatio: string;
-    cameraAngle: string;
-  };
-  branding: {
-    aesthetic: string;
-    moodKeywords: string[];
-  };
-  constraints: Constraints;
-}
-
-interface GeneratedImage {
-  url: string;
-  prompt: string;
-  metadata: {
-    model: string;
-    timestamp: string;
-    settings: PromptData;
-  };
-}
+import { useState, useCallback } from "react";
+import { Stepper } from "@/components/image-generator/stepper";
+import { StepProductBlock } from "@/components/image-generator/step-upload";
+import { StepProductSpecs } from "@/components/image-generator/step-product-specs";
+import { StepGenerationSettings } from "@/components/image-generator/step-settings";
+import { StepGenerate } from "@/components/image-generator/step-generate";
+import { 
+  ProductImages,
+  ProductConfiguration, 
+  GeneratedImage, 
+  ImageGeneratorState,
+  DEFAULT_UI_SETTINGS,
+  generateSlug
+} from "@/components/image-generator/types";
 
 export default function GeneratePage() {
-  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
-  const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
-  const [promptData, setPromptData] = useState<PromptData | null>(null);
-  const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generationError, setGenerationError] = useState<string | null>(null);
-  const [currentStep, setCurrentStep] = useState(1);
+  const [state, setState] = useState<ImageGeneratorState>({
+    currentStep: 1,
+    generatedImages: [],
+    isGenerating: false,
+    errors: {},
+  });
 
-  const handleAnalysisComplete = (analysis: AnalysisData) => {
-    setAnalysisData(analysis);
-    setCurrentStep(2);
+  const updateState = (updates: Partial<ImageGeneratorState>) => {
+    setState(prev => ({ ...prev, ...updates }));
   };
 
-  const handlePromptDataChange = (data: PromptData) => {
-    setPromptData(data);
+  // Step 1: Product Block Handlers
+  const handleProductImagesChange = useCallback((productImages: ProductImages | null) => {
+    if (!productImages) {
+      updateState({ productConfiguration: undefined });
+      return;
+    }
+
+    let configuration = state.productConfiguration;
+    
+    if (!configuration) {
+      // Create new configuration
+      const slug = generateSlug(productImages.productName);
+      configuration = {
+        id: crypto.randomUUID(),
+        name: productImages.productName,
+        slug,
+        productImages,
+        uiSettings: DEFAULT_UI_SETTINGS,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+    } else {
+      // Update existing configuration
+      configuration = {
+        ...configuration,
+        name: productImages.productName,
+        slug: generateSlug(productImages.productName),
+        productImages,
+        updatedAt: new Date().toISOString(),
+      };
+    }
+
+    updateState({ productConfiguration: configuration });
+  }, [state.productConfiguration]);
+
+  const handleProductBlockComplete = () => {
+    updateState({ currentStep: 2 });
   };
 
-  const generateImage = async () => {
-    if (!promptData || uploadedFiles.length === 0) return;
+  // Step 2: Product Specs Handlers
+  const handleProductSpecsComplete = () => {
+    updateState({ currentStep: 3 });
+  };
 
-    setIsGenerating(true);
-    setGenerationError(null);
-    setCurrentStep(3);
+  // Step 3: Generation Settings Handlers
+  const handleConfigurationChange = (config: ProductConfiguration) => {
+    updateState({ productConfiguration: config });
+  };
+
+  const handleGenerationSettingsComplete = () => {
+    updateState({ currentStep: 4 });
+  };
+
+  // Step 4: Generation Handlers
+  const generateImages = async () => {
+    if (!state.productConfiguration?.productImages.fusedProfile) {
+      updateState({ 
+        errors: { ...state.errors, generation: 'Product profile not analyzed. Please complete product specs first.' }
+      });
+      return;
+    }
+
+    const primaryImage = state.productConfiguration.productImages.images.find(
+      img => img.id === state.productConfiguration?.productImages.primaryImageId
+    );
+
+    if (!primaryImage) {
+      updateState({ 
+        errors: { ...state.errors, generation: 'No primary reference image selected.' }
+      });
+      return;
+    }
+
+    updateState({ 
+      isGenerating: true, 
+      generationProgress: { 
+        current: 0, 
+        total: state.productConfiguration.uiSettings.variations,
+        stage: 'Preparing generation...'
+      },
+      errors: { ...state.errors, generation: undefined }
+    });
 
     try {
       const formData = new FormData();
+      formData.append('configuration', JSON.stringify(state.productConfiguration));
       
-      // Add the first uploaded image
-      const imageFile = uploadedFiles.find(f => f.type.startsWith('image/'));
-      if (imageFile) {
-        formData.append('image', imageFile);
+      // Ensure we're sending the File object correctly
+      console.log('Primary image object:', primaryImage);
+      console.log('Primary image type:', typeof primaryImage);
+      console.log('Primary image instanceof File:', primaryImage instanceof File);
+      
+      if (primaryImage instanceof File) {
+        formData.append('primaryImage', primaryImage);
+      } else if (primaryImage && 'arrayBuffer' in primaryImage) {
+        // Create a new Blob/File from the UploadedImage data
+        const blob = new Blob([await primaryImage.arrayBuffer()], { type: primaryImage.type });
+        const file = new File([blob], primaryImage.name, { type: primaryImage.type });
+        formData.append('primaryImage', file);
+      } else {
+        throw new Error('Primary image is not a valid File object');
       }
-      
-      // Add the prompt data
-      formData.append('promptData', JSON.stringify(promptData));
-      formData.append('analysisData', JSON.stringify(analysisData));
 
-      const response = await fetch('/api/generate-image', {
+      updateState({ 
+        generationProgress: { 
+          current: 1, 
+          total: state.productConfiguration.uiSettings.variations,
+          stage: 'Calling OpenAI Images API...'
+        }
+      });
+
+      const response = await fetch('/api/generate-images-batch', {
         method: 'POST',
         body: formData,
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate image');
+        throw new Error(errorData.error || 'Failed to generate images');
       }
 
       const result = await response.json();
       
-      const newImage: GeneratedImage = {
-        url: result.imageUrl,
-        prompt: result.prompt,
-        metadata: {
-          model: 'gpt-image-1',
-          timestamp: new Date().toISOString(),
-          settings: promptData
-        }
-      };
+      const newGeneratedImages: GeneratedImage[] = result.result.variations.map((variation: { 
+        url: string; 
+        prompt: string; 
+        metadata: { model: string; timestamp: string; size: string; quality: string; variation: number; contextPreset: string } 
+      }) => ({
+        id: `${state.productConfiguration!.id}_${Date.now()}_${variation.metadata.variation}`,
+        url: variation.url,
+        productConfigId: state.productConfiguration!.id,
+        settings: state.productConfiguration!.uiSettings,
+        profile: state.productConfiguration!.productImages.fusedProfile!,
+        prompt: variation.prompt,
+        metadata: variation.metadata,
+      }));
 
-      setGeneratedImages([newImage, ...generatedImages]);
-      setCurrentStep(4);
+      updateState({ 
+        generatedImages: [...state.generatedImages, ...newGeneratedImages],
+        isGenerating: false,
+        generationProgress: undefined
+      });
+
     } catch (error) {
       console.error('Image generation failed:', error);
-      setGenerationError(error instanceof Error ? error.message : 'Unknown error occurred');
-    } finally {
-      setIsGenerating(false);
+      updateState({ 
+        isGenerating: false,
+        generationProgress: undefined,
+        errors: { 
+          ...state.errors, 
+          generation: error instanceof Error ? error.message : 'Unknown error occurred' 
+        }
+      });
+    }
+  };
+
+  const regenerateImage = async (imageId: string) => {
+    const imageToRegenerate = state.generatedImages.find(img => img.id === imageId);
+    if (!imageToRegenerate || !state.productConfiguration) return;
+
+    const primaryImage = state.productConfiguration.productImages.images.find(
+      img => img.id === state.productConfiguration?.productImages.primaryImageId
+    );
+
+    if (!primaryImage) return;
+
+    try {
+      const formData = new FormData();
+      formData.append('configuration', JSON.stringify(state.productConfiguration));
+      
+      // Ensure we're sending the File object correctly for regeneration
+      if (primaryImage instanceof File) {
+        formData.append('primaryImage', primaryImage);
+      } else if (primaryImage && 'arrayBuffer' in primaryImage) {
+        // Create a new Blob/File from the UploadedImage data
+        const blob = new Blob([await primaryImage.arrayBuffer()], { type: primaryImage.type });
+        const file = new File([blob], primaryImage.name, { type: primaryImage.type });
+        formData.append('primaryImage', file);
+      } else {
+        throw new Error('Primary image is not a valid File object');
+      }
+
+      const response = await fetch('/api/generate-images-batch', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to regenerate image');
+      }
+
+      const result = await response.json();
+      
+      if (result.result?.variations?.[0]) {
+        const newImage: GeneratedImage = {
+          id: `regenerated_${Date.now()}`,
+          url: result.result.variations[0].url,
+          productConfigId: state.productConfiguration.id,
+          settings: state.productConfiguration.uiSettings,
+          profile: state.productConfiguration.productImages.fusedProfile!,
+          prompt: result.result.variations[0].prompt,
+          metadata: result.result.variations[0].metadata,
+        };
+
+        const updatedImages = state.generatedImages.map(img => 
+          img.id === imageId ? newImage : img
+        );
+
+        updateState({ generatedImages: updatedImages });
+      }
+    } catch (error) {
+      console.error('Regeneration failed:', error);
     }
   };
 
@@ -176,268 +260,81 @@ export default function GeneratePage() {
     }
   };
 
-  const resetGeneration = () => {
-    setCurrentStep(1);
-    setUploadedFiles([]);
-    setAnalysisData(null);
-    setPromptData(null);
-    setGeneratedImages([]);
-    setGenerationError(null);
+  const downloadAll = async () => {
+    if (!state.productConfiguration) return;
+    
+    for (const image of state.generatedImages) {
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+      const productName = state.productConfiguration.productImages.productName.replace(/[^a-z0-9]/gi, '-').toLowerCase();
+      const filename = `piktor-${productName}-${state.productConfiguration.uiSettings.contextPreset}-${timestamp}.png`;
+      
+      await downloadImage(image.url, filename);
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
   };
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-screen-2xl">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-4">AI Image Generation Studio</h1>
+          <h1 className="text-3xl font-bold mb-4">Piktor Image Generator v3</h1>
           <p className="text-muted-foreground">
-            Upload furniture images, configure parameters, and generate professional product visuals with GPT Image
+            Multi-image product analysis with AI-powered generation using OpenAI Images API
           </p>
         </div>
 
-        {/* Progress Steps */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between max-w-2xl mx-auto">
-            {[
-              { step: 1, title: "Upload", description: "Upload & Analyze" },
-              { step: 2, title: "Configure", description: "Edit Parameters" },
-              { step: 3, title: "Generate", description: "Create Images" },
-              { step: 4, title: "Download", description: "Get Results" }
-            ].map((item, index) => (
-              <div key={item.step} className="flex items-center">
-                <div className={`flex flex-col items-center ${index < 3 ? 'mr-4' : ''}`}>
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium ${
-                    currentStep >= item.step 
-                      ? 'bg-primary text-primary-foreground' 
-                      : 'bg-muted text-muted-foreground'
-                  }`}>
-                    {currentStep > item.step ? (
-                      <CheckCircle className="h-5 w-5" />
-                    ) : (
-                      item.step
-                    )}
-                  </div>
-                  <div className="text-center mt-2">
-                    <p className="text-sm font-medium">{item.title}</p>
-                    <p className="text-xs text-muted-foreground">{item.description}</p>
-                  </div>
-                </div>
-                {index < 3 && (
-                  <div className={`flex-1 h-0.5 mx-4 ${
-                    currentStep > item.step ? 'bg-primary' : 'bg-muted'
-                  }`} />
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
+        <Stepper currentStep={state.currentStep} />
 
-        <div className="grid xl:grid-cols-2 gap-8">
-          {/* Left Column - Upload & Configuration */}
-          <div className="space-y-6">
-            {/* Step 1: Upload */}
-            <Card className={currentStep === 1 ? 'ring-2 ring-primary' : ''}>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
-                    currentStep >= 1 ? 'bg-primary text-primary-foreground' : 'bg-muted'
-                  }`}>
-                    1
-                  </span>
-                  File Upload & Analysis
-                </CardTitle>
-                <CardDescription>
-                  Upload furniture images to automatically generate JSON metadata
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <FileUpload 
-                  onFilesChange={setUploadedFiles} 
-                  onAnalysisComplete={handleAnalysisComplete}
-                />
-              </CardContent>
-            </Card>
+        <div className="space-y-8">
+          {/* Step 1: Product Block */}
+          <StepProductBlock
+            productImages={state.productConfiguration?.productImages || null}
+            onProductImagesChange={handleProductImagesChange}
+            onComplete={handleProductBlockComplete}
+            isActive={state.currentStep === 1}
+          />
 
-            {/* Preview uploaded files */}
-            {uploadedFiles.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Image Preview</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    {uploadedFiles.map((file) => (
-                      <div
-                        key={file.id}
-                        className="aspect-square bg-muted/50 rounded-lg overflow-hidden relative"
-                      >
-                        {file.preview ? (
-                          <Image
-                            src={file.preview}
-                            alt={file.name}
-                            fill
-                            className="object-cover"
-                            unoptimized
-                          />
-                        ) : (
-                          <div className="flex items-center justify-center h-full">
-                            <ImageIcon className="h-12 w-12 text-muted-foreground" />
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+          {/* Step 2: Product Specs */}
+          {state.currentStep >= 2 && state.productConfiguration && (
+            <StepProductSpecs
+              productImages={state.productConfiguration.productImages}
+              onProductImagesChange={(productImages) => {
+                handleConfigurationChange({
+                  ...state.productConfiguration!,
+                  productImages,
+                  updatedAt: new Date().toISOString(),
+                });
+              }}
+              onComplete={handleProductSpecsComplete}
+              isActive={state.currentStep === 2}
+            />
+          )}
 
-            {/* Step 2: Configuration */}
-            {analysisData && (
-              <Card className={currentStep === 2 ? 'ring-2 ring-primary' : ''}>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
-                      currentStep >= 2 ? 'bg-primary text-primary-foreground' : 'bg-muted'
-                    }`}>
-                      2
-                    </span>
-                    Parameter Configuration
-                  </CardTitle>
-                  <CardDescription>
-                    Review and adjust the generated parameters
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-            )}
-          </div>
+          {/* Step 3: Generation Settings */}
+          {state.currentStep >= 3 && state.productConfiguration && (
+            <StepGenerationSettings
+              productConfiguration={state.productConfiguration}
+              onConfigurationChange={handleConfigurationChange}
+              onComplete={handleGenerationSettingsComplete}
+              isActive={state.currentStep === 3}
+            />
+          )}
 
-          {/* Right Column - JSON Editor & Generation */}
-          <div className="space-y-6">
-            {analysisData && (
-              <JsonEditor 
-                initialData={analysisData} 
-                onDataChange={handlePromptDataChange}
-              />
-            )}
-
-            {/* Step 3: Generation */}
-            {promptData && (
-              <Card className={currentStep === 3 ? 'ring-2 ring-primary' : ''}>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
-                      currentStep >= 3 ? 'bg-primary text-primary-foreground' : 'bg-muted'
-                    }`}>
-                      3
-                    </span>
-                    Image Generation
-                  </CardTitle>
-                  <CardDescription>
-                    Generate professional product images using GPT Image
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {generationError && (
-                    <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
-                      <div className="flex items-center gap-2 text-destructive">
-                        <AlertCircle className="h-4 w-4" />
-                        <p className="text-sm font-medium">Generation Error</p>
-                      </div>
-                      <p className="text-sm text-destructive/80 mt-1">{generationError}</p>
-                    </div>
-                  )}
-                  
-                  <div className="flex gap-3">
-                    <Button 
-                      onClick={generateImage}
-                      disabled={isGenerating || !promptData}
-                      size="lg"
-                      className="flex-1"
-                    >
-                      {isGenerating ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Generating Image...
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="h-4 w-4 mr-2" />
-                          Generate Image
-                        </>
-                      )}
-                    </Button>
-                    
-                    <Button 
-                      variant="outline"
-                      onClick={resetGeneration}
-                      disabled={isGenerating}
-                    >
-                      Reset
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Step 4: Results */}
-            {generatedImages.length > 0 && (
-              <Card className={currentStep === 4 ? 'ring-2 ring-primary' : ''}>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
-                      currentStep >= 4 ? 'bg-primary text-primary-foreground' : 'bg-muted'
-                    }`}>
-                      4
-                    </span>
-                    Generated Images
-                  </CardTitle>
-                  <CardDescription>
-                    Download and use your generated product images
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {generatedImages.map((image, index) => (
-                      <div key={index} className="border rounded-lg p-4">
-                        <div className="aspect-video bg-muted/50 rounded-lg overflow-hidden mb-4 relative">
-                          <Image
-                            src={image.url}
-                            alt={`Generated image ${index + 1}`}
-                            fill
-                            className="object-cover"
-                            unoptimized
-                          />
-                        </div>
-                        
-                        <div className="flex justify-between items-start gap-4">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium mb-1">
-                              Generated on {new Date(image.metadata.timestamp).toLocaleString()}
-                            </p>
-                            <p className="text-xs text-muted-foreground line-clamp-2">
-                              {image.prompt}
-                            </p>
-                          </div>
-                          
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => downloadImage(
-                              image.url, 
-                              `piktor-generated-${Date.now()}.png`
-                            )}
-                          >
-                            <Download className="h-4 w-4 mr-2" />
-                            Download
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
+          {/* Step 4: Generate */}
+          {state.currentStep >= 4 && state.productConfiguration && (
+            <StepGenerate
+              productConfiguration={state.productConfiguration}
+              generatedImages={state.generatedImages}
+              isGenerating={state.isGenerating}
+              generationProgress={state.generationProgress}
+              generationError={state.errors.generation}
+              onGenerate={generateImages}
+              onRegenerate={regenerateImage}
+              onDownload={downloadImage}
+              onDownloadAll={downloadAll}
+              isActive={state.currentStep === 4}
+            />
+          )}
         </div>
       </div>
     </div>

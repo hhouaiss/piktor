@@ -6,6 +6,10 @@ const openai = new OpenAI({
 });
 
 export async function POST(request: NextRequest) {
+  let formData: FormData;
+  let file: File | null = null;
+  let filename = "Unknown";
+
   try {
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json({ 
@@ -13,14 +17,26 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
-    const formData = await request.formData();
-    const file = formData.get("file") as File;
+    // Read formData only once at the beginning
+    formData = await request.formData();
+    const fileEntry = formData.get("file");
     
-    if (!file) {
+    if (!fileEntry) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    if (!file.type.startsWith("image/")) {
+    // Type guard to ensure we have a File object
+    if (!(fileEntry instanceof File)) {
+      return NextResponse.json({ 
+        error: "Invalid file format. Please provide a valid file." 
+      }, { status: 400 });
+    }
+
+    file = fileEntry;
+    filename = file.name;
+
+    // Validate file type with proper error handling
+    if (!file.type || !file.type.startsWith("image/")) {
       return NextResponse.json({ 
         error: "Only image files are supported (JPG, PNG, WebP)" 
       }, { status: 400 });
@@ -120,11 +136,7 @@ Focus on what you can clearly observe in the image. If something is not visible 
   } catch (error) {
     console.error("Product profile extraction error:", error);
     
-    // Fallback with basic product profile
-    const formData = await request.formData();
-    const file = formData.get("file") as File;
-    const filename = file?.name || "Unknown";
-    
+    // Return error response using already-extracted file metadata
     const fallbackProduct = {
       type: "furniture",
       material: "unknown",
