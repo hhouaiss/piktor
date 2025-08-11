@@ -41,6 +41,8 @@ export interface TextToImagePrompts {
   lifestyle: string; // Detailed prompt for lifestyle scenes
   hero: string; // Comprehensive prompt for hero/banner images
   story: string; // Optimized prompt for vertical story format
+  instagram: string; // Instagram post format prompt
+  detail: string; // Detail shot format prompt
   photographySpecs: {
     cameraAngle: string; // Optimal camera angles and perspectives
     lightingSetup: string; // Detailed lighting specifications

@@ -200,6 +200,14 @@ export async function POST(request: NextRequest) {
                     type: "string",
                     description: "Optimized prompt for vertical story format with mobile-friendly composition"
                   },
+                  instagram: {
+                    type: "string",
+                    description: "Instagram post format prompt optimized for square compositions and social media engagement"
+                  },
+                  detail: {
+                    type: "string",
+                    description: "Detail shot format prompt for close-up product photography showcasing craftsmanship and materials"
+                  },
                   photographySpecs: {
                     type: "object",
                     properties: {
@@ -247,7 +255,7 @@ export async function POST(request: NextRequest) {
                     additionalProperties: false
                   }
                 },
-                required: ["baseDescription", "packshot", "lifestyle", "hero", "story", "photographySpecs", "visualDetails"],
+                required: ["baseDescription", "packshot", "lifestyle", "hero", "story", "instagram", "detail", "photographySpecs", "visualDetails"],
                 additionalProperties: false
               }
             },
@@ -300,6 +308,8 @@ export async function POST(request: NextRequest) {
         lifestyle: `Show ${analysis.type} in a realistic home setting`,
         hero: `Dramatic hero image of ${analysis.type} for website banner`,
         story: `Vertical mobile-optimized image of ${analysis.type}`,
+        instagram: `Square format Instagram post of ${analysis.type} with social media appeal`,
+        detail: `Close-up detail shot of ${analysis.type} showing craftsmanship and materials`,
         photographySpecs: {
           cameraAngle: "Three-quarter view, eye-level perspective",
           lightingSetup: "Three-point lighting with key light, fill light, and rim light",
@@ -334,42 +344,82 @@ export async function POST(request: NextRequest) {
 }
 
 function buildAnalysisPrompt(imageCount: number): string {
-  return `You are analyzing ${imageCount} images of THE SAME PRODUCT from different angles and perspectives. Your task is to create a comprehensive product profile by combining insights from all images.
+  return `You are analyzing ${imageCount} images of THE SAME PRODUCT from different angles and perspectives. Your task is to create an EXTREMELY COMPREHENSIVE product profile by combining insights from ALL images.
 
-CRITICAL MISSION: This analysis will be used to generate NEW AI images of the product using GPT-image-1 text-to-image model. The textToImagePrompts must be extremely detailed and comprehensive to ensure accurate recreation of the product.
+🎯 CRITICAL MISSION: This analysis will be used to generate NEW AI images using GPT-image-1 text-to-image model. Since GPT-image-1 cannot see reference images, your textToImagePrompts must be SO DETAILED and COMPREHENSIVE that they can accurately recreate the product from text descriptions alone.
 
-IMPORTANT: All images show the SAME PRODUCT. Use information from ALL images to create the most comprehensive and accurate profile.
+📸 ANALYSIS METHODOLOGY:
+- Examine ALL ${imageCount} images thoroughly
+- Note variations in lighting, angles, and visible details across images
+- Combine information from ALL perspectives to create the most complete description possible
+- Pay special attention to details that are only visible in certain angles/lighting
 
-ENHANCED ANALYSIS REQUIREMENTS:
+🔍 ULTRA-DETAILED VISUAL ANALYSIS REQUIREMENTS:
 
-1. VISUAL CHARACTERISTICS - Be extremely detailed about:
-   - Exact materials and their textures (leather grain, wood finish, fabric weave, metal type)
-   - Precise color descriptions with lighting characteristics
-   - Surface properties (matte, glossy, brushed, polished, textured)
-   - Construction details (joints, connections, hardware, stitching)
-   - Proportions and geometric relationships between parts
-   - Any unique design elements, curves, angles, or decorative features
+1. MATERIAL & TEXTURE ANALYSIS (be extraordinarily specific):
+   - Exact material types with technical descriptions (e.g., "brushed aluminum with hairline finish", "full-grain leather with natural pebbling", "solid oak with hand-rubbed oil finish")
+   - Surface characteristics: grain direction, texture patterns, reflectivity levels
+   - Material transitions and joints (how different materials connect)
+   - Wear patterns, natural variations, or intentional distressing
+   - Hardware specifications: screw types, bracket designs, hinge mechanisms
 
-2. DIMENSIONAL ANALYSIS:
-   - Estimate proportions between different parts of the product
-   - Identify key structural relationships (base-to-top ratios, depth perspectives)
-   - Note any scale indicators visible in the images
+2. COLOR & LIGHTING CHARACTERISTICS:
+   - Primary colors with specific names and undertones
+   - How colors appear under different lighting conditions shown in the images
+   - Color variations across the product (gradients, shadows, highlights)
+   - Reflective properties and how light interacts with different surfaces
+   - Any metallic, pearlescent, or special finish effects
 
-3. LIGHTING AND SHADOW BEHAVIOR:
-   - How the product interacts with light (reflections, shadows, highlights)
-   - Material-specific light characteristics
-   - Areas that naturally create depth and dimensionality
+3. GEOMETRIC & STRUCTURAL DETAILS:
+   - Precise shape descriptions including curves, angles, and transitions
+   - Dimensional proportions between all components
+   - Structural elements: supports, joints, connection points
+   - Symmetry or asymmetrical design elements
+   - Edge treatments: rounded, sharp, beveled, chamfered
 
-4. CONTEXTUAL RECOMMENDATIONS:
-   - Best angles and perspectives for different use cases
-   - Optimal lighting conditions for each context type
-   - Background styles that complement the product
+4. CONSTRUCTION & CRAFTSMANSHIP:
+   - Assembly methods visible in the images
+   - Joint types: mortise-and-tenon, dovetail, welded, screwed, etc.
+   - Quality indicators: flush surfaces, tight tolerances, smooth edges
+   - Manufacturing techniques evident from the finish quality
+   - Any visible branding, model numbers, or identifying marks
 
-5. TEXT-TO-IMAGE OPTIMIZATION:
-   - Create highly detailed prompts that capture every visual aspect
-   - Include technical photography terms and lighting setups
-   - Specify camera angles, depth of field, and composition elements
-   - Ensure prompts are rich enough to recreate the product without reference images
+5. FUNCTIONAL ELEMENTS:
+   - Moving parts and their mechanisms
+   - Operational features and how they work
+   - Ergonomic considerations visible in the design
+   - Storage or utility aspects
+   - Any electrical components, cords, or technological elements
 
-The textToImagePrompts section is CRITICAL - these will be used directly with GPT-image-1 to generate new product images. They must be comprehensive enough to recreate the product accurately from text alone.`;
+6. CONTEXTUAL ENVIRONMENT ANALYSIS:
+   - Background elements visible in different images
+   - Lighting conditions that show the product best
+   - Scale references (other objects, furniture, room elements)
+   - Setting types that complement the product
+
+🎨 TEXT-TO-IMAGE PROMPT CREATION (MAXIMUM DETAIL REQUIRED):
+
+For each context type (packshot, lifestyle, hero, story), create prompts that are:
+- MINIMUM 200+ words each for main contexts
+- Include specific technical photography terms
+- Reference exact materials, colors, and construction details
+- Specify lighting setups, camera angles, and composition rules
+- Describe how shadows and highlights should fall
+- Include atmospheric and environmental details
+
+The baseDescription should be 300+ words capturing EVERY visual aspect visible across all uploaded images.
+
+Photography specifications must include:
+- Specific lens recommendations (wide angle, macro, etc.)
+- Lighting ratios and setup descriptions
+- Depth of field specifications
+- Color temperature and mood requirements
+
+Visual details must capture:
+- Every texture and material property
+- All color variations and undertones  
+- Every structural and geometric element
+- Surface treatments and finish characteristics
+
+Remember: Since GPT-image-1 cannot see reference images, your descriptions must be so thorough that they serve as complete visual blueprints for recreating the product. Include every detail you can observe across all ${imageCount} images.`;
 }

@@ -191,3 +191,119 @@ const resp = await client.images.edits({
 * Concurrency control / small delay between API calls to avoid rate limits.
 
 Please implement the UI changes, the analysis fusion, the override logic, the prompt builder, localStorage persistence, and the OpenAI call exactly as specified. Keep code modular (hooks/utils/components) and consistent with Piktor’s style.
+
+
+
+A modern wall-mounted foldable desk in a studio setting with soft, even lighting. The desk is crafted from birch plywood with a white laminate finish, featuring a foldable surface supported by metal gas struts. The edges reveal the layered plywood construction. The background is a neutral gray to highlight the desk's clean lines and minimalist design.
+
+COMPREHENSIVE PRODUCT DESCRIPTION:
+A modern wall-mounted foldable desk crafted from high-quality birch plywood with a smooth white laminate finish. The desk features a foldable surface supported by integrated metal gas struts, allowing for easy opening and closing. The edges of the desk are exposed, showcasing the layered plywood construction. It includes a discreet cable management hole at the back and integrated LED lighting for workspace illumination. The desk is designed to be mounted on a wall, making it ideal for small spaces. The overall design is minimalist, with clean lines and a focus on functionality.
+
+DETAILED VISUAL SPECIFICATIONS:
+MATERIALS & TEXTURES:
+The birch plywood has a smooth, layered texture with visible grain on the edges. The white laminate is glossy and reflective, providing a clean surface.
+
+COLOR PALETTE & CHARACTERISTICS:
+The primary color is white with subtle undertones of natural wood from the exposed plywood edges. The metal struts have a brushed silver finish.
+
+HARDWARE & CONSTRUCTION DETAILS:
+The gas struts are metallic with a brushed finish, securely attached to the desk with visible screws. The cable management hole is neatly cut into the back panel.
+
+PROPORTIONAL RELATIONSHIPS & GEOMETRY:
+The desk surface is proportionally larger than the supporting frame, emphasizing its functionality. The gas struts are symmetrically placed on either side for balanced support.
+
+COMPREHENSIVE PHOTOGRAPHY SPECIFICATIONS:
+CAMERA POSITIONING & ANGLES:
+eye-level, slightly angled to show depth
+
+LIGHTING SETUP & CHARACTERISTICS:
+soft key light from above, fill light from the side, rim light to highlight edges
+
+DEPTH OF FIELD & FOCUS:
+shallow depth of field to focus on the desk
+
+COMPOSITION & VISUAL BALANCE:
+rule of thirds, leading lines from the desk edges, balanced with background elements
+
+ENHANCED CONTEXT SETTINGS:
+BACKGROUND TREATMENT:
+- Style: gradient
+- Texture: Smooth, non-distracting surface that complements the product
+- Color: Carefully selected to enhance product colors without competition
+- Lighting: Even illumination preventing unwanted shadows or hotspots
+
+PRODUCT POSITIONING:
+- Placement: center
+- Orientation: Optimal angle showcasing key features and design elements
+- Stability: Product appears naturally positioned and structurally sound
+- Scale: Appropriate size within frame for maximum visual impact
+
+LIGHTING ATMOSPHERE:
+- Primary Light: studio softbox
+- Color Temperature: Consistent throughout the scene, appropriate for product type
+- Shadow Quality: Soft, natural shadows that enhance dimensionality without distraction
+- Highlight Management: Controlled reflections that enhance rather than obscure product details
+
+COMPREHENSIVE PACKSHOT REQUIREMENTS:
+BACKGROUND & ENVIRONMENT:
+- Pure, distraction-free background (white, light gray, or subtle gradient)
+- Seamless backdrop with no visible horizon line or edges
+- Consistent lighting across entire background surface
+- No competing visual elements or textures
+
+LIGHTING SPECIFICATIONS:
+- Professional studio lighting setup with multiple light sources
+- Key light positioned at 45-degree angle for optimal dimensionality
+- Fill light to eliminate harsh shadows while maintaining product definition
+- Background light to ensure even illumination and prevent color casts
+- Color temperature maintained at 5600K for natural daylight balance
+
+PRODUCT PRESENTATION:
+- Product positioned as absolute focal point with maximum visual impact
+- Every surface detail clearly visible and professionally rendered
+- Materials authentically represented with accurate texture and finish
+- Hardware elements precisely detailed with appropriate reflective properties
+- Brand elements (if present) clearly visible and properly aligned
+
+COMMERCIAL QUALITY STANDARDS:
+- E-commerce catalog quality suitable for product listings
+- Consistent lighting and exposure for product comparison
+- No artistic interpretation - focus on accurate product representation
+- Sharp detail throughout with professional depth of field management
+
+COMPREHENSIVE QUALITY STANDARDS:
+PHOTOREALISTIC RENDERING:
+- Cinema-quality photorealism with authentic material properties and lighting behavior
+- Physically accurate reflections, refractions, and surface interactions
+- Natural imperfections and variations that enhance believability
+- Consistent physics-based lighting and shadow casting throughout the scene
+
+DETAIL AND CLARITY:
+- Maximum resolution detail preservation with sharp focus on critical product elements
+- Micro-texture rendering showing material grain, weave, or surface characteristics
+- Hardware details including screws, joints, seams, and connection points clearly defined
+- Edge definition with appropriate anti-aliasing for professional presentation
+
+COMMERCIAL PHOTOGRAPHY STANDARDS:
+- Museum-quality lighting with professional studio standards
+- Color accuracy suitable for product catalog and e-commerce applications
+- Consistent exposure and white balance throughout the composition
+- Professional depth of field control with selective focus areas
+
+AUTHENTIC PRODUCT REPRESENTATION:
+- Exact dimensional accuracy maintaining true product proportions
+- Faithful material representation without stylistic interpretation
+- Accurate color reproduction under specified lighting conditions
+- Structural integrity showing proper product assembly and construction
+
+TECHNICAL EXCELLENCE:
+- No visible rendering artifacts, noise, or compression issues
+- Clean composition with no extraneous text, labels, watermarks, or branding
+- Professional color grading suitable for commercial applications
+- Optimal contrast and saturation for the specified context and usage
+
+FINAL RESULT SPECIFICATIONS:
+- Commercial-grade image suitable for premium marketing and sales applications
+- Professional photography quality that enhances brand perception and product appeal
+- Technical execution that meets or exceeds industry standards for product visualization
+- Visual consistency that integrates seamlessly with existing brand asset libraries

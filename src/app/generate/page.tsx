@@ -145,21 +145,7 @@ export default function GeneratePage() {
       if (!response.ok) {
         const errorData = await response.json();
         
-        // Handle prompt length validation errors specifically
-        if (errorData.error === 'Prompt length validation failed' || 
-            errorData.promptLength > errorData.promptLimit) {
-          const promptError = `Image generation failed due to prompt length constraints:
-
-• Prompt length: ${errorData.promptLength}/${errorData.promptLimit} characters
-• The image generation request contains too much detail for the AI model to process
-
-Suggestions to fix this:
-${errorData.suggestions ? errorData.suggestions.map((s: string) => `• ${s}`).join('\n') : '• Reduce the number of product features\n• Simplify product descriptions\n• Use shorter material specifications'}
-
-Try simplifying your product specifications in the previous step and regenerate.`;
-          
-          throw new Error(promptError);
-        }
+        // Note: Removed prompt length validation - using comprehensive prompts for better quality
         
         // Handle image format errors specifically
         if (errorData.error?.includes('Image format') || 
