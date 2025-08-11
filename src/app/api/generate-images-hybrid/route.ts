@@ -199,12 +199,11 @@ async function generateTextToImage(
     model: "gpt-image-1",
     prompt: prompt,
     n: 1,
-    size: CONTEXT_PRESET_SETTINGS[contextPreset].size as "1024x1024" | "1792x1024" | "1024x1792",
-    quality: "standard",
-    response_format: "b64_json"
+    size: CONTEXT_PRESET_SETTINGS[contextPreset].size as "1024x1024" | "1536x1024" | "1024x1536",
+    quality: "medium" // Use gpt-image-1 quality options: low, medium, high
   });
 
-  const imageData = response.data[0];
+  const imageData = response.data?.[0];
   if (!imageData?.b64_json) {
     throw new Error("No image data received from OpenAI text-to-image generation");
   }
@@ -262,12 +261,12 @@ async function generateReferenceBased(
   const response = await openai.images.edit({
     image: imageFile,
     prompt: prompt,
+    model: "gpt-image-1", // Use gpt-image-1 for better editing results
     n: 1,
-    size: CONTEXT_PRESET_SETTINGS[contextPreset].size as "1024x1024" | "1792x1024" | "1024x1792",
-    response_format: "b64_json",
+    size: CONTEXT_PRESET_SETTINGS[contextPreset].size as "1024x1024" | "1024x1536" | "1536x1024"
   });
 
-  const imageData = response.data[0];
+  const imageData = response.data?.[0];
   if (!imageData?.b64_json) {
     throw new Error("No image data received from OpenAI reference-based generation");
   }
@@ -277,7 +276,7 @@ async function generateReferenceBased(
     prompt: prompt,
     generationSource: {
       method: 'reference-based' as GenerationMethod,
-      model: 'gpt-image-1-edit',
+      model: 'gpt-image-1',
       confidence: 0.9,
       referenceImageUsed: true
     } as GenerationSource,

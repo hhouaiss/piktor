@@ -33,7 +33,8 @@ export async function POST(request: NextRequest) {
 
     // OpenAI Vision API call
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o", // Use gpt-4o for superior image analysis
+      max_tokens: 4000, // Ensure sufficient tokens for detailed analysis
       messages: [
         {
           role: "user",
@@ -102,7 +103,6 @@ Be precise. Do not add any text, labels, or written information in the image. Do
           ]
         }
       ],
-      max_tokens: 1000,
       temperature: 0.1,
     });
 

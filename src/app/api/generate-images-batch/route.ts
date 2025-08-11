@@ -348,9 +348,9 @@ export async function POST(request: NextRequest) {
       const response = await openai.images.edit({
         image: imageFile,
         prompt: promptResult.prompt,
+        model: "gpt-image-1", // Use gpt-image-1 for better editing results
         n: settings.variations,
         size: size,
-        response_format: "b64_json",
       });
 
       const variations = (response.data || []).map((imageData, index) => ({

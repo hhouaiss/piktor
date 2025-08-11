@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 // Removed Dialog imports - no longer needed without prompt preview
-import { Sparkles, Download, RefreshCw, Loader2, AlertCircle, CheckCircle, Eye, Camera } from "lucide-react";
+import { Sparkles, Download, RefreshCw, Loader2, AlertCircle, CheckCircle, Eye, Camera, ImageIcon, Zap } from "lucide-react";
 import { ProductConfiguration, GeneratedImage, getFieldValue } from "./types";
 // Removed buildOptimizedPrompt import - using comprehensive prompts without optimization
 import { cn } from "@/lib/utils";
@@ -22,7 +22,8 @@ interface StepGenerateProps {
     stage: string;
   };
   generationError?: string;
-  onGenerate: () => void;
+  generationApproach: 'reference' | 'text';
+  onGenerate: (useReferenceApproach?: boolean) => void;
   onRegenerate: (imageId: string) => void;
   onDownload: (imageUrl: string, filename: string) => void;
   onDownloadAll: () => void;
@@ -35,6 +36,7 @@ export function StepGenerate({
   isGenerating,
   generationProgress,
   generationError,
+  generationApproach,
   onGenerate,
   onRegenerate,
   onDownload,
@@ -310,9 +312,18 @@ export function StepGenerate({
             {/* Generate More Button */}
             {!isGenerating && (
               <div className="text-center pt-4 border-t">
-                <Button onClick={onGenerate} variant="outline" size="lg">
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  Generate More Variations
+                <Button 
+                  onClick={() => onGenerate(generationApproach === 'reference')} 
+                  variant="outline" 
+                  size="lg"
+                  disabled={generationApproach === 'reference' && !primaryImage}
+                >
+                  {generationApproach === 'reference' ? (
+                    <ImageIcon className="h-4 w-4 mr-2" />
+                  ) : (
+                    <Sparkles className="h-4 w-4 mr-2" />
+                  )}
+                  Generate More with {generationApproach === 'reference' ? 'Reference' : 'Text'}
                 </Button>
               </div>
             )}

@@ -23,6 +23,7 @@ export default function GeneratePage() {
     isGenerating: false,
     errors: {},
   });
+  const [generationApproach, setGenerationApproach] = useState<'reference' | 'text'>('reference');
 
   const updateState = (updates: Partial<ImageGeneratorState>) => {
     setState(prev => ({ ...prev, ...updates }));
@@ -82,7 +83,7 @@ export default function GeneratePage() {
   };
 
   // Step 4: Generation Handlers
-  const generateImages = async () => {
+  const generateImages = async (useReferenceApproach: boolean = true) => {
     if (!state.productConfiguration?.productImages.fusedProfile) {
       updateState({ 
         errors: { ...state.errors, generation: 'Product profile not analyzed. Please complete product specs first.' }
@@ -90,16 +91,24 @@ export default function GeneratePage() {
       return;
     }
 
+    // For reference-based approach, we need a primary image
+    if (useReferenceApproach && !state.productConfiguration.productImages.primaryImageId) {
+      updateState({ 
+        errors: { ...state.errors, generation: 'No primary reference image selected. Please select a primary image in Step 2.' }
+      });
+      return;
+    }
+
     // Validate that we have the enhanced textToImagePrompts from GPT-4o analysis
     const profile = state.productConfiguration.productImages.fusedProfile;
-    if (!profile?.textToImagePrompts) {
+    if (!profile?.textToImagePrompts && !useReferenceApproach) {
       updateState({ 
         errors: { ...state.errors, generation: 'Enhanced product analysis required. Please go back to Step 2 and re-analyze your product images with the updated system.' }
       });
       return;
     }
 
-    if (!profile.textToImagePrompts.baseDescription) {
+    if (!profile.textToImagePrompts?.baseDescription && !useReferenceApproach) {
       updateState({ 
         errors: { ...state.errors, generation: 'Incomplete analysis data. Please go back to Step 2 and re-analyze your product images.' }
       });
@@ -111,101 +120,162 @@ export default function GeneratePage() {
       generationProgress: { 
         current: 0, 
         total: state.productConfiguration.uiSettings.variations,
-        stage: 'Preparing GPT-image-1 generation...'
+        stage: useReferenceApproach ? 'Preparing images.edits with reference image...' : 'Preparing GPT-image-1 generation...'
       },
       errors: { ...state.errors, generation: undefined }
     });
 
     try {
-
       updateState({ 
         generationProgress: { 
           current: 1, 
           total: state.productConfiguration.uiSettings.variations,
-          stage: 'Calling GPT-image-1 for text-to-image generation...'
+          stage: useReferenceApproach ? 'Using images.edits API with JSON profile...' : 'Calling GPT-image-1 for text-to-image generation...'
         }
       });
 
-      // Use new GPT-image-1 workflow for text-to-image generation
-      const response = await fetch('/api/generate-images-gpt-4o', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          productConfiguration: state.productConfiguration,
-          generationParams: {
-            contextPreset: state.productConfiguration.uiSettings.contextPreset,
-            variations: state.productConfiguration.uiSettings.variations,
-            quality: state.productConfiguration.uiSettings.quality
-          }
-        }),
-      });
+      if (useReferenceApproach) {
+        // Use new reference-based approach with images.edits
+        const primaryImage = state.productConfiguration.productImages.images.find(
+          img => img.id === state.productConfiguration!.productImages.primaryImageId
+        );
+        
+        if (!primaryImage) {
+          throw new Error('Primary reference image not found');
+        }
 
-      if (!response.ok) {
-        const errorData = await response.json();
+        const formData = new FormData();
+        formData.append('configuration', JSON.stringify(state.productConfiguration));
+        formData.append('generationParams', JSON.stringify({
+          contextPreset: state.productConfiguration.uiSettings.contextPreset,
+          variations: state.productConfiguration.uiSettings.variations,
+          quality: state.productConfiguration.uiSettings.quality
+        }));
         
-        // Note: Removed prompt length validation - using comprehensive prompts for better quality
+        // Convert the primary image to a File object for the API
+        const imageResponse = await fetch(primaryImage.preview);
+        const imageBlob = await imageResponse.blob();
+        const imageFile = new File([imageBlob], primaryImage.name, { type: imageBlob.type });
+        formData.append('primaryImage', imageFile);
+
+        const response = await fetch('/api/generate-images-edits', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to generate images using reference approach');
+        }
+
+        const result = await response.json();
         
-        // Handle image format errors specifically
-        if (errorData.error?.includes('Image format') || 
-            errorData.error?.includes('Unable to process the uploaded image') ||
-            errorData.supportedFormats) {
-          let imageError = `Image format issue: ${errorData.error}
+        const newGeneratedImages: GeneratedImage[] = result.result.variations.map((variation: { 
+          url: string; 
+          prompt: string; 
+          metadata: { model: string; timestamp: string; size: string; quality: string; variation: number; contextPreset: string; generationMethod?: string } 
+        }) => ({
+          id: `${state.productConfiguration!.id}_${Date.now()}_${variation.metadata.variation}`,
+          url: variation.url,
+          productConfigId: state.productConfiguration!.id,
+          settings: state.productConfiguration!.uiSettings,
+          profile: state.productConfiguration!.productImages.fusedProfile!,
+          prompt: variation.prompt,
+          generationSource: {
+            method: 'reference-based' as GenerationMethod,
+            model: variation.metadata.model,
+            confidence: 0.95,
+            referenceImageUsed: true
+          },
+          metadata: variation.metadata,
+        }));
+
+        updateState({ 
+          generatedImages: [...state.generatedImages, ...newGeneratedImages],
+          isGenerating: false,
+          generationProgress: undefined
+        });
+        
+      } else {
+        // Use original text-to-image approach
+        const response = await fetch('/api/generate-images-gpt-4o', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            productConfiguration: state.productConfiguration,
+            generationParams: {
+              contextPreset: state.productConfiguration.uiSettings.contextPreset,
+              variations: state.productConfiguration.uiSettings.variations,
+              quality: state.productConfiguration.uiSettings.quality
+            }
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          
+          // Handle image format errors specifically
+          if (errorData.error?.includes('Image format') || 
+              errorData.error?.includes('Unable to process the uploaded image') ||
+              errorData.supportedFormats) {
+            let imageError = `Image format issue: ${errorData.error}
 
 ${errorData.details || 'The uploaded image could not be processed.'}`;
 
-          if (errorData.supportedFormats) {
-            imageError += `
+            if (errorData.supportedFormats) {
+              imageError += `
 
 Supported formats: ${errorData.supportedFormats.join(', ')}`;
-          }
+            }
 
-          if (errorData.troubleshooting) {
-            imageError += `
+            if (errorData.troubleshooting) {
+              imageError += `
 
 Troubleshooting: ${errorData.troubleshooting}`;
-          }
+            }
 
-          if (errorData.solution) {
-            imageError += `
+            if (errorData.solution) {
+              imageError += `
 
 Solution: ${errorData.solution}`;
+            }
+            
+            throw new Error(imageError);
           }
           
-          throw new Error(imageError);
+          throw new Error(errorData.error || 'Failed to generate images');
         }
+
+        const result = await response.json();
         
-        throw new Error(errorData.error || 'Failed to generate images');
+        const newGeneratedImages: GeneratedImage[] = result.result.variations.map((variation: { 
+          url: string; 
+          prompt: string; 
+          metadata: { model: string; timestamp: string; size: string; quality: string; variation: number; contextPreset: string; generationMethod?: string } 
+        }) => ({
+          id: `${state.productConfiguration!.id}_${Date.now()}_${variation.metadata.variation}`,
+          url: variation.url,
+          productConfigId: state.productConfiguration!.id,
+          settings: state.productConfiguration!.uiSettings,
+          profile: state.productConfiguration!.productImages.fusedProfile!,
+          prompt: variation.prompt,
+          generationSource: {
+            method: (variation.metadata.generationMethod as GenerationMethod) || 'text-to-image',
+            model: variation.metadata.model,
+            confidence: 1.0,
+            referenceImageUsed: false
+          },
+          metadata: variation.metadata,
+        }));
+
+        updateState({ 
+          generatedImages: [...state.generatedImages, ...newGeneratedImages],
+          isGenerating: false,
+          generationProgress: undefined
+        });
       }
-
-      const result = await response.json();
-      
-      const newGeneratedImages: GeneratedImage[] = result.result.variations.map((variation: { 
-        url: string; 
-        prompt: string; 
-        metadata: { model: string; timestamp: string; size: string; quality: string; variation: number; contextPreset: string; generationMethod?: string } 
-      }) => ({
-        id: `${state.productConfiguration!.id}_${Date.now()}_${variation.metadata.variation}`,
-        url: variation.url,
-        productConfigId: state.productConfiguration!.id,
-        settings: state.productConfiguration!.uiSettings,
-        profile: state.productConfiguration!.productImages.fusedProfile!,
-        prompt: variation.prompt,
-        generationSource: {
-          method: (variation.metadata.generationMethod as GenerationMethod) || 'text-to-image',
-          model: variation.metadata.model,
-          confidence: 1.0,
-          referenceImageUsed: false // GPT-image-1 is pure text-to-image
-        },
-        metadata: variation.metadata,
-      }));
-
-      updateState({ 
-        generatedImages: [...state.generatedImages, ...newGeneratedImages],
-        isGenerating: false,
-        generationProgress: undefined
-      });
 
     } catch (error) {
       console.error('Image generation failed:', error);
@@ -224,60 +294,128 @@ Solution: ${errorData.solution}`;
     const imageToRegenerate = state.generatedImages.find(img => img.id === imageId);
     if (!imageToRegenerate || !state.productConfiguration) return;
 
-    // Validate that we have the enhanced textToImagePrompts from GPT-4o analysis
+    // Determine if the original image was generated with reference approach
+    const useReferenceApproach = imageToRegenerate.generationSource.referenceImageUsed;
+
+    if (useReferenceApproach && !state.productConfiguration.productImages.primaryImageId) {
+      console.error('No primary reference image selected for regeneration.');
+      return;
+    }
+
+    // Validate analysis data for text-to-image approach
     const profile = state.productConfiguration.productImages.fusedProfile;
-    if (!profile?.textToImagePrompts?.baseDescription) {
+    if (!useReferenceApproach && !profile?.textToImagePrompts?.baseDescription) {
       console.error('Enhanced product analysis required for regeneration. Please re-analyze product images.');
       return;
     }
 
     try {
-
-      // Use new GPT-image-1 workflow for text-to-image generation
-      const response = await fetch('/api/generate-images-gpt-4o', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          productConfiguration: state.productConfiguration,
-          generationParams: {
-            contextPreset: state.productConfiguration.uiSettings.contextPreset,
-            variations: 1, // Single regeneration
-            quality: state.productConfiguration.uiSettings.quality
-          }
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to regenerate image');
-      }
-
-      const result = await response.json();
-      
-      if (result.result?.variations?.[0]) {
-        const variation = result.result.variations[0];
-        const newImage: GeneratedImage = {
-          id: `regenerated_${Date.now()}`,
-          url: variation.url,
-          productConfigId: state.productConfiguration.id,
-          settings: state.productConfiguration.uiSettings,
-          profile: state.productConfiguration.productImages.fusedProfile!,
-          prompt: variation.prompt,
-          generationSource: {
-            method: (variation.metadata.generationMethod as GenerationMethod) || 'text-to-image',
-            model: variation.metadata.model,
-            confidence: 1.0,
-            referenceImageUsed: false // GPT-image-1 is pure text-to-image
-          },
-          metadata: variation.metadata,
-        };
-
-        const updatedImages = state.generatedImages.map(img => 
-          img.id === imageId ? newImage : img
+      if (useReferenceApproach) {
+        // Use reference-based regeneration
+        const primaryImage = state.productConfiguration.productImages.images.find(
+          img => img.id === state.productConfiguration!.productImages.primaryImageId
         );
+        
+        if (!primaryImage) {
+          throw new Error('Primary reference image not found for regeneration');
+        }
 
-        updateState({ generatedImages: updatedImages });
+        const formData = new FormData();
+        formData.append('configuration', JSON.stringify(state.productConfiguration));
+        formData.append('generationParams', JSON.stringify({
+          contextPreset: state.productConfiguration.uiSettings.contextPreset,
+          variations: 1, // Single regeneration
+          quality: state.productConfiguration.uiSettings.quality
+        }));
+        
+        // Convert the primary image to a File object for the API
+        const imageResponse = await fetch(primaryImage.preview);
+        const imageBlob = await imageResponse.blob();
+        const imageFile = new File([imageBlob], primaryImage.name, { type: imageBlob.type });
+        formData.append('primaryImage', imageFile);
+
+        const response = await fetch('/api/generate-images-edits', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to regenerate image using reference approach');
+        }
+
+        const result = await response.json();
+        
+        if (result.result?.variations?.[0]) {
+          const variation = result.result.variations[0];
+          const newImage: GeneratedImage = {
+            id: `regenerated_${Date.now()}`,
+            url: variation.url,
+            productConfigId: state.productConfiguration.id,
+            settings: state.productConfiguration.uiSettings,
+            profile: state.productConfiguration.productImages.fusedProfile!,
+            prompt: variation.prompt,
+            generationSource: {
+              method: 'reference-based' as GenerationMethod,
+              model: variation.metadata.model,
+              confidence: 0.95,
+              referenceImageUsed: true
+            },
+            metadata: variation.metadata,
+          };
+
+          const updatedImages = state.generatedImages.map(img => 
+            img.id === imageId ? newImage : img
+          );
+
+          updateState({ generatedImages: updatedImages });
+        }
+      } else {
+        // Use text-to-image regeneration
+        const response = await fetch('/api/generate-images-gpt-4o', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            productConfiguration: state.productConfiguration,
+            generationParams: {
+              contextPreset: state.productConfiguration.uiSettings.contextPreset,
+              variations: 1, // Single regeneration
+              quality: state.productConfiguration.uiSettings.quality
+            }
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to regenerate image');
+        }
+
+        const result = await response.json();
+        
+        if (result.result?.variations?.[0]) {
+          const variation = result.result.variations[0];
+          const newImage: GeneratedImage = {
+            id: `regenerated_${Date.now()}`,
+            url: variation.url,
+            productConfigId: state.productConfiguration.id,
+            settings: state.productConfiguration.uiSettings,
+            profile: state.productConfiguration.productImages.fusedProfile!,
+            prompt: variation.prompt,
+            generationSource: {
+              method: (variation.metadata.generationMethod as GenerationMethod) || 'text-to-image',
+              model: variation.metadata.model,
+              confidence: 1.0,
+              referenceImageUsed: false
+            },
+            metadata: variation.metadata,
+          };
+
+          const updatedImages = state.generatedImages.map(img => 
+            img.id === imageId ? newImage : img
+          );
+
+          updateState({ generatedImages: updatedImages });
+        }
       }
     } catch (error) {
       console.error('Regeneration failed:', error);
@@ -321,7 +459,7 @@ Solution: ${errorData.solution}`;
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold mb-4">Piktor Image Generator v4</h1>
           <p className="text-muted-foreground">
-            Multi-image product analysis with GPT-4o and AI-powered image generation using GPT-image-1
+            Multi-image product analysis with GPT-4o and reference-based image generation using images.edits API
           </p>
         </div>
 
@@ -370,7 +508,13 @@ Solution: ${errorData.solution}`;
               isGenerating={state.isGenerating}
               generationProgress={state.generationProgress}
               generationError={state.errors.generation}
-              onGenerate={generateImages}
+              generationApproach={generationApproach}
+              onGenerate={(useReferenceApproach) => {
+                 const shouldUseReference = useReferenceApproach ?? (generationApproach === 'reference');
+                 generateImages(shouldUseReference);
+                 // Toggle approach for next generation
+                 setGenerationApproach(prev => prev === 'reference' ? 'text' : 'reference');
+               }}
               onRegenerate={regenerateImage}
               onDownload={downloadImage}
               onDownloadAll={downloadAll}

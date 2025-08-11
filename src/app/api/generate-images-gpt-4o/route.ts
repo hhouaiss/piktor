@@ -13,13 +13,13 @@ interface GenerationParams {
 }
 
 // GPT-image-1 size mappings
-const getGptImageSize = (contextPreset: ContextPreset): "1024x1024" | "1024x1792" | "1792x1024" => {
+const getGptImageSize = (contextPreset: ContextPreset): "1024x1024" | "1024x1536" | "1536x1024" => {
   switch (contextPreset) {
     case 'story':
-      return "1024x1792"; // Vertical for stories
+      return "1024x1536"; // Vertical for stories (corrected from 1792)
     case 'hero':
     case 'lifestyle':
-      return "1792x1024"; // Horizontal for banners
+      return "1536x1024"; // Horizontal for banners (corrected from 1792)
     case 'packshot':
     case 'instagram':
     case 'detail':
@@ -79,7 +79,8 @@ export async function POST(request: NextRequest) {
     const detailedPrompt = buildGptImagePrompt(
       profile.textToImagePrompts as TextToImagePrompts, 
       params.contextPreset, 
-      config.uiSettings
+      config.uiSettings,
+      profile
     );
 
     console.log(`Generating ${params.variations} ${params.contextPreset} images using GPT-image-1`);
@@ -91,7 +92,9 @@ export async function POST(request: NextRequest) {
 
     const size = getGptImageSize(params.contextPreset);
     
-    // Generate images using GPT-image-1  
+    console.log(`Generating with comprehensive prompt derived from ${config.productImages.images.length} reference images`);
+
+    // Generate images using GPT-image-1 with text prompts derived from multi-image analysis
     const qualityMapping = {
       'high': 'high' as const,
       'medium': 'medium' as const, 
@@ -103,7 +106,7 @@ export async function POST(request: NextRequest) {
       prompt: detailedPrompt,
       n: params.variations,
       size: size,
-      quality: qualityMapping[params.quality],
+      quality: qualityMapping[params.quality]
     });
 
     const variations = (response.data || []).map((imageData, index) => ({
@@ -117,6 +120,7 @@ export async function POST(request: NextRequest) {
         variation: index + 1,
         contextPreset: params.contextPreset,
         generationMethod: "text-to-image" as const,
+        referenceImagesAnalyzed: config.productImages.images.length,
       },
     }));
 
@@ -131,7 +135,8 @@ export async function POST(request: NextRequest) {
         prompt: detailedPrompt,
         promptLength: detailedPrompt.length,
         model: 'gpt-image-1',
-        generationMethod: 'text-to-image'
+        generationMethod: 'text-to-image',
+        referenceImagesAnalyzed: config.productImages.images.length
       }
     };
 
@@ -199,12 +204,33 @@ export async function POST(request: NextRequest) {
   }
 }
 
+function convertProfileToStructuredDescription(profile: any): string {
+  const productData = {
+    type: profile.type || 'furniture',
+    name: `${profile.style || 'modern'} ${profile.type}`,
+    dimensions: profile.estimatedDimensions ? 
+      `${profile.estimatedDimensions.width}×${profile.estimatedDimensions.height}×${profile.estimatedDimensions.depth} ${profile.estimatedDimensions.unit}` : 
+      'standard proportions',
+    material: profile.materials || 'mixed materials',
+    color: `${profile.colorName || 'neutral'} (${profile.colorHex || '#ffffff'})`,
+    style: profile.style || 'modern',
+    features: Array.isArray(profile.features) ? profile.features : (profile.detailedFeatures?.map((f: { name: string }) => f.name) || [])
+  };
+
+  return `Product: ${productData.name}
+Dimensions: ${productData.dimensions}
+Material: ${productData.material}
+Color: ${productData.color}
+Style: ${productData.style}
+Features: ${productData.features.join(', ')}`;
+}
+
 function buildGptImagePrompt(
   textPrompts: TextToImagePrompts,
   contextPreset: ContextPreset,
-  uiSettings: UiSettings
+  uiSettings: UiSettings,
+  profileData: any
 ): string {
-  const baseDescription = textPrompts.baseDescription || "Professional product image";
   const contextPrompt = (contextPreset in textPrompts ? textPrompts[contextPreset] : null) || textPrompts.packshot || "Clean product shot";
   const photographySpecs = textPrompts.photographySpecs || {
     cameraAngle: 'Professional three-quarter view',
@@ -219,261 +245,89 @@ function buildGptImagePrompt(
     proportionalRelationships: 'Correct product proportions'
   };
 
-  // Build COMPREHENSIVE prompt for GPT-image-1 - NO length restrictions
+  // Get structured product description
+  const productDescription = convertProfileToStructuredDescription(profileData);
+
+  // Build concise hierarchical prompt for GPT-image-1
   let prompt = `${contextPrompt}
 
-COMPREHENSIVE PRODUCT DESCRIPTION:
-${baseDescription}
+PRODUCT SPECIFICATIONS:
+${productDescription}
 
-DETAILED VISUAL SPECIFICATIONS:
-MATERIALS & TEXTURES:
-${visualDetails.materialTextures || 'High-quality materials with professional finish, smooth surfaces with appropriate reflectivity for the material type, consistent texture patterns throughout the product'}
+MATERIALS: ${visualDetails.materialTextures}
+COLORS: ${visualDetails.colorPalette}  
+CONSTRUCTION: ${visualDetails.hardwareDetails}
+PROPORTIONS: ${visualDetails.proportionalRelationships}
 
-COLOR PALETTE & CHARACTERISTICS:
-${visualDetails.colorPalette || 'Accurate product colors with natural lighting response, consistent hue and saturation across all surfaces, appropriate highlight and shadow color variations'}
+PHOTOGRAPHY CONSTRAINTS:
+- Camera: ${photographySpecs.cameraAngle}
+- Lighting: ${photographySpecs.lightingSetup}
+- Focus: ${photographySpecs.depthOfField}
+- Composition: ${photographySpecs.composition}
 
-HARDWARE & CONSTRUCTION DETAILS:
-${visualDetails.hardwareDetails || 'Detailed hardware elements including fasteners, joints, connections, and structural components, all rendered with appropriate material properties and finishes'}
+CONTEXT REQUIREMENTS:
+- Background: ${uiSettings.backgroundStyle}
+- Position: ${uiSettings.productPosition}
+- Lighting: ${uiSettings.lighting?.replace('_', ' ')}
+- Quality: Professional commercial standard`;
 
-PROPORTIONAL RELATIONSHIPS & GEOMETRY:
-${visualDetails.proportionalRelationships || 'Correct product proportions maintaining structural integrity, balanced visual weight distribution, authentic scale relationships between all components'}
-
-COMPREHENSIVE PHOTOGRAPHY SPECIFICATIONS:
-CAMERA POSITIONING & ANGLES:
-${photographySpecs.cameraAngle || 'Professional three-quarter view capturing the product\'s dimensional qualities, optimal perspective showing key features and proportions, appropriate viewing height for the product type'}
-
-LIGHTING SETUP & CHARACTERISTICS:
-${photographySpecs.lightingSetup || 'Professional studio lighting with key light at 45-degree angle, fill light to reduce harsh shadows, rim light for edge definition, appropriate contrast ratio for commercial photography'}
-
-DEPTH OF FIELD & FOCUS:
-${photographySpecs.depthOfField || 'Product in sharp focus throughout with appropriate depth of field for commercial photography, background elements softly blurred to emphasize product, critical details rendered with maximum clarity'}
-
-COMPOSITION & VISUAL BALANCE:
-${photographySpecs.composition || 'Balanced professional composition following rule of thirds, appropriate negative space for visual breathing room, product positioned for optimal visual impact and commercial appeal'}
-
-ENHANCED CONTEXT SETTINGS:
-BACKGROUND TREATMENT:
-- Style: ${uiSettings.backgroundStyle || 'neutral professional background'}
-- Texture: Smooth, non-distracting surface that complements the product
-- Color: Carefully selected to enhance product colors without competition
-- Lighting: Even illumination preventing unwanted shadows or hotspots
-
-PRODUCT POSITIONING:
-- Placement: ${uiSettings.productPosition || 'center-positioned for optimal visual balance'}
-- Orientation: Optimal angle showcasing key features and design elements
-- Stability: Product appears naturally positioned and structurally sound
-- Scale: Appropriate size within frame for maximum visual impact
-
-LIGHTING ATMOSPHERE:
-- Primary Light: ${uiSettings.lighting?.replace('_', ' ') || 'soft daylight balanced lighting'}
-- Color Temperature: Consistent throughout the scene, appropriate for product type
-- Shadow Quality: Soft, natural shadows that enhance dimensionality without distraction
-- Highlight Management: Controlled reflections that enhance rather than obscure product details`;
-
-  // Add comprehensive context-specific requirements
+  // Add context-specific constraints
   switch (contextPreset) {
     case 'packshot':
-      prompt += `\n\nCOMPREHENSIVE PACKSHOT REQUIREMENTS:
-BACKGROUND & ENVIRONMENT:
-- Pure, distraction-free background (white, light gray, or subtle gradient)
-- Seamless backdrop with no visible horizon line or edges
-- Consistent lighting across entire background surface
-- No competing visual elements or textures
-
-LIGHTING SPECIFICATIONS:
-- Professional studio lighting setup with multiple light sources
-- Key light positioned at 45-degree angle for optimal dimensionality
-- Fill light to eliminate harsh shadows while maintaining product definition
-- Background light to ensure even illumination and prevent color casts
-- Color temperature maintained at 5600K for natural daylight balance
-
-PRODUCT PRESENTATION:
-- Product positioned as absolute focal point with maximum visual impact
-- Every surface detail clearly visible and professionally rendered
-- Materials authentically represented with accurate texture and finish
-- Hardware elements precisely detailed with appropriate reflective properties
-- Brand elements (if present) clearly visible and properly aligned
-
-COMMERCIAL QUALITY STANDARDS:
-- E-commerce catalog quality suitable for product listings
-- Consistent lighting and exposure for product comparison
-- No artistic interpretation - focus on accurate product representation
-- Sharp detail throughout with professional depth of field management`;
+      prompt += `\n\nPACKSHOT CONSTRAINTS:
+- Clean background, no distractions
+- Studio lighting, sharp detail
+- Product as focal point
+- E-commerce catalog quality`;
       break;
       
     case 'lifestyle':
-      prompt += `\n\nCOMPREHENSIVE LIFESTYLE REQUIREMENTS:
-ENVIRONMENTAL CONTEXT:
-- Authentic home environment that naturally accommodates the product
-- Realistic room setting with appropriate scale and proportions
-- Complementary interior design elements that enhance rather than compete
-- Natural material combinations (wood, fabric, metal) creating warmth and authenticity
-
-LIGHTING CONDITIONS:
-- Natural daylight streaming through windows with soft, diffused quality
-- Warm ambient lighting creating inviting atmosphere
-- Subtle shadows that add depth without obscuring product details
-- Color temperature variations creating natural indoor lighting conditions
-
-SCENE COMPOSITION:
-- Product integrated organically into living space
-- Contextual props that suggest actual use and lifestyle appeal
-- Lived-in atmosphere with subtle signs of daily life and comfort
-- Visual flow that leads the eye naturally to the product
-
-ATMOSPHERIC QUALITIES:
-- Warm, welcoming mood that suggests comfort and quality of life
-- Authentic styling that resonates with target demographic
-- Seasonal or time-of-day suggestions through lighting and color palette
-- Emotional connection through carefully curated environmental details`;
+      prompt += `\n\nLIFESTYLE CONSTRAINTS:
+- Authentic home environment
+- Natural lighting, lived-in feel
+- Product integrated organically
+- Emotional connection`;
       break;
       
     case 'hero':
-      prompt += `\n\nCOMPREHENSIVE HERO BANNER REQUIREMENTS:
-DRAMATIC COMPOSITION:
-- Bold, impactful visual design suitable for website headers and marketing
-- Strong diagonal or triangular composition creating dynamic visual tension
-- Careful balance between product prominence and negative space
-- Visual hierarchy that immediately draws attention to key product features
-
-PROFESSIONAL LIGHTING DESIGN:
-- Dramatic lighting setup with controlled contrast and shadows
-- Rim lighting or backlighting creating separation and visual pop
-- Strategic highlight placement emphasizing premium quality and craftsmanship
-- Color temperature and mood appropriate for brand positioning
-
-COMMERCIAL APPEAL FACTORS:
-- High-end commercial photography quality suitable for premium marketing
-- Visual impact that communicates value proposition at first glance
-- Sophisticated color palette and tonal relationships
-- Professional styling that reinforces brand credibility and market position
-
-TECHNICAL SPECIFICATIONS:
-- Optimal aspect ratio for web banner placement and responsive design
-- Strategic negative space placement for text overlay accommodation
-- Visual flow that supports typical banner text placement patterns
-- Scalability considerations for various device sizes and applications`;
+      prompt += `\n\nHERO CONSTRAINTS:
+- Bold dramatic composition
+- High-end marketing quality
+- Visual impact, premium feel
+- Space for text overlay`;
       break;
       
     case 'story':
-      prompt += `\n\nCOMPREHENSIVE STORY FORMAT REQUIREMENTS:
-MOBILE-OPTIMIZED COMPOSITION:
-- Vertical aspect ratio optimized for smartphone viewing and social media stories
-- Product positioned in upper two-thirds for maximum visibility above UI elements
-- Clear focal hierarchy with immediate product identification
-- Visual elements sized appropriately for small screen viewing
-
-SOCIAL MEDIA ENGAGEMENT:
-- Eye-catching visual appeal that stops scrolling behavior
-- Bright, vibrant lighting that reproduces well on mobile screens
-- Strong contrast and color saturation for maximum impact
-- Contemporary styling that resonates with social media audiences
-
-VISUAL STORYTELLING:
-- Narrative elements that suggest lifestyle and product benefits
-- Emotional resonance through color, mood, and environmental context
-- Authentic moments that feel genuine rather than overly staged
-- Visual hooks that encourage sharing and engagement
-
-TECHNICAL OPTIMIZATION:
-- Lighting balanced for various mobile screen types and brightness settings
-- Color palette that reproduces consistently across different devices
-- Sharp details that remain clear even at compressed file sizes
-- Composition that works effectively with story UI overlay elements`;
+      prompt += `\n\nSTORY CONSTRAINTS:
+- Vertical mobile-optimized
+- Eye-catching, vibrant
+- Product in upper section
+- Social media appeal`;
       break;
       
     case 'instagram':
-      prompt += `\n\nCOMPREHENSIVE INSTAGRAM POST REQUIREMENTS:
-SQUARE COMPOSITION OPTIMIZATION:
-- Perfectly balanced square format composition with strong central focus
-- Product positioned for maximum impact within Instagram's square crop
-- Visual elements arranged to work effectively in feed thumbnail size
-- Composition that remains compelling when viewed at various sizes
-
-SOCIAL MEDIA VISUAL APPEAL:
-- Contemporary aesthetic that aligns with current Instagram trends
-- Color palette optimized for mobile screen viewing and feed aesthetics
-- Professional quality balanced with approachable, authentic feel
-- Visual style that encourages likes, comments, and sharing behavior
-
-LIGHTING FOR DIGITAL PLATFORMS:
-- Bright, even lighting that reproduces well across different mobile devices
-- Color temperature balanced for Instagram's compression algorithms
-- Sufficient contrast to maintain visual impact in busy social feeds
-- Detail preservation that survives social media image processing
-
-ENGAGEMENT OPTIMIZATION:
-- Thumb-stopping visual appeal that stands out in crowded feeds
-- Aspirational quality that encourages saving and sharing
-- Brand-appropriate aesthetic that builds recognition and trust
-- Visual storytelling that invites audience connection and interaction`;
+      prompt += `\n\nINSTAGRAM CONSTRAINTS:
+- Square composition
+- Feed-optimized aesthetics
+- Thumb-stopping appeal
+- Contemporary trends`;
       break;
       
     case 'detail':
-      prompt += `\n\nCOMPREHENSIVE DETAIL SHOT REQUIREMENTS:
-CLOSE-UP FOCUS:
-- Extreme close-up perspective showcasing product craftsmanship and material quality
-- Macro-level detail rendering showing texture, grain, weave, or surface characteristics
-- Sharp focus on specific product features that demonstrate quality and construction
-- Minimal background distractions to emphasize product details
-
-MATERIAL SHOWCASE:
-- High-resolution rendering of material properties and surface textures
-- Accurate representation of surface treatments, finishes, and manufacturing quality
-- Detail visibility of joints, seams, stitching, or connection points
-- Hardware elements shown with precision including screws, brackets, or fasteners
-
-CRAFTSMANSHIP EMPHASIS:
-- Visual evidence of quality construction and attention to detail
-- Manufacturing precision visible in edges, tolerances, and finish quality
-- Brand markers, model numbers, or quality indicators clearly readable
-- Professional detail photography suitable for quality assurance documentation
-
-TECHNICAL EXCELLENCE:
-- Maximum magnification while maintaining photographic quality
-- Professional lighting to eliminate shadows in detailed areas
-- Edge-to-edge sharpness with appropriate depth of field control
-- Commercial quality suitable for technical documentation and marketing`;
+      prompt += `\n\nDETAIL CONSTRAINTS:
+- Extreme close-up focus
+- Material quality showcase
+- Craftsmanship emphasis
+- Technical documentation quality`;
       break;
   }
 
-  // Add comprehensive quality requirements
-  prompt += `\n\nCOMPREHENSIVE QUALITY STANDARDS:
-PHOTOREALISTIC RENDERING:
-- Cinema-quality photorealism with authentic material properties and lighting behavior
-- Physically accurate reflections, refractions, and surface interactions
-- Natural imperfections and variations that enhance believability
-- Consistent physics-based lighting and shadow casting throughout the scene
-
-DETAIL AND CLARITY:
-- Maximum resolution detail preservation with sharp focus on critical product elements
-- Micro-texture rendering showing material grain, weave, or surface characteristics
-- Hardware details including screws, joints, seams, and connection points clearly defined
-- Edge definition with appropriate anti-aliasing for professional presentation
-
-COMMERCIAL PHOTOGRAPHY STANDARDS:
-- Museum-quality lighting with professional studio standards
-- Color accuracy suitable for product catalog and e-commerce applications
-- Consistent exposure and white balance throughout the composition
-- Professional depth of field control with selective focus areas
-
-AUTHENTIC PRODUCT REPRESENTATION:
-- Exact dimensional accuracy maintaining true product proportions
-- Faithful material representation without stylistic interpretation
-- Accurate color reproduction under specified lighting conditions
-- Structural integrity showing proper product assembly and construction
-
-TECHNICAL EXCELLENCE:
-- No visible rendering artifacts, noise, or compression issues
-- Clean composition with no extraneous text, labels, watermarks, or branding
-- Professional color grading suitable for commercial applications
-- Optimal contrast and saturation for the specified context and usage
-
-FINAL RESULT SPECIFICATIONS:
-- Commercial-grade image suitable for premium marketing and sales applications
-- Professional photography quality that enhances brand perception and product appeal
-- Technical execution that meets or exceeds industry standards for product visualization
-- Visual consistency that integrates seamlessly with existing brand asset libraries`;
+  // Add quality standards
+  prompt += `\n\nQUALITY REQUIREMENTS:
+- Photorealistic rendering with accurate materials
+- Sharp detail and proper depth of field
+- Commercial photography standards
+- No artifacts, clean composition`;
 
   return prompt.trim();
 }

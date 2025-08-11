@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
       prompt: detailedPrompt,
       n: 1,
       size: getImageSize(promptData.output.aspectRatio),
-      quality: "high",
+      quality: "high"
     });
     
     console.log("OpenAI response received successfully");

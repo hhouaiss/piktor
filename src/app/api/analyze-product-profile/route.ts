@@ -275,8 +275,8 @@ export async function POST(request: NextRequest) {
     let analysis;
     try {
       analysis = JSON.parse(content);
-    } catch (error) {
-      console.error('Failed to parse structured OpenAI response:', content);
+    } catch (parseError) {
+      console.error('Failed to parse structured OpenAI response:', content, parseError);
       throw new Error('Failed to parse analysis response from GPT-4o structured output');
     }
 
@@ -290,7 +290,7 @@ export async function POST(request: NextRequest) {
       colorConfidence: analysis.primaryColor?.confidence || 0.5,
       style: analysis.style || 'modern',
       wallMounted: analysis.wallMounted || false,
-      features: analysis.features?.map(f => f.name) || [],
+      features: analysis.features?.map((f: { name: string }) => f.name) || [],
       confidence: analysis.confidence || 'medium',
       notes: analysis.notes || '',
       
