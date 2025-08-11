@@ -4,14 +4,85 @@ export interface DetectedField<T> {
   source: 'detected' | 'override';
 }
 
-// New v3 Product Profile with DetectedField pattern
+// Enhanced Product Feature interface
+export interface ProductFeature {
+  name: string;
+  description: string;
+  importance: 'high' | 'medium' | 'low';
+}
+
+// Color analysis interface
+export interface ColorAnalysis {
+  hex: string;
+  name: string;
+  confidence: number; // 0-1
+}
+
+// Dimension estimation interface
+export interface DimensionEstimate {
+  width: number;
+  height: number;
+  depth: number;
+  unit: 'cm' | 'inches';
+  confidence: 'high' | 'medium' | 'low';
+}
+
+// Context recommendations interface
+export interface ContextRecommendations {
+  bestContexts: ContextPreset[];
+  backgroundSuggestions: string[];
+  lightingRecommendations: string[];
+}
+
+// Enhanced text-to-image prompts interface for GPT-image-1 generation
+export interface TextToImagePrompts {
+  baseDescription: string; // Extremely detailed base description capturing all visual characteristics
+  packshot: string; // Complete prompt for clean product packshots
+  lifestyle: string; // Detailed prompt for lifestyle scenes
+  hero: string; // Comprehensive prompt for hero/banner images
+  story: string; // Optimized prompt for vertical story format
+  photographySpecs: {
+    cameraAngle: string; // Optimal camera angles and perspectives
+    lightingSetup: string; // Detailed lighting specifications
+    depthOfField: string; // Recommended depth of field characteristics
+    composition: string; // Composition guidelines
+  };
+  visualDetails: {
+    materialTextures: string; // Detailed description of all material textures
+    colorPalette: string; // Complete color palette with undertones
+    hardwareDetails: string; // Specific hardware, joints, connections details
+    proportionalRelationships: string; // Key proportional relationships between parts
+  };
+}
+
+// Generation method enum
+export type GenerationMethod = 'text-to-image' | 'reference-based' | 'hybrid';
+
+// Generation source interface
+export interface GenerationSource {
+  method: GenerationMethod;
+  model: string;
+  confidence: number;
+  referenceImageUsed?: boolean;
+}
+
+// Enhanced v4 Product Profile with comprehensive analysis
 export interface ProductProfile {
+  // Core fields (maintaining compatibility)
   type: DetectedField<string>;
   materials: DetectedField<string>;
   detectedColor: DetectedField<string>; // hex color from AI
   style: DetectedField<string>;
   wallMounted: DetectedField<boolean>;
   features: DetectedField<string[]>;
+  
+  // Enhanced analysis data from GPT-4o
+  colorAnalysis?: ColorAnalysis;
+  detailedFeatures?: ProductFeature[];
+  estimatedDimensions?: DimensionEstimate;
+  contextRecommendations?: ContextRecommendations;
+  textToImagePrompts?: TextToImagePrompts;
+  
   // Override fields
   realDimensions?: {
     width: number; // cm
@@ -20,6 +91,12 @@ export interface ProductProfile {
   };
   colorOverride?: string; // hex color override
   notes?: string;
+  
+  // Analysis metadata
+  analysisVersion?: string;
+  analysisModel?: string;
+  analysisTimestamp?: string;
+  sourceImageCount?: number;
 }
 
 // Individual uploaded image (part of product)
@@ -39,8 +116,8 @@ export interface ProductImages {
   analysisError?: string;
 }
 
-// Context presets for different image types
-export type ContextPreset = 'packshot' | 'instagram' | 'story' | 'hero';
+// Context presets for different image types - expanded for e-commerce
+export type ContextPreset = 'packshot' | 'instagram' | 'story' | 'hero' | 'lifestyle' | 'detail';
 
 export interface UiSettings {
   contextPreset: ContextPreset;
@@ -65,6 +142,7 @@ export interface ProductConfiguration {
   updatedAt: string;
 }
 
+// Enhanced Generated Image interface for hybrid generation
 export interface GeneratedImage {
   id: string;
   url: string;
@@ -72,12 +150,18 @@ export interface GeneratedImage {
   settings: UiSettings;
   profile: ProductProfile;
   prompt: string;
+  generationSource: GenerationSource;
   metadata: {
     model: string;
     timestamp: string;
     size: string;
     quality: string;
+    variation?: number;
+    contextPreset?: string;
+    processingTime?: number;
   };
+  // Optional thumbnail for faster loading
+  thumbnail?: string;
 }
 
 // Main app state for v3
@@ -104,13 +188,17 @@ export const SIZE_MAPPINGS = {
   instagram: "1024x1024" as const,
   story: "1024x1536" as const,
   hero: "1536x1024" as const,
+  lifestyle: "1536x1024" as const,
+  detail: "1024x1024" as const,
 };
 
 export const CONTEXT_PRESET_SETTINGS = {
-  packshot: { size: "1024x1024", description: "Square product shot (1024x1024)" },
-  instagram: { size: "1024x1024", description: "Instagram post (1024x1024)" },
-  story: { size: "1024x1536", description: "Instagram/Facebook Story (1024x1536)" },
-  hero: { size: "1536x1024", description: "Website hero banner (1536x1024)" },
+  packshot: { size: "1024x1024", description: "Square product shot (1024x1024)", preferredMethod: 'text-to-image' as GenerationMethod },
+  instagram: { size: "1024x1024", description: "Instagram post (1024x1024)", preferredMethod: 'text-to-image' as GenerationMethod },
+  story: { size: "1024x1536", description: "Instagram/Facebook Story (1024x1536)", preferredMethod: 'text-to-image' as GenerationMethod },
+  hero: { size: "1536x1024", description: "Website hero banner (1536x1024)", preferredMethod: 'text-to-image' as GenerationMethod },
+  lifestyle: { size: "1536x1024", description: "Lifestyle/contextual scene (1536x1024)", preferredMethod: 'text-to-image' as GenerationMethod },
+  detail: { size: "1024x1024", description: "Detail/close-up shot (1024x1024)", preferredMethod: 'text-to-image' as GenerationMethod },
 } as const;
 
 export const DEFAULT_UI_SETTINGS: UiSettings = {

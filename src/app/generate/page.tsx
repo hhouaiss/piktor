@@ -12,7 +12,8 @@ import {
   GeneratedImage, 
   ImageGeneratorState,
   DEFAULT_UI_SETTINGS,
-  generateSlug
+  generateSlug,
+  GenerationMethod
 } from "@/components/image-generator/types";
 
 export default function GeneratePage() {
@@ -89,13 +90,18 @@ export default function GeneratePage() {
       return;
     }
 
-    const primaryImage = state.productConfiguration.productImages.images.find(
-      img => img.id === state.productConfiguration?.productImages.primaryImageId
-    );
-
-    if (!primaryImage) {
+    // Validate that we have the enhanced textToImagePrompts from GPT-4o analysis
+    const profile = state.productConfiguration.productImages.fusedProfile;
+    if (!profile?.textToImagePrompts) {
       updateState({ 
-        errors: { ...state.errors, generation: 'No primary reference image selected.' }
+        errors: { ...state.errors, generation: 'Enhanced product analysis required. Please go back to Step 2 and re-analyze your product images with the updated system.' }
+      });
+      return;
+    }
+
+    if (!profile.textToImagePrompts.baseDescription) {
+      updateState({ 
+        errors: { ...state.errors, generation: 'Incomplete analysis data. Please go back to Step 2 and re-analyze your product images.' }
       });
       return;
     }
@@ -105,46 +111,85 @@ export default function GeneratePage() {
       generationProgress: { 
         current: 0, 
         total: state.productConfiguration.uiSettings.variations,
-        stage: 'Preparing generation...'
+        stage: 'Preparing GPT-image-1 generation...'
       },
       errors: { ...state.errors, generation: undefined }
     });
 
     try {
-      const formData = new FormData();
-      formData.append('configuration', JSON.stringify(state.productConfiguration));
-      
-      // Ensure we're sending the File object correctly
-      console.log('Primary image object:', primaryImage);
-      console.log('Primary image type:', typeof primaryImage);
-      console.log('Primary image instanceof File:', primaryImage instanceof File);
-      
-      if (primaryImage instanceof File) {
-        formData.append('primaryImage', primaryImage);
-      } else if (primaryImage && 'arrayBuffer' in primaryImage) {
-        // Create a new Blob/File from the UploadedImage data
-        const blob = new Blob([await primaryImage.arrayBuffer()], { type: primaryImage.type });
-        const file = new File([blob], primaryImage.name, { type: primaryImage.type });
-        formData.append('primaryImage', file);
-      } else {
-        throw new Error('Primary image is not a valid File object');
-      }
 
       updateState({ 
         generationProgress: { 
           current: 1, 
           total: state.productConfiguration.uiSettings.variations,
-          stage: 'Calling OpenAI Images API...'
+          stage: 'Calling GPT-image-1 for text-to-image generation...'
         }
       });
 
-      const response = await fetch('/api/generate-images-batch', {
+      // Use new GPT-image-1 workflow for text-to-image generation
+      const response = await fetch('/api/generate-images-gpt-4o', {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          productConfiguration: state.productConfiguration,
+          generationParams: {
+            contextPreset: state.productConfiguration.uiSettings.contextPreset,
+            variations: state.productConfiguration.uiSettings.variations,
+            quality: state.productConfiguration.uiSettings.quality
+          }
+        }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
+        
+        // Handle prompt length validation errors specifically
+        if (errorData.error === 'Prompt length validation failed' || 
+            errorData.promptLength > errorData.promptLimit) {
+          const promptError = `Image generation failed due to prompt length constraints:
+
+• Prompt length: ${errorData.promptLength}/${errorData.promptLimit} characters
+• The image generation request contains too much detail for the AI model to process
+
+Suggestions to fix this:
+${errorData.suggestions ? errorData.suggestions.map((s: string) => `• ${s}`).join('\n') : '• Reduce the number of product features\n• Simplify product descriptions\n• Use shorter material specifications'}
+
+Try simplifying your product specifications in the previous step and regenerate.`;
+          
+          throw new Error(promptError);
+        }
+        
+        // Handle image format errors specifically
+        if (errorData.error?.includes('Image format') || 
+            errorData.error?.includes('Unable to process the uploaded image') ||
+            errorData.supportedFormats) {
+          let imageError = `Image format issue: ${errorData.error}
+
+${errorData.details || 'The uploaded image could not be processed.'}`;
+
+          if (errorData.supportedFormats) {
+            imageError += `
+
+Supported formats: ${errorData.supportedFormats.join(', ')}`;
+          }
+
+          if (errorData.troubleshooting) {
+            imageError += `
+
+Troubleshooting: ${errorData.troubleshooting}`;
+          }
+
+          if (errorData.solution) {
+            imageError += `
+
+Solution: ${errorData.solution}`;
+          }
+          
+          throw new Error(imageError);
+        }
+        
         throw new Error(errorData.error || 'Failed to generate images');
       }
 
@@ -153,7 +198,7 @@ export default function GeneratePage() {
       const newGeneratedImages: GeneratedImage[] = result.result.variations.map((variation: { 
         url: string; 
         prompt: string; 
-        metadata: { model: string; timestamp: string; size: string; quality: string; variation: number; contextPreset: string } 
+        metadata: { model: string; timestamp: string; size: string; quality: string; variation: number; contextPreset: string; generationMethod?: string } 
       }) => ({
         id: `${state.productConfiguration!.id}_${Date.now()}_${variation.metadata.variation}`,
         url: variation.url,
@@ -161,6 +206,12 @@ export default function GeneratePage() {
         settings: state.productConfiguration!.uiSettings,
         profile: state.productConfiguration!.productImages.fusedProfile!,
         prompt: variation.prompt,
+        generationSource: {
+          method: (variation.metadata.generationMethod as GenerationMethod) || 'text-to-image',
+          model: variation.metadata.model,
+          confidence: 1.0,
+          referenceImageUsed: false // GPT-image-1 is pure text-to-image
+        },
         metadata: variation.metadata,
       }));
 
@@ -187,31 +238,29 @@ export default function GeneratePage() {
     const imageToRegenerate = state.generatedImages.find(img => img.id === imageId);
     if (!imageToRegenerate || !state.productConfiguration) return;
 
-    const primaryImage = state.productConfiguration.productImages.images.find(
-      img => img.id === state.productConfiguration?.productImages.primaryImageId
-    );
-
-    if (!primaryImage) return;
+    // Validate that we have the enhanced textToImagePrompts from GPT-4o analysis
+    const profile = state.productConfiguration.productImages.fusedProfile;
+    if (!profile?.textToImagePrompts?.baseDescription) {
+      console.error('Enhanced product analysis required for regeneration. Please re-analyze product images.');
+      return;
+    }
 
     try {
-      const formData = new FormData();
-      formData.append('configuration', JSON.stringify(state.productConfiguration));
-      
-      // Ensure we're sending the File object correctly for regeneration
-      if (primaryImage instanceof File) {
-        formData.append('primaryImage', primaryImage);
-      } else if (primaryImage && 'arrayBuffer' in primaryImage) {
-        // Create a new Blob/File from the UploadedImage data
-        const blob = new Blob([await primaryImage.arrayBuffer()], { type: primaryImage.type });
-        const file = new File([blob], primaryImage.name, { type: primaryImage.type });
-        formData.append('primaryImage', file);
-      } else {
-        throw new Error('Primary image is not a valid File object');
-      }
 
-      const response = await fetch('/api/generate-images-batch', {
+      // Use new GPT-image-1 workflow for text-to-image generation
+      const response = await fetch('/api/generate-images-gpt-4o', {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          productConfiguration: state.productConfiguration,
+          generationParams: {
+            contextPreset: state.productConfiguration.uiSettings.contextPreset,
+            variations: 1, // Single regeneration
+            quality: state.productConfiguration.uiSettings.quality
+          }
+        }),
       });
 
       if (!response.ok) {
@@ -221,14 +270,21 @@ export default function GeneratePage() {
       const result = await response.json();
       
       if (result.result?.variations?.[0]) {
+        const variation = result.result.variations[0];
         const newImage: GeneratedImage = {
           id: `regenerated_${Date.now()}`,
-          url: result.result.variations[0].url,
+          url: variation.url,
           productConfigId: state.productConfiguration.id,
           settings: state.productConfiguration.uiSettings,
           profile: state.productConfiguration.productImages.fusedProfile!,
-          prompt: result.result.variations[0].prompt,
-          metadata: result.result.variations[0].metadata,
+          prompt: variation.prompt,
+          generationSource: {
+            method: (variation.metadata.generationMethod as GenerationMethod) || 'text-to-image',
+            model: variation.metadata.model,
+            confidence: 1.0,
+            referenceImageUsed: false // GPT-image-1 is pure text-to-image
+          },
+          metadata: variation.metadata,
         };
 
         const updatedImages = state.generatedImages.map(img => 
@@ -277,9 +333,9 @@ export default function GeneratePage() {
     <div className="container mx-auto px-4 py-8 max-w-screen-2xl">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-4">Piktor Image Generator v3</h1>
+          <h1 className="text-3xl font-bold mb-4">Piktor Image Generator v4</h1>
           <p className="text-muted-foreground">
-            Multi-image product analysis with AI-powered generation using OpenAI Images API
+            Multi-image product analysis with GPT-4o and AI-powered image generation using GPT-image-1
           </p>
         </div>
 

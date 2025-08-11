@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import sharp from "sharp";
-import { buildPrompt, getImageSize } from "@/lib/prompt-builder";
+import { buildOptimizedPrompt, getImageSize } from "@/lib/prompt-builder";
 import { ProductConfiguration } from "@/components/image-generator/types";
 
 const openai = new OpenAI({
@@ -41,30 +41,77 @@ function createFileFromBuffer(buffer: Buffer, filename: string, contentType: str
   }
 }
 
-// Helper function to convert any image format to PNG for OpenAI compatibility
+// Helper function to convert any image format to PNG with RGBA for OpenAI compatibility
 async function convertImageToPNG(imageBuffer: Buffer, originalMimeType: string): Promise<{ buffer: Buffer; mimeType: string }> {
   try {
-    // Check if the image is already PNG - no conversion needed
-    if (originalMimeType === 'image/png') {
-      console.log('Image is already PNG format, no conversion needed');
-      return { buffer: imageBuffer, mimeType: 'image/png' };
-    }
-
-    console.log(`Converting image from ${originalMimeType} to PNG format`);
+    console.log(`Processing image from ${originalMimeType} to OpenAI-compatible PNG format`);
     
-    // Use Sharp to convert the image to PNG
-    const convertedBuffer = await sharp(imageBuffer)
+    // Get image metadata to check current format
+    const metadata = await sharp(imageBuffer).metadata();
+    console.log('Image metadata:', {
+      format: metadata.format,
+      width: metadata.width,
+      height: metadata.height,
+      channels: metadata.channels,
+      hasAlpha: metadata.hasAlpha,
+      density: metadata.density
+    });
+
+    // Always process through Sharp to ensure proper format
+    // OpenAI images.edit requires RGBA, LA, or L formats
+    let sharpInstance = sharp(imageBuffer);
+
+    // Ensure we have the right number of channels
+    // For images.edit, we need RGBA (4 channels) or LA (2 channels) or L (1 channel)
+    if (metadata.channels === 3) {
+      // RGB -> RGBA (add alpha channel)
+      console.log('Converting RGB to RGBA by adding alpha channel');
+      sharpInstance = sharpInstance.ensureAlpha();
+    } else if (metadata.channels === 1) {
+      // Grayscale (L) is acceptable as-is
+      console.log('Grayscale image detected, keeping as L format');
+    } else if (metadata.channels === 2) {
+      // LA (grayscale + alpha) is acceptable as-is
+      console.log('Grayscale + Alpha image detected, keeping as LA format');
+    } else if (metadata.channels === 4) {
+      // RGBA is already correct
+      console.log('RGBA image detected, format is correct');
+    } else {
+      // Unexpected number of channels, convert to RGBA
+      console.log(`Unexpected channel count (${metadata.channels}), converting to RGBA`);
+      sharpInstance = sharpInstance.ensureAlpha();
+    }
+    
+    // Convert to PNG with proper settings
+    const convertedBuffer = await sharpInstance
       .png({
         // Use high quality settings
         quality: 100,
         compressionLevel: 6,
-        // Preserve transparency
+        // Preserve transparency and ensure proper format
         progressive: false,
-        force: true
+        force: true,
+        // Ensure we maintain proper color depth
+        palette: false
       })
       .toBuffer();
 
-    console.log(`Successfully converted ${originalMimeType} to PNG. Original size: ${imageBuffer.length} bytes, Converted size: ${convertedBuffer.length} bytes`);
+    // Verify the converted image format
+    const convertedMetadata = await sharp(convertedBuffer).metadata();
+    console.log('Converted image metadata:', {
+      format: convertedMetadata.format,
+      width: convertedMetadata.width,
+      height: convertedMetadata.height,
+      channels: convertedMetadata.channels,
+      hasAlpha: convertedMetadata.hasAlpha
+    });
+
+    // Validate the result meets OpenAI requirements
+    if (convertedMetadata.channels !== 1 && convertedMetadata.channels !== 2 && convertedMetadata.channels !== 4) {
+      throw new Error(`Image conversion failed: resulted in ${convertedMetadata.channels} channels, but OpenAI requires 1 (L), 2 (LA), or 4 (RGBA) channels`);
+    }
+
+    console.log(`Successfully converted ${originalMimeType} to OpenAI-compatible PNG. Original size: ${imageBuffer.length} bytes, Converted size: ${convertedBuffer.length} bytes`);
     
     return { 
       buffer: convertedBuffer, 
@@ -72,8 +119,8 @@ async function convertImageToPNG(imageBuffer: Buffer, originalMimeType: string):
     };
 
   } catch (error) {
-    console.error('Error converting image to PNG:', error);
-    throw new Error(`Failed to convert image from ${originalMimeType} to PNG: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.error('Error converting image to OpenAI-compatible PNG:', error);
+    throw new Error(`Failed to convert image from ${originalMimeType} to OpenAI-compatible PNG: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
@@ -206,11 +253,34 @@ export async function POST(request: NextRequest) {
       
     } catch (conversionError) {
       console.error('Image conversion failed:', conversionError);
+      
+      // Provide specific error messages for common issues
+      let userFriendlyError = 'Unable to process the uploaded image';
+      let detailedReason = 'Unknown conversion error';
+      
+      if (conversionError instanceof Error) {
+        detailedReason = conversionError.message;
+        
+        // Check for specific error patterns
+        if (conversionError.message.includes('channels')) {
+          userFriendlyError = 'Image format incompatible with OpenAI API';
+          detailedReason = 'The image uses an unsupported color format. OpenAI requires images in RGBA, LA, or L format.';
+        } else if (conversionError.message.includes('Input file contains unsupported image format')) {
+          userFriendlyError = 'Unsupported image format';
+          detailedReason = 'The uploaded file is not a valid image or uses an unsupported format.';
+        } else if (conversionError.message.includes('Input buffer contains unsupported image format')) {
+          userFriendlyError = 'Corrupted or invalid image file';
+          detailedReason = 'The image file appears to be corrupted or incomplete.';
+        }
+      }
+      
       return NextResponse.json({ 
-        error: `Failed to convert image to PNG format: ${conversionError instanceof Error ? conversionError.message : 'Unknown conversion error'}`,
+        error: userFriendlyError,
         originalFileType: fileType,
         fileName: fileName,
-        details: 'This error occurs when the uploaded image cannot be processed or converted to PNG format required by OpenAI'
+        details: detailedReason,
+        supportedFormats: ['PNG (RGBA/LA/L)', 'JPEG (will be converted to RGBA)', 'WebP (will be converted to RGBA)', 'GIF (will be converted to RGBA)'],
+        troubleshooting: 'Try saving your image in PNG format with transparency, or use a different image file.'
       }, { status: 400 });
     }
 
@@ -223,11 +293,33 @@ export async function POST(request: NextRequest) {
     const settings = productConfig.uiSettings;
 
     try {
-      const prompt = buildPrompt(profile, settings, settings.contextPreset);
+      // Build optimized prompt with validation
+      const promptResult = buildOptimizedPrompt(profile, settings, settings.contextPreset);
       const size = getImageSize(settings.contextPreset);
 
       console.log(`Generating ${settings.variations} ${settings.contextPreset} variations for product: ${productConfig.productImages.productName}`);
-      console.log('Using prompt:', prompt);
+      console.log('Prompt validation:', {
+        originalLength: promptResult.originalLength,
+        optimizedLength: promptResult.optimizedLength,
+        optimizationApplied: promptResult.optimizationApplied,
+        isValid: promptResult.validationResult.isValid,
+        exceedsLimit: promptResult.validationResult.exceedsLimit
+      });
+      
+      // Check if prompt is still invalid after optimization
+      if (!promptResult.validationResult.isValid) {
+        const error = `Prompt too long: ${promptResult.validationResult.length}/${promptResult.validationResult.limit} characters. ${promptResult.validationResult.suggestions?.join(' ') || ''}`;
+        console.error('Prompt validation failed:', error);
+        return NextResponse.json({ 
+          error: 'Prompt length validation failed',
+          details: error,
+          promptLength: promptResult.validationResult.length,
+          promptLimit: promptResult.validationResult.limit,
+          suggestions: promptResult.validationResult.suggestions
+        }, { status: 400 });
+      }
+
+      console.log('Using optimized prompt:', promptResult.prompt);
       console.log(`Primary image: ${fileName} (${fileType}, ${fileSize} bytes)`);
       console.log(`Image buffer size: ${imageBuffer.length} bytes`);
 
@@ -248,14 +340,14 @@ export async function POST(request: NextRequest) {
         imageType: typeof imageFile,
         imageName: imageFile.name,
         imageSize: imageFile.size,
-        promptLength: prompt.length,
+        promptLength: promptResult.prompt.length,
         variations: settings.variations,
         size: size
       });
 
       const response = await openai.images.edit({
         image: imageFile,
-        prompt: prompt,
+        prompt: promptResult.prompt,
         n: settings.variations,
         size: size,
         response_format: "b64_json",
@@ -263,7 +355,7 @@ export async function POST(request: NextRequest) {
 
       const variations = (response.data || []).map((imageData, index) => ({
         url: `data:image/png;base64,${imageData.b64_json}`,
-        prompt: prompt,
+        prompt: promptResult.prompt,
         metadata: {
           model: "gpt-image-1", // Using images.edit endpoint
           timestamp: new Date().toISOString(),
@@ -283,7 +375,13 @@ export async function POST(request: NextRequest) {
           primaryImageUsed: fileName,
           totalSourceImages: productConfig.productImages.images.length,
           profileSource: 'fused_multi_image_analysis',
-          prompt: prompt,
+          prompt: promptResult.prompt,
+          promptMetadata: {
+            originalLength: promptResult.originalLength,
+            optimizedLength: promptResult.optimizedLength,
+            optimizationApplied: promptResult.optimizationApplied,
+            validationResult: promptResult.validationResult
+          }
         }
       };
 
@@ -302,19 +400,59 @@ export async function POST(request: NextRequest) {
     } catch (error) {
       console.error(`Error generating images for product: ${productConfig.productImages.productName}:`, error);
       
-      // Enhanced error logging for OpenAI API issues
+      // Enhanced error logging and user-friendly messages for OpenAI API issues
+      let userError = "Unknown error occurred during generation";
+      let statusCode = 500;
+      let additionalInfo = {};
+      
       if (error instanceof Error) {
         console.error('Error name:', error.name);
         console.error('Error message:', error.message);
+        
+        // Check for OpenAI API response
         if ('response' in error) {
           const apiError = error as Error & { response?: { status?: number; data?: unknown } };
           console.error('OpenAI API Response Status:', apiError.response?.status);
           console.error('OpenAI API Response Data:', apiError.response?.data);
+          
+          // Handle specific OpenAI API errors
+          if (apiError.response?.status === 400) {
+            statusCode = 400;
+            
+            // Check for image format errors
+            if (error.message.includes('Invalid input image') && error.message.includes('format must be in')) {
+              userError = "Image format not supported by OpenAI API";
+              additionalInfo = {
+                issue: "The uploaded image format is not compatible with OpenAI's image editing API",
+                requiredFormats: ["RGBA", "LA", "L"],
+                receivedFormat: "RGB or other unsupported format",
+                solution: "This should have been automatically fixed. Please try uploading a different image or contact support."
+              };
+            } else if (error.message.includes('image')) {
+              userError = "Image validation failed";
+              additionalInfo = {
+                issue: "The image did not pass OpenAI's validation requirements",
+                solution: "Try a different image, ensure it's a valid image file, and check that it's under 4MB"
+              };
+            }
+          } else if (apiError.response?.status === 429) {
+            statusCode = 429;
+            userError = "API rate limit exceeded";
+            additionalInfo = {
+              issue: "Too many requests to OpenAI API",
+              solution: "Please wait a moment before trying again"
+            };
+          }
+        }
+        
+        // If we haven't identified a specific API error, use the original message
+        if (userError === "Unknown error occurred during generation") {
+          userError = error.message;
         }
       }
       
       return NextResponse.json({
-        error: error instanceof Error ? error.message : "Unknown error occurred during generation",
+        error: userError,
         details: error instanceof Error ? error.stack : undefined,
         productName: productConfig.productImages.productName,
         debugInfo: {
@@ -322,8 +460,9 @@ export async function POST(request: NextRequest) {
           fileName: fileName,
           fileType: fileType,
           fileSize: fileSize,
-        }
-      }, { status: 500 });
+        },
+        ...additionalInfo
+      }, { status: statusCode });
     }
 
   } catch (error) {

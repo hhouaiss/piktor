@@ -64,7 +64,7 @@ export function StepProductSpecs({ productImages, onProductImagesChange, onCompl
       
       const result = await response.json();
       
-      // Create fused profile with DetectedField pattern
+      // Create fused profile with DetectedField pattern + enhanced data
       const fusedProfile: ProductProfile = {
         type: createDetectedField(result.type || 'furniture'),
         materials: createDetectedField(result.materials || 'unknown'),
@@ -72,9 +72,24 @@ export function StepProductSpecs({ productImages, onProductImagesChange, onCompl
         style: createDetectedField(result.style || 'modern'),
         wallMounted: createDetectedField(result.wallMounted || false),
         features: createDetectedField(result.features || []),
+        
+        // Enhanced analysis data from GPT-4o (CRITICAL for generation)
+        colorAnalysis: result.colorAnalysis,
+        detailedFeatures: result.detailedFeatures,
+        estimatedDimensions: result.estimatedDimensions,
+        contextRecommendations: result.contextRecommendations,
+        textToImagePrompts: result.textToImagePrompts, // REQUIRED for GPT-image-1 generation
+        
+        // Override fields
         realDimensions: overrides.realDimensions,
         colorOverride: overrides.colorOverride,
         notes: overrides.notes,
+        
+        // Analysis metadata
+        analysisVersion: result.analysisVersion,
+        analysisModel: result.analysisModel,
+        analysisTimestamp: result.analysisTimestamp,
+        sourceImageCount: result.sourceImageCount,
       };
       
       onProductImagesChange({

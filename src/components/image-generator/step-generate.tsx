@@ -6,8 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Download, RefreshCw, Loader2, AlertCircle, CheckCircle, Eye, Camera } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Sparkles, Download, RefreshCw, Loader2, AlertCircle, CheckCircle, Eye, Camera, FileText, Info } from "lucide-react";
 import { ProductConfiguration, GeneratedImage, getFieldValue } from "./types";
+import { buildOptimizedPrompt } from "@/lib/prompt-builder";
 import { cn } from "@/lib/utils";
 
 interface StepGenerateProps {
@@ -59,7 +61,7 @@ export function StepGenerate({
     onRegenerate(imageId);
   };
 
-  const getImageFilename = (image: GeneratedImage) => {
+  const getImageFilename = (_image: GeneratedImage) => {
     const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
     const productName = productImages.productName.replace(/[^a-z0-9]/gi, '-').toLowerCase();
     return `piktor-${productName}-${settings.contextPreset}-${timestamp}.png`;
@@ -146,6 +148,37 @@ export function StepGenerate({
             </div>
           )}
         </div>
+
+        {/* Prompt Preview */}
+        {profile && (
+          <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <span className="text-sm font-medium text-blue-900 dark:text-blue-100">AI Prompt Preview</span>
+              </div>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Eye className="w-4 h-4 mr-1" />
+                    View Full Prompt
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>AI Generation Prompt</DialogTitle>
+                    <DialogDescription>
+                      This is the detailed prompt that will be sent to the AI model to generate your images.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <PromptPreviewContent profile={profile} settings={settings} />
+                </DialogContent>
+              </Dialog>
+            </div>
+            
+            <PromptSummary profile={profile} settings={settings} />
+          </div>
+        )}
 
         {/* Generation Status */}
         {!hasGeneratedImages && !isGenerating && (
@@ -370,5 +403,132 @@ export function StepGenerate({
         )}
       </CardContent>
     </Card>
+  );
+}
+
+// Prompt preview components
+interface PromptPreviewProps {
+  profile: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  settings: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+}
+
+function PromptSummary({ profile, settings }: PromptPreviewProps) {
+  const promptResult = buildOptimizedPrompt(profile, settings, settings.contextPreset);
+  const { prompt, originalLength, optimizedLength, optimizationApplied, validationResult } = promptResult;
+  
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-sm">Prompt Length:</span>
+          <Badge 
+            variant={validationResult.exceedsLimit ? "destructive" : validationResult.isNearLimit ? "secondary" : "default"}
+          >
+            {optimizedLength}/{validationResult.limit} chars
+          </Badge>
+          {optimizationApplied && (
+            <Badge variant="outline" className="text-xs">
+              Optimized ({originalLength} → {optimizedLength})
+            </Badge>
+          )}
+        </div>
+        {validationResult.isNearLimit && (
+          <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
+            <Info className="w-3 h-3" />
+            <span className="text-xs">Near limit</span>
+          </div>
+        )}
+        {validationResult.exceedsLimit && (
+          <div className="flex items-center gap-1 text-destructive">
+            <AlertCircle className="w-3 h-3" />
+            <span className="text-xs">Over limit</span>
+          </div>
+        )}
+      </div>
+      
+      <div className="bg-white dark:bg-gray-900 rounded border p-3 text-xs font-mono">
+        <p className="text-muted-foreground line-clamp-3">
+          {prompt.substring(0, 200)}...
+        </p>
+      </div>
+      
+      {validationResult.suggestions && (
+        <div className="text-xs text-muted-foreground">
+          <p className="font-medium mb-1">Optimization suggestions:</p>
+          <ul className="list-disc list-inside space-y-0.5 pl-2">
+            {validationResult.suggestions.map((suggestion, index) => (
+              <li key={index}>{suggestion}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PromptPreviewContent({ profile, settings }: PromptPreviewProps) {
+  const promptResult = buildOptimizedPrompt(profile, settings, settings.contextPreset);
+  const { prompt, originalLength, optimizedLength, optimizationApplied, validationResult } = promptResult;
+  
+  return (
+    <div className="space-y-4">
+      {/* Prompt statistics */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-muted rounded-lg">
+        <div>
+          <p className="text-sm font-medium">Final Length</p>
+          <p className="text-2xl font-bold">{optimizedLength}</p>
+          <p className="text-xs text-muted-foreground">characters</p>
+        </div>
+        <div>
+          <p className="text-sm font-medium">Limit</p>
+          <p className="text-2xl font-bold">{validationResult.limit}</p>
+          <p className="text-xs text-muted-foreground">max allowed</p>
+        </div>
+        <div>
+          <p className="text-sm font-medium">Status</p>
+          <Badge 
+            variant={validationResult.exceedsLimit ? "destructive" : validationResult.isNearLimit ? "secondary" : "default"}
+            className="text-xs"
+          >
+            {validationResult.exceedsLimit ? "Over Limit" : validationResult.isNearLimit ? "Near Limit" : "Valid"}
+          </Badge>
+        </div>
+        <div>
+          <p className="text-sm font-medium">Optimization</p>
+          <p className="text-2xl font-bold">{optimizationApplied ? "Applied" : "None"}</p>
+          {optimizationApplied && (
+            <p className="text-xs text-muted-foreground">
+              Reduced by {originalLength - optimizedLength} chars
+            </p>
+          )}
+        </div>
+      </div>
+      
+      {/* Full prompt display */}
+      <div>
+        <h4 className="text-sm font-medium mb-2">Complete Prompt</h4>
+        <div className="bg-gray-50 dark:bg-gray-900 rounded-lg border p-4 max-h-96 overflow-y-auto">
+          <pre className="text-xs font-mono whitespace-pre-wrap break-words text-gray-700 dark:text-gray-300">
+            {prompt}
+          </pre>
+        </div>
+      </div>
+      
+      {validationResult.suggestions && (
+        <div className="p-4 bg-blue-50 dark:bg-blue-950/50 rounded-lg">
+          <h4 className="text-sm font-medium mb-2 text-blue-900 dark:text-blue-100">
+            Optimization Suggestions
+          </h4>
+          <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
+            {validationResult.suggestions.map((suggestion, index) => (
+              <li key={index} className="flex items-start gap-2">
+                <span className="text-blue-600 dark:text-blue-400 mt-0.5">•</span>
+                {suggestion}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
   );
 }

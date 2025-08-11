@@ -1,0 +1,15 @@
+
+> piktor@0.1.0 dev
+> next dev --turbopack
+
+   ▲ Next.js 15.3.4 (Turbopack)
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.1.42:3000
+   - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 1234ms
+ ○ Compiling / ...
+ ✓ Compiled / in 2.7s
+ HEAD / 200 in 3039ms
+[?25h

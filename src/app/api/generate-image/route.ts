@@ -119,9 +119,30 @@ export async function POST(request: NextRequest) {
 
     // Generate detailed prompt based on the configuration
     const detailedPrompt = generateDetailedPrompt(promptData);
+    
+    // Validate prompt length before sending to OpenAI
+    if (detailedPrompt.length > 1000) {
+      console.error(`Prompt length validation failed: ${detailedPrompt.length}/1000 characters`);
+      const optimizedPrompt = optimizePrompt(detailedPrompt, 950); // Leave some buffer
+      console.log(`Applied prompt optimization: ${detailedPrompt.length} -> ${optimizedPrompt.length} characters`);
+      
+      return NextResponse.json({
+        error: "Prompt too long for OpenAI API",
+        details: `Original prompt was ${detailedPrompt.length} characters, limit is 1000. Please simplify product specifications or features.`,
+        suggestions: [
+          "Reduce the number of product features",
+          "Shorten product descriptions and material specifications",
+          "Simplify branding mood keywords",
+          "Use more concise constraint descriptions"
+        ],
+        promptLength: detailedPrompt.length,
+        promptLimit: 1000
+      }, { status: 400 });
+    }
 
     // Generate image using gpt-image-1
     console.log("Generating image with prompt:", detailedPrompt.substring(0, 200) + "...");
+    console.log("Prompt length:", detailedPrompt.length);
     console.log("Image size:", getImageSize(promptData.output.aspectRatio));
     
     const response = await openai.images.generate({
@@ -357,4 +378,54 @@ function generateTextAwarePrompt(data: PromptData): string {
   basePrompt += ` Background: ${output.background}. Lighting: ${output.lighting}. Camera angle: ${output.cameraAngle.replace(/_/g, ' ')}. Aesthetic: ${branding.aesthetic}. Mood: ${branding.moodKeywords.join(', ')}.`;
   
   return basePrompt;
+}
+
+function optimizePrompt(prompt: string, targetLength: number): string {
+  if (prompt.length <= targetLength) return prompt;
+
+  // Progressive optimization strategies
+  let optimized = prompt;
+
+  // 1. Remove redundant phrases and clean up whitespace
+  optimized = optimized
+    .replace(/\s+/g, ' ')
+    .replace(/\.\s+/g, '. ')
+    .replace(/:\s+/g, ': ')
+    .trim();
+
+  if (optimized.length <= targetLength) return optimized;
+
+  // 2. Abbreviate common words
+  const abbreviations = {
+    'professional': 'pro',
+    'commercial': 'comm.',
+    'high-quality': 'hi-qual',
+    'specifications': 'specs',
+    'requirements': 'req.',
+    'composition': 'comp.',
+    'lighting': 'light',
+    'background': 'bg',
+    'product': 'prod',
+    'furniture': 'furn.',
+    'dimensions': 'dims',
+    'materials': 'mats',
+    'aesthetic': 'style'
+  };
+
+  for (const [full, abbrev] of Object.entries(abbreviations)) {
+    optimized = optimized.replace(new RegExp(full, 'gi'), abbrev);
+  }
+
+  if (optimized.length <= targetLength) return optimized;
+
+  // 3. Remove less critical sections
+  optimized = optimized
+    .replace(/TECHNICAL CONSTRAINTS:[\s\S]*?(?=\n\n|$)/, 'Key constraints: maintain exact dimensions and features.')
+    .replace(/BRAND AESTHETIC:[\s\S]*?(?=\n\n|$)/, '')
+    .replace(/Create a high-quality, photorealistic image that emphasizes[\s\S]*$/, 'Create photorealistic commercial image.');
+
+  if (optimized.length <= targetLength) return optimized;
+
+  // 4. Final truncation with ellipsis
+  return optimized.substring(0, targetLength - 3) + '...';
 }
