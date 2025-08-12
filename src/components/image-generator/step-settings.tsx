@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Save, Copy, CheckCircle } from "lucide-react";
-import { UiSettings, ProductConfiguration, CONTEXT_PRESET_SETTINGS, DEFAULT_UI_SETTINGS } from "./types";
+import { UiSettings, ProductConfiguration, CONTEXT_PRESET_SETTINGS, ContextPreset } from "./types";
 import { cn } from "@/lib/utils";
 
 interface StepGenerationSettingsProps {
@@ -157,7 +157,7 @@ export function StepGenerationSettings({ productConfiguration, onConfigurationCh
                   name="contextPreset"
                   value={preset}
                   checked={settings.contextPreset === preset}
-                  onChange={(e) => updateSettings('contextPreset', e.target.value as any)}
+                  onChange={(e) => updateSettings('contextPreset', e.target.value as ContextPreset)}
                   className="sr-only"
                 />
                 <div className={cn(
@@ -187,7 +187,7 @@ export function StepGenerationSettings({ productConfiguration, onConfigurationCh
             <Label>Background Style</Label>
             <Select
               value={settings.backgroundStyle}
-              onValueChange={(value) => updateSettings('backgroundStyle', value as any)}
+              onValueChange={(value) => updateSettings('backgroundStyle', value as UiSettings['backgroundStyle'])}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -208,7 +208,7 @@ export function StepGenerationSettings({ productConfiguration, onConfigurationCh
               <Label>Product Position</Label>
               <Select
                 value={settings.productPosition}
-                onValueChange={(value) => updateSettings('productPosition', value as any)}
+                onValueChange={(value) => updateSettings('productPosition', value as UiSettings['productPosition'])}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -229,7 +229,7 @@ export function StepGenerationSettings({ productConfiguration, onConfigurationCh
             <Label>Reserved Text Zone (Optional)</Label>
             <Select
               value={settings.reservedTextZone || 'none'}
-              onValueChange={(value) => updateSettings('reservedTextZone', value === 'none' ? undefined : value as any)}
+              onValueChange={(value) => updateSettings('reservedTextZone', value === 'none' ? undefined : value as UiSettings['reservedTextZone'])}
             >
               <SelectTrigger>
                 <SelectValue placeholder="None" />
@@ -253,7 +253,7 @@ export function StepGenerationSettings({ productConfiguration, onConfigurationCh
             <Label>Lighting</Label>
             <Select
               value={settings.lighting}
-              onValueChange={(value) => updateSettings('lighting', value as any)}
+              onValueChange={(value) => updateSettings('lighting', value as UiSettings['lighting'])}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -273,7 +273,7 @@ export function StepGenerationSettings({ productConfiguration, onConfigurationCh
             <Label>Quality</Label>
             <Select
               value={settings.quality}
-              onValueChange={(value) => updateSettings('quality', value as any)}
+              onValueChange={(value) => updateSettings('quality', value as UiSettings['quality'])}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -293,7 +293,7 @@ export function StepGenerationSettings({ productConfiguration, onConfigurationCh
             <Label>Variations</Label>
             <Select
               value={settings.variations.toString()}
-              onValueChange={(value) => updateSettings('variations', parseInt(value) as any)}
+              onValueChange={(value) => updateSettings('variations', parseInt(value) as UiSettings['variations'])}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -316,9 +316,9 @@ export function StepGenerationSettings({ productConfiguration, onConfigurationCh
             {PROPS_OPTIONS.map((prop) => (
               <Badge
                 key={prop.value}
-                variant={settings.props.includes(prop.value as any) ? "default" : "outline"}
+                variant={settings.props.includes(prop.value as UiSettings['props'][number]) ? "default" : "outline"}
                 className="cursor-pointer"
-                onClick={() => toggleProp(prop.value as any)}
+                onClick={() => toggleProp(prop.value as UiSettings['props'][number])}
               >
                 {prop.label}
               </Badge>

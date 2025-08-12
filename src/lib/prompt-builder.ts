@@ -1,4 +1,4 @@
-import { ProductProfile, UiSettings, ContextPreset, getFieldValue } from '@/components/image-generator/types';
+import { ProductProfile, UiSettings, ContextPreset, TextToImagePrompts, getFieldValue } from '@/components/image-generator/types';
 
 // OpenAI GPT-4 image generation prompt limit
 const OPENAI_PROMPT_LIMIT = 1000;
@@ -41,8 +41,8 @@ export function buildPrompt(
 }
 
 // New function to build prompts using GPT-4o enhanced analysis
-function buildGptImagePrompt(
-  textPrompts: any,
+export function buildGptImagePrompt(
+  textPrompts: TextToImagePrompts,
   contextPreset: ContextPreset,
   settings: UiSettings
 ): string {

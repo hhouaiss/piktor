@@ -130,7 +130,7 @@ export function StepProductSpecs({ productImages, onProductImagesChange, onCompl
     });
   };
 
-  const updateOverrideField = (fieldName: 'realDimensions' | 'colorOverride' | 'notes', value: any) => {
+  const updateOverrideField = (fieldName: 'realDimensions' | 'colorOverride' | 'notes', value: string | { width: number; height: number; depth: number }) => {
     const newOverrides = { ...overrides, [fieldName]: value };
     setOverrides(newOverrides);
     

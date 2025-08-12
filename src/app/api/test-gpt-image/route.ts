@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { generateMultipleImagesWithBFL } from "@/lib/bfl-api";
+import { ContextPreset } from "@/components/image-generator/types";
 
 export async function GET() {
   try {
@@ -17,20 +18,20 @@ export async function GET() {
       prompt_upsampling: false,
       safety_tolerance: 2,
       output_format: "jpeg"
-    }, 1);
+    }, 1, 'packshot' as ContextPreset);
 
     console.log("Test response received");
-    console.log("Has images:", !!response.images);
-    console.log("Images length:", response.images?.length);
-    console.log("First image keys:", response.images?.[0] ? Object.keys(response.images[0]) : 'none');
+    console.log("Has images:", !!response);
+    console.log("Images length:", response?.length);
+    console.log("First image keys:", response?.[0] ? Object.keys(response[0]) : 'none');
 
-    const firstImage = response.images?.[0];
+    const firstImage = response?.[0];
     const imageUrl = firstImage?.url || null;
 
     return NextResponse.json({
       success: true,
-      hasImages: !!response.images,
-      imagesLength: response.images?.length,
+      hasImages: !!response,
+      imagesLength: response?.length,
       hasUrl: !!firstImage?.url,
       imageUrl: imageUrl,
       firstImageKeys: firstImage ? Object.keys(firstImage) : null,

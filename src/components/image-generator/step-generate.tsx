@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 // Removed Dialog imports - no longer needed without prompt preview
-import { Sparkles, Download, RefreshCw, Loader2, AlertCircle, CheckCircle, Eye, Camera, ImageIcon, Zap } from "lucide-react";
+import { Sparkles, Download, RefreshCw, Loader2, AlertCircle, CheckCircle, Eye, Camera, ImageIcon } from "lucide-react";
 import { ProductConfiguration, GeneratedImage, getFieldValue } from "./types";
 // Removed buildOptimizedPrompt import - using comprehensive prompts without optimization
 import { cn } from "@/lib/utils";
@@ -161,7 +161,7 @@ export function StepGenerate({
             <p className="text-muted-foreground mb-4">
               Generate {totalExpectedImages} {settings.contextPreset} image{totalExpectedImages !== 1 ? 's' : ''} using your product profile
             </p>
-            <Button onClick={onGenerate} size="lg" className="px-8">
+            <Button onClick={() => onGenerate()} size="lg" className="px-8">
               <Sparkles className="h-4 w-4 mr-2" />
               Generate Images
             </Button>
@@ -203,7 +203,7 @@ export function StepGenerate({
             <Button
               variant="outline"
               size="sm"
-              onClick={onGenerate}
+              onClick={() => onGenerate()}
               className="mt-3"
             >
               <RefreshCw className="h-3 w-3 mr-2" />

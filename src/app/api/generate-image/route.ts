@@ -122,15 +122,18 @@ export async function POST(request: NextRequest) {
     // Generate image using FLUX.1 Kontext Pro
     console.log("Generating image with FLUX.1 Kontext Pro:", detailedPrompt.substring(0, 200) + "...");
     console.log("Prompt length:", detailedPrompt.length);
-    console.log("Aspect ratio:", getAspectRatio(promptData.output.aspectRatio as any));
+    // Map aspectRatio to contextPreset for getAspectRatio function
+    const contextPreset = promptData.output.type === 'packshot' ? 'packshot' : 
+                         promptData.output.type === 'lifestyle' ? 'lifestyle' : 'instagram';
+    console.log("Aspect ratio:", getAspectRatio(contextPreset));
     
     const response = await generateMultipleImagesWithBFL({
       prompt: detailedPrompt,
-      aspect_ratio: getAspectRatio(promptData.output.aspectRatio as any),
+      aspect_ratio: getAspectRatio(contextPreset),
       prompt_upsampling: false,
       safety_tolerance: 2,
       output_format: "jpeg"
-    }, 1);
+    }, 1, contextPreset);
     
     console.log("BFL API response received successfully");
     console.log("Response structure:", {
@@ -342,6 +345,7 @@ function generateTextAwarePrompt(data: PromptData): string {
   return basePrompt;
 }
 
+/*
 function optimizePrompt(prompt: string, targetLength: number): string {
   if (prompt.length <= targetLength) return prompt;
 
@@ -391,3 +395,4 @@ function optimizePrompt(prompt: string, targetLength: number): string {
   // 4. Final truncation with ellipsis
   return optimized.substring(0, targetLength - 3) + '...';
 }
+*/

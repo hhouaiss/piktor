@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import sharp from "sharp";
-import { buildOptimizedPrompt, getImageSize } from "@/lib/prompt-builder";
+import { buildOptimizedPrompt } from "@/lib/prompt-builder";
 import { ProductConfiguration } from "@/components/image-generator/types";
 import { 
-  generateMultipleImagesWithBFL, 
   editMultipleImagesWithBFL,
   getAspectRatio, 
-  fileToBase64,
-  BFLGenerationResult 
+  fileToBase64
 } from "@/lib/bfl-api";
 
 // Helper function to create a proper File object from Buffer (legacy function, no longer needed for BFL API)
@@ -297,7 +295,7 @@ export async function POST(request: NextRequest) {
     try {
       // Build optimized prompt with validation
       const promptResult = buildOptimizedPrompt(profile, settings, settings.contextPreset);
-      const size = getImageSize(settings.contextPreset);
+      // const size = getImageSize(settings.contextPreset);
 
       console.log(`Generating ${settings.variations} ${settings.contextPreset} variations for product: ${productConfig.productImages.productName}`);
       console.log('Prompt validation:', {

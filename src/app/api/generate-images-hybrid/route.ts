@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ProductConfiguration, GenerationMethod, GenerationSource, ContextPreset, CONTEXT_PRESET_SETTINGS } from "@/components/image-generator/types";
+import { ProductConfiguration, ContextPreset, CONTEXT_PRESET_SETTINGS, ProductProfile, UiSettings } from "@/components/image-generator/types";
 import { 
   generateMultipleImagesWithBFL, 
   editMultipleImagesWithBFL,
   getAspectRatio, 
-  fileToBase64,
-  BFLGenerationResult 
+  fileToBase64
 } from "@/lib/bfl-api";
 
 export async function POST(request: NextRequest) {
@@ -65,7 +64,7 @@ export async function POST(request: NextRequest) {
               console.warn("Reference-based method requested but no primary image provided, falling back to text-to-image");
               result = await generateTextToImage(profile, settings, contextPreset, i + 1);
             } else {
-              result = await generateReferenceBased(primaryImageFile, profile, settings, contextPreset, i + 1);
+              result = await generateReferenceBased(primaryImageFile as File, profile, settings, contextPreset, i + 1);
             }
             break;
             
@@ -74,7 +73,7 @@ export async function POST(request: NextRequest) {
             const hybridImageFile = formData.get("primaryImage");
             if (hybridImageFile) {
               try {
-                result = await generateReferenceBased(hybridImageFile, profile, settings, contextPreset, i + 1);
+                result = await generateReferenceBased(hybridImageFile as File, profile, settings, contextPreset, i + 1);
               } catch (referenceError) {
                 console.warn("Reference-based generation failed, falling back to text-to-image:", referenceError);
                 result = await generateTextToImage(profile, settings, contextPreset, i + 1);
@@ -100,8 +99,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Filter out errors and return successful generations
-    const successfulResults = generationResults.filter(result => !result.error);
-    const errors = generationResults.filter(result => result.error);
+    const successfulResults = generationResults.filter(result => !('error' in result));
+    const errors = generationResults.filter(result => 'error' in result);
 
     if (successfulResults.length === 0) {
       return NextResponse.json({
@@ -112,18 +111,16 @@ export async function POST(request: NextRequest) {
 
     // Format response similar to the original API
     const variations = successfulResults.map((result, index) => ({
-      url: result.url,
-      prompt: result.prompt,
+      url: (result as { imageUrl: string; generationTime: number; variation: number }).imageUrl,
       metadata: {
-        model: result.generationSource.model,
+        model: 'FLUX.1 Kontext Pro',
         timestamp: new Date().toISOString(),
         size: presetSettings.size,
         quality: settings.quality,
         variation: result.variation || index + 1,
         contextPreset: contextPreset,
-        generationMethod: result.generationSource.method,
-        confidence: result.generationSource.confidence,
-        processingTime: result.processingTime
+        generationMethod: preferredMethod,
+        processingTime: (result as { imageUrl: string; generationTime: number; variation: number }).generationTime
       },
     }));
 
@@ -167,11 +164,11 @@ export async function POST(request: NextRequest) {
 
 // Generate images using FLUX.1 Kontext Pro (text-to-image)
 async function generateTextToImage(
-  profile: any,
-  settings: any,
+  profile: ProductProfile,
+  settings: UiSettings,
   contextPreset: ContextPreset,
   variation: number
-): Promise<any> {
+): Promise<{ imageUrl: string; generationTime: number; variation: number }> {
   const startTime = Date.now();
   
   // Use the enhanced prompts from the analysis if available
@@ -185,7 +182,7 @@ async function generateTextToImage(
         prompt = profile.textToImagePrompts.lifestyle;
         break;
       default:
-        prompt = profile.textToImagePrompts.detailed;
+        prompt = profile.textToImagePrompts.detail;
     }
     
     // Enhance prompt with current settings
@@ -214,27 +211,20 @@ async function generateTextToImage(
 
   const result = results[0];
   return {
-    url: result.url,
-    prompt: prompt,
-    generationSource: {
-      method: 'text-to-image' as GenerationMethod,
-      model: 'flux-1-kontext-pro',
-      confidence: 0.8,
-      referenceImageUsed: false
-    } as GenerationSource,
-    variation: variation,
-    processingTime: Date.now() - startTime
+    imageUrl: result.url,
+    generationTime: Date.now() - startTime,
+    variation: variation
   };
 }
 
 // Generate images using reference-based approach (current images.edit method)
 async function generateReferenceBased(
-  primaryImageFile: any,
-  profile: any,
-  settings: any,
+  primaryImageFile: File,
+  profile: ProductProfile,
+  settings: UiSettings,
   contextPreset: ContextPreset,
   variation: number
-): Promise<any> {
+): Promise<{ imageUrl: string; generationTime: number; variation: number }> {
   const startTime = Date.now();
   
   // Convert and validate image (reuse existing logic)
@@ -282,30 +272,23 @@ async function generateReferenceBased(
 
   const result = results[0];
   return {
-    url: result.url,
-    prompt: prompt,
-    generationSource: {
-      method: 'reference-based' as GenerationMethod,
-      model: 'flux-1-kontext-pro',
-      confidence: 0.9,
-      referenceImageUsed: true
-    } as GenerationSource,
-    variation: variation,
-    processingTime: Date.now() - startTime
+    imageUrl: result.url,
+    generationTime: Date.now() - startTime,
+    variation: variation
   };
 }
 
 // Build comprehensive text-to-image prompt
-function buildTextToImagePrompt(profile: any, settings: any, contextPreset: ContextPreset): string {
+function buildTextToImagePrompt(profile: ProductProfile, settings: UiSettings, contextPreset: ContextPreset): string {
   const productType = profile.type?.value || profile.type || 'furniture';
   const materials = Array.isArray(profile.materials) ? profile.materials.join(', ') : 
                    (profile.materials?.value || profile.materials || 'unknown materials');
-  const color = profile.colorAnalysis?.name || profile.detectedColor?.value || profile.colorHex || 'neutral';
+  const color = profile.colorAnalysis?.name || profile.detectedColor?.value || 'neutral';
   const style = profile.style?.value || profile.style || 'modern';
   
   // Get enhanced features if available
   const features = profile.detailedFeatures ? 
-    profile.detailedFeatures.filter((f: any) => f.importance === 'high').map((f: any) => f.name).join(', ') :
+    profile.detailedFeatures.filter((f: { importance: string }) => f.importance === 'high').map((f: { name: string }) => f.name).join(', ') :
     (profile.features?.value || profile.features || []).slice(0, 3).join(', ');
 
   let basePrompt = '';
@@ -344,7 +327,7 @@ function buildTextToImagePrompt(profile: any, settings: any, contextPreset: Cont
 }
 
 // Build focused prompt for reference-based generation
-function buildReferenceBasedPrompt(profile: any, settings: any, contextPreset: ContextPreset): string {
+function buildReferenceBasedPrompt(profile: ProductProfile, settings: UiSettings, contextPreset: ContextPreset): string {
   let prompt = `Transform this product image for ${contextPreset} context. `;
   
   switch (contextPreset) {
@@ -375,7 +358,7 @@ function buildReferenceBasedPrompt(profile: any, settings: any, contextPreset: C
 }
 
 // Enhance existing prompts with current settings
-function enhancePromptWithSettings(basePrompt: string, settings: any, contextPreset: ContextPreset): string {
+function enhancePromptWithSettings(basePrompt: string, settings: UiSettings, contextPreset: ContextPreset): string {
   let enhanced = basePrompt;
   
   // Add settings-specific enhancements
@@ -401,7 +384,7 @@ function enhancePromptWithSettings(basePrompt: string, settings: any, contextPre
 }
 
 // Get context-specific requirements
-function getContextSpecificRequirements(contextPreset: ContextPreset, settings: any): string {
+function getContextSpecificRequirements(contextPreset: ContextPreset, settings: UiSettings): string {
   switch (contextPreset) {
     case 'packshot':
       return 'Studio photography setup, minimal distractions, catalog-quality presentation.';

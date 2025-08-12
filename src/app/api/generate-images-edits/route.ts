@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ProductConfiguration, ContextPreset, UiSettings, ProductProfile } from "@/components/image-generator/types";
 import { 
-  editMultipleImagesWithBFL, 
+  editMultipleImagesWithBFL,
   getAspectRatio, 
-  fileToBase64,
-  BFLGenerationResult 
+  fileToBase64
 } from "@/lib/bfl-api";
 
 interface GenerationParams {
@@ -275,7 +274,7 @@ function generateStructuredJsonProfile(profile: ProductProfile, settings: UiSett
   
   // Ensure dimensions have unit property
   if (dimensions && !('unit' in dimensions)) {
-    (dimensions as any).unit = 'cm';
+    (dimensions as { width: number; height: number; depth: number; unit?: string }).unit = 'cm';
   }
 
   // Context-specific requirements
@@ -301,9 +300,9 @@ function generateStructuredJsonProfile(profile: ProductProfile, settings: UiSett
         width: dimensions.width,
         height: dimensions.height,
         depth: dimensions.depth,
-        unit: (dimensions as any).unit || 'cm'
+        unit: (dimensions as { width: number; height: number; depth: number; unit?: string }).unit || 'cm'
       } : null,
-      key_features: productData.features.filter((f: { importance: string }) => f.importance === 'high').map((f: { name: string }) => f.name),
+      key_features: productData.features.filter(f => f.importance === 'high').map(f => f.name),
       all_features: productData.features
     },
     visual_requirements: {

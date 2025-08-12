@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ProductConfiguration, ContextPreset, UiSettings, ProductProfile } from "@/components/image-generator/types";
-import { buildOptimizedPrompt, getImageSize, buildGptImagePrompt } from "@/lib/prompt-builder";
+import { ProductConfiguration, ContextPreset } from "@/components/image-generator/types";
+import { buildGptImagePrompt } from "@/lib/prompt-builder";
 import { 
   generateMultipleImagesWithBFL, 
-  getAspectRatio, 
-  BFLGenerationResult 
+  getAspectRatio
 } from "@/lib/bfl-api";
 
 interface GenerationParams {
@@ -63,7 +62,14 @@ export async function POST(request: NextRequest) {
     const profile = config.productImages.fusedProfile;
 
     // Build comprehensive prompt for FLUX.1 Kontext Pro
-    const detailedPrompt = buildGptImagePrompt(profile, config.uiSettings, params.contextPreset);
+    if (!profile.textToImagePrompts) {
+      return NextResponse.json({
+        error: "Product profile missing text-to-image prompts",
+        details: "The product profile needs to be analyzed with GPT-4o to generate enhanced prompts"
+      }, { status: 400 });
+    }
+    
+    const detailedPrompt = buildGptImagePrompt(profile.textToImagePrompts, params.contextPreset, config.uiSettings);
 
     console.log(`Generating ${params.variations} ${params.contextPreset} images using FLUX.1 Kontext Pro`);
     console.log(`Prompt length: ${detailedPrompt.length} characters`);
@@ -171,7 +177,8 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function convertProfileToStructuredDescription(profile: any): string {
+/*
+function convertProfileToStructuredDescription(profile: { type?: string; style?: string; estimatedDimensions?: { width: number; height: number; depth: number; unit: string }; materials?: string[]; color?: string; features?: string[] }): string {
   const productData = {
     type: profile.type || 'furniture',
     name: `${profile.style || 'modern'} ${profile.type}`,
@@ -190,4 +197,4 @@ Material: ${productData.material}
 Color: ${productData.color}
 Style: ${productData.style}
 Features: ${productData.features.join(', ')}`;
-}
+}*/
