@@ -3,7 +3,7 @@
  * Provides integration with FLUX Kontext Pro for image generation and editing
  */
 
-import { ContextPreset } from '@/components/image-generator/types';
+import { ContextPreset } from '@/lib/types';
 
 // BFL API Configuration
 const BFL_API_BASE = 'https://api.bfl.ai/v1';

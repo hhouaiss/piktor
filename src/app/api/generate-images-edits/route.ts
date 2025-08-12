@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ProductConfiguration, ContextPreset, UiSettings, ProductProfile } from "@/components/image-generator/types";
+import { ProductConfiguration, ContextPreset, UiSettings, ProductProfile, getFieldValue } from "@/lib/types";
 import { 
   editMultipleImagesWithBFL,
   getAspectRatio, 
@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
       contextPreset: generationParams.contextPreset,
       variations,
       generationDetails: {
-        sourceImageCount: productConfig.productImages.images.length,
+        sourceImageCount: productConfig.productImages.images?.length || 0,
         profileSource: 'gpt-4o-multi-image-analysis',
         prompt: prompt,
         promptLength: prompt.length,
@@ -253,24 +253,18 @@ function getContextDescription(contextPreset: ContextPreset): string {
 function generateStructuredJsonProfile(profile: ProductProfile, settings: UiSettings, contextPreset: ContextPreset) {
   // Extract key information from the analyzed product profile
   const productData = {
-    type: profile.type?.value || 'furniture',
-    name: `${profile.style?.value || 'modern'} ${profile.type?.value || 'furniture'}`,
-    materials: profile.materials?.value || 'mixed materials',
-    color: profile.colorAnalysis ? 
-      `${profile.colorAnalysis.name} (${profile.colorAnalysis.hex})` : 
-      (profile.detectedColor?.value || 'neutral'),
-    style: profile.style?.value || 'modern',
-    features: profile.detailedFeatures ? 
-      profile.detailedFeatures.map((f) => ({
-        name: f.name,
-        description: f.description,
-        importance: f.importance
-      })) : 
-      (profile.features?.value || []).map((f: string) => ({ name: f, importance: 'medium' as const }))
+    type: getFieldValue(profile.type) || 'furniture',
+    name: `${getFieldValue(profile.style) || 'modern'} ${getFieldValue(profile.type) || 'furniture'}`,
+    materials: getFieldValue(profile.materials) || 'mixed materials',
+    color: getFieldValue(profile.detectedColor) || 'neutral',
+    style: getFieldValue(profile.style) || 'modern',
+    features: Array.isArray(getFieldValue(profile.features)) 
+      ? (getFieldValue(profile.features) as string[]).map((f: string) => ({ name: f, importance: 'medium' as const }))
+      : []
   };
 
   // Get dimensions if available
-  const dimensions = profile.estimatedDimensions || profile.realDimensions;
+  const dimensions = profile.realDimensions;
   
   // Ensure dimensions have unit property
   if (dimensions && !('unit' in dimensions)) {
@@ -302,7 +296,7 @@ function generateStructuredJsonProfile(profile: ProductProfile, settings: UiSett
         depth: dimensions.depth,
         unit: (dimensions as { width: number; height: number; depth: number; unit?: string }).unit || 'cm'
       } : null,
-      key_features: productData.features.filter(f => f.importance === 'high').map(f => f.name),
+      key_features: productData.features.filter(f => f.importance === 'medium').map(f => f.name),
       all_features: productData.features
     },
     visual_requirements: {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ProductConfiguration, ContextPreset } from "@/components/image-generator/types";
+import { ProductConfiguration, ContextPreset } from "@/lib/types";
 import { buildGptImagePrompt } from "@/lib/prompt-builder";
 import { 
   generateMultipleImagesWithBFL, 
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
 
     const aspectRatio = getAspectRatio(params.contextPreset);
     
-    console.log(`Generating with comprehensive prompt derived from ${config.productImages.images.length} reference images`);
+    console.log(`Generating with comprehensive prompt derived from ${config.productImages.images?.length || 0} reference images`);
 
     // Generate images using BFL FLUX Kontext Pro
     const bflRequest = {
@@ -103,13 +103,13 @@ export async function POST(request: NextRequest) {
       contextPreset: params.contextPreset,
       variations,
       generationDetails: {
-        sourceImageCount: config.productImages.images.length,
+        sourceImageCount: config.productImages.images?.length || 0,
         profileSource: 'gpt-4o-multi-image-analysis',
         prompt: detailedPrompt,
         promptLength: detailedPrompt.length,
         model: 'flux-kontext-pro',
         generationMethod: 'text-to-image',
-        referenceImagesAnalyzed: config.productImages.images.length
+        referenceImagesAnalyzed: config.productImages.images?.length || 0
       }
     };
 

@@ -16,12 +16,6 @@ export function Header() {
           </Link>
           <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
             <Link
-              href="/"
-              className="transition-colors hover:text-foreground/80 text-foreground"
-            >
-              Home
-            </Link>
-            <Link
               href="/upload"
               className="transition-colors hover:text-foreground/80 text-foreground/60"
             >
@@ -34,40 +28,16 @@ export function Header() {
               Generate
             </Link>
             <Link
-              href="/usp-overlay"
-              className="transition-colors hover:text-foreground/80 text-foreground/60"
-            >
-              USP Overlay
-            </Link>
-            <Link
-              href="/product-page-builder"
-              className="transition-colors hover:text-foreground/80 text-foreground/60"
-            >
-              Page Builder
-            </Link>
-            <Link
-              href="/hero-image-generator"
-              className="transition-colors hover:text-foreground/80 text-foreground/60"
-            >
-              Hero Images
-            </Link>
-            <Link
               href="/templates"
               className="transition-colors hover:text-foreground/80 text-foreground/60"
             >
               Templates
             </Link>
-            <Link
-              href="/preview"
-              className="transition-colors hover:text-foreground/80 text-foreground/60"
-            >
-              Preview
-            </Link>
           </nav>
         </div>
         <div className="flex flex-1 items-center justify-end space-x-2">
-          <Button variant="default" size="sm">
-            Get Started
+          <Button variant="default" size="sm" asChild>
+            <Link href="/upload">Get Started</Link>
           </Button>
         </div>
       </div>

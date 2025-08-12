@@ -1,4 +1,4 @@
-import { ProductProfile, UiSettings, ContextPreset, TextToImagePrompts, getFieldValue } from '@/components/image-generator/types';
+import { ProductProfile, UiSettings, ContextPreset, TextToImagePrompts, getFieldValue } from '@/lib/types';
 
 // OpenAI GPT-4 image generation prompt limit
 const OPENAI_PROMPT_LIMIT = 1000;
@@ -204,8 +204,9 @@ function getBasePrompt(contextPreset: ContextPreset): string {
 }
 
 function buildProductDescription(profile: ProductProfile): string {
-  const features = getFieldValue(profile.features).length > 0
-    ? `Features: ${getFieldValue(profile.features).join(', ')}.` 
+  const featuresValue = getFieldValue(profile.features);
+  const features = Array.isArray(featuresValue) && featuresValue.length > 0
+    ? `Features: ${featuresValue.join(', ')}.` 
     : '';
   
   // Use color override if available, otherwise use detected color
@@ -418,14 +419,16 @@ function getOptimizedBasePrompt(contextPreset: ContextPreset): string {
 
 function buildOptimizedProductDescription(profile: ProductProfile): string {
   // Prioritize essential information
-  const type = getFieldValue(profile.type);
-  const materials = truncateText(getFieldValue(profile.materials), 80);
-  const color = profile.colorOverride || getFieldValue(profile.detectedColor);
-  const style = truncateText(getFieldValue(profile.style), 50);
+  const type = String(getFieldValue(profile.type) || 'product');
+  const materialsValue = getFieldValue(profile.materials);
+  const materials = materialsValue ? truncateText(String(materialsValue), 80) : '';
+  const color = profile.colorOverride || String(getFieldValue(profile.detectedColor) || 'neutral');
+  const styleValue = getFieldValue(profile.style);
+  const style = styleValue ? truncateText(String(styleValue), 50) : '';
   
   // Limit features to most important ones
-  const features = getFieldValue(profile.features);
-  const topFeatures = features.slice(0, 3).map(f => truncateText(f, 30));
+  const featuresValue = getFieldValue(profile.features);
+  const topFeatures = Array.isArray(featuresValue) ? featuresValue.slice(0, 3).map(f => truncateText(String(f), 30)) : [];
   
   const wallMounted = getFieldValue(profile.wallMounted) ? 'Wall-mounted.' : '';
   
