@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
     const primaryImageFile = formData.get("primaryImage") as File;
     if (!primaryImageFile) {
       return NextResponse.json({ 
-        error: "No primary reference image provided. This endpoint requires a reference image for FLUX.1 Kontext Pro image editing." 
+        error: "No primary reference image provided. This endpoint requires a reference image for FLUX Kontext Pro image editing." 
       }, { status: 400 });
     }
 
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
     const profile = productConfig.productImages.fusedProfile;
     const settings = productConfig.uiSettings;
 
-    console.log(`Generating ${generationParams.variations} ${generationParams.contextPreset} images using FLUX.1 Kontext Pro image editing`);
+    console.log(`Generating ${generationParams.variations} ${generationParams.contextPreset} images using FLUX Kontext Pro image editing`);
     console.log(`Primary image: ${primaryImageFile.name}, size: ${primaryImageFile.size} bytes`);
     console.log(`Product: ${productConfig.productImages.productName}`);
 
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
     // Convert primary image to base64 for BFL API
     const primaryImageBase64 = await fileToBase64(primaryImageFile);
     
-    // Generate images using BFL FLUX.1 Kontext Pro image editing
+    // Generate images using BFL FLUX Kontext Pro image editing
     const bflRequest = {
       prompt: prompt,
       input_image: primaryImageBase64,
@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
         prompt: prompt,
         promptLength: prompt.length,
         jsonProfile: jsonProfile,
-        model: 'flux-1-kontext-pro',
+        model: 'flux-kontext-pro',
         generationMethod: 'image-editing-with-json-profile',
         referenceImageUsed: true,
         primaryImageName: primaryImageFile.name,
@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
         productName: productConfig.productImages.productName,
         contextPreset: generationParams.contextPreset,
         variationsGenerated: variations.length,
-        model: 'flux-1-kontext-pro',
+        model: 'flux-kontext-pro',
         approach: 'reference-based-with-json-profile',
         timestamp: new Date().toISOString(),
       },

@@ -1,6 +1,6 @@
 /**
  * Black Forest Labs API Service
- * Provides integration with FLUX.1 Kontext Pro for image generation and editing
+ * Provides integration with FLUX Kontext Pro for image generation and editing
  */
 
 import { ContextPreset } from '@/components/image-generator/types';
@@ -92,7 +92,7 @@ export async function fileToBase64(file: File): Promise<string> {
 }
 
 /**
- * Generate images using FLUX.1 Kontext Pro (text-to-image)
+ * Generate images using FLUX Kontext Pro (text-to-image)
  */
 export async function generateImageWithBFL(
   request: BFLImageGenerationRequest
@@ -101,7 +101,7 @@ export async function generateImageWithBFL(
     throw new Error('BFL_API_KEY not configured');
   }
 
-  const response = await fetch(`${BFL_API_BASE}/flux-pro-1.1`, {
+  const response = await fetch(`${BFL_API_BASE}/flux-kontext-pro`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -119,7 +119,7 @@ export async function generateImageWithBFL(
 }
 
 /**
- * Edit images using FLUX.1 Kontext Pro (image-to-image)
+ * Edit images using FLUX Kontext Pro (image-to-image)
  */
 export async function editImageWithBFL(
   request: BFLImageEditingRequest

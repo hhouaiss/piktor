@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
     const variations = successfulResults.map((result, index) => ({
       url: (result as { imageUrl: string; generationTime: number; variation: number }).imageUrl,
       metadata: {
-        model: 'FLUX.1 Kontext Pro',
+        model: 'FLUX Kontext Max',
         timestamp: new Date().toISOString(),
         size: presetSettings.size,
         quality: settings.quality,
@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Generate images using FLUX.1 Kontext Pro (text-to-image)
+// Generate images using FLUX Kontext Max (text-to-image)
 async function generateTextToImage(
   profile: ProductProfile,
   settings: UiSettings,

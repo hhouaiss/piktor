@@ -10,7 +10,7 @@ export async function GET() {
       }, { status: 500 });
     }
 
-    console.log("Testing FLUX.1 Kontext Pro API...");
+    console.log("Testing FLUX Kontext Pro API...");
 
     const response = await generateMultipleImagesWithBFL({
       prompt: "Generate a photorealistic image of the desk exactly as shown. Include only the open wall-mounted fold-down desk, without any additional desks or chairs. Match the shape, proportions, features and texture. Avoid adding any surrounding furniture or duplicate elements. Treat this like a product image for a real e-commerce website. Accuracy is critical and nothing should be invented.",
@@ -35,7 +35,7 @@ export async function GET() {
       hasUrl: !!firstImage?.url,
       imageUrl: imageUrl,
       firstImageKeys: firstImage ? Object.keys(firstImage) : null,
-      model: "flux-1-kontext-pro"
+      model: "flux-kontext-pro"
     });
 
   } catch (error) {

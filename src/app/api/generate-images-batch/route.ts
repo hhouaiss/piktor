@@ -336,7 +336,7 @@ export async function POST(request: NextRequest) {
         hasArrayBuffer: 'arrayBuffer' in imageFile
       });
 
-      console.log('Calling BFL FLUX.1 Kontext Pro image editing with:', {
+      console.log('Calling BFL FLUX Kontext Max image editing with:', {
         imageType: typeof imageFile,
         imageName: imageFile.name,
         imageSize: imageFile.size,
@@ -367,7 +367,7 @@ export async function POST(request: NextRequest) {
         url: result.url,
         prompt: promptResult.prompt,
         metadata: {
-          model: "flux-1-kontext-pro",
+          model: "flux-kontext-pro",
           timestamp: new Date().toISOString(),
           size: result.metadata.size,
           quality: settings.quality,

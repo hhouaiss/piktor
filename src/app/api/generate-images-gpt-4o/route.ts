@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
 
     const profile = config.productImages.fusedProfile;
 
-    // Build comprehensive prompt for FLUX.1 Kontext Pro
+    // Build comprehensive prompt for FLUX Kontext Max
     if (!profile.textToImagePrompts) {
       return NextResponse.json({
         error: "Product profile missing text-to-image prompts",
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     
     const detailedPrompt = buildGptImagePrompt(profile.textToImagePrompts, params.contextPreset, config.uiSettings);
 
-    console.log(`Generating ${params.variations} ${params.contextPreset} images using FLUX.1 Kontext Pro`);
+    console.log(`Generating ${params.variations} ${params.contextPreset} images using FLUX Kontext Pro`);
     console.log(`Prompt length: ${detailedPrompt.length} characters`);
     console.log(`Product: ${config.productImages.productName}`);
 
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
     
     console.log(`Generating with comprehensive prompt derived from ${config.productImages.images.length} reference images`);
 
-    // Generate images using BFL FLUX.1 Kontext Pro
+    // Generate images using BFL FLUX Kontext Pro
     const bflRequest = {
       prompt: detailedPrompt,
       aspect_ratio: aspectRatio,
@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
         profileSource: 'gpt-4o-multi-image-analysis',
         prompt: detailedPrompt,
         promptLength: detailedPrompt.length,
-        model: 'flux-1-kontext-pro',
+        model: 'flux-kontext-pro',
         generationMethod: 'text-to-image',
         referenceImagesAnalyzed: config.productImages.images.length
       }
@@ -120,13 +120,13 @@ export async function POST(request: NextRequest) {
         productName: config.productImages.productName,
         contextPreset: params.contextPreset,
         variationsGenerated: variations.length,
-        model: 'flux-1-kontext-pro',
+        model: 'flux-kontext-pro',
         timestamp: new Date().toISOString(),
       },
     });
 
   } catch (error) {
-    console.error("FLUX.1 Kontext Pro generation error:", error);
+    console.error("FLUX Kontext Pro generation error:", error);
     
     // Enhanced error handling for BFL API issues
     let userError = "Unknown error occurred during generation";
@@ -149,9 +149,9 @@ export async function POST(request: NextRequest) {
         
         if (apiError.response?.status === 400) {
           statusCode = 400;
-          userError = "Invalid request to FLUX.1 Kontext Pro";
+          userError = "Invalid request to FLUX Kontext Pro";
           additionalInfo = {
-            issue: "The prompt or parameters were not accepted by FLUX.1 Kontext Pro",
+            issue: "The prompt or parameters were not accepted by FLUX Kontext Pro",
             solution: "Try simplifying the prompt or adjusting generation parameters"
           };
         } else if (apiError.response?.status === 429) {

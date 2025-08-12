@@ -119,8 +119,8 @@ export async function POST(request: NextRequest) {
     // BFL API has more flexible prompt length limits
     console.log(`Prompt length: ${detailedPrompt.length} characters`);
 
-    // Generate image using FLUX.1 Kontext Pro
-    console.log("Generating image with FLUX.1 Kontext Pro:", detailedPrompt.substring(0, 200) + "...");
+    // Generate image using FLUX Kontext Pro
+    console.log("Generating image with FLUX Kontext Pro:", detailedPrompt.substring(0, 200) + "...");
     console.log("Prompt length:", detailedPrompt.length);
     // Map aspectRatio to contextPreset for getAspectRatio function
     const contextPreset = promptData.output.type === 'packshot' ? 'packshot' : 
@@ -158,7 +158,7 @@ export async function POST(request: NextRequest) {
       imageUrl: generatedImageUrl,
       prompt: detailedPrompt,
       metadata: {
-        model: "flux-1-kontext-pro",
+        model: "flux-kontext-pro",
         timestamp: new Date().toISOString(),
         originalImageName: image.name,
         promptData: promptData,
