@@ -1,20 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
 import sharp from "sharp";
 import { buildOptimizedPrompt, getImageSize } from "@/lib/prompt-builder";
 import { ProductConfiguration } from "@/components/image-generator/types";
+import { 
+  generateMultipleImagesWithBFL, 
+  editMultipleImagesWithBFL,
+  getAspectRatio, 
+  fileToBase64,
+  BFLGenerationResult 
+} from "@/lib/bfl-api";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
-// Helper function to create a proper File object from Buffer for OpenAI
+// Helper function to create a proper File object from Buffer (legacy function, no longer needed for BFL API)
 function createFileFromBuffer(buffer: Buffer, filename: string, contentType: string): File {
   try {
     // Create a Blob first
     const blob = new Blob([buffer], { type: contentType });
     
-    // Create a proper File object that OpenAI expects
+    // Create a proper File object (legacy function)
     const file = new File([blob], filename, { 
       type: contentType,
       lastModified: Date.now()
@@ -41,10 +43,10 @@ function createFileFromBuffer(buffer: Buffer, filename: string, contentType: str
   }
 }
 
-// Helper function to convert any image format to PNG with RGBA for OpenAI compatibility
+// Helper function to convert any image format to PNG with RGBA (legacy function, no longer needed for BFL API)
 async function convertImageToPNG(imageBuffer: Buffer, originalMimeType: string): Promise<{ buffer: Buffer; mimeType: string }> {
   try {
-    console.log(`Processing image from ${originalMimeType} to OpenAI-compatible PNG format`);
+    console.log(`Processing image from ${originalMimeType} to PNG format`);
     
     // Get image metadata to check current format
     const metadata = await sharp(imageBuffer).metadata();
@@ -58,7 +60,7 @@ async function convertImageToPNG(imageBuffer: Buffer, originalMimeType: string):
     });
 
     // Always process through Sharp to ensure proper format
-    // OpenAI images.edit requires RGBA, LA, or L formats
+    // Converting to RGBA format for compatibility
     let sharpInstance = sharp(imageBuffer);
 
     // Ensure we have the right number of channels
@@ -106,12 +108,12 @@ async function convertImageToPNG(imageBuffer: Buffer, originalMimeType: string):
       hasAlpha: convertedMetadata.hasAlpha
     });
 
-    // Validate the result meets OpenAI requirements
+    // Validate the conversion result
     if (convertedMetadata.channels !== 1 && convertedMetadata.channels !== 2 && convertedMetadata.channels !== 4) {
-      throw new Error(`Image conversion failed: resulted in ${convertedMetadata.channels} channels, but OpenAI requires 1 (L), 2 (LA), or 4 (RGBA) channels`);
+      throw new Error(`Image conversion failed: resulted in ${convertedMetadata.channels} channels, expected 1 (L), 2 (LA), or 4 (RGBA) channels`);
     }
 
-    console.log(`Successfully converted ${originalMimeType} to OpenAI-compatible PNG. Original size: ${imageBuffer.length} bytes, Converted size: ${convertedBuffer.length} bytes`);
+    console.log(`Successfully converted ${originalMimeType} to PNG. Original size: ${imageBuffer.length} bytes, Converted size: ${convertedBuffer.length} bytes`);
     
     return { 
       buffer: convertedBuffer, 
@@ -119,17 +121,17 @@ async function convertImageToPNG(imageBuffer: Buffer, originalMimeType: string):
     };
 
   } catch (error) {
-    console.error('Error converting image to OpenAI-compatible PNG:', error);
-    throw new Error(`Failed to convert image from ${originalMimeType} to OpenAI-compatible PNG: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.error('Error converting image to PNG:', error);
+    throw new Error(`Failed to convert image from ${originalMimeType} to PNG: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
 
 export async function POST(request: NextRequest) {
   try {
-    if (!process.env.OPENAI_API_KEY) {
+    if (!process.env.BFL_API_KEY) {
       return NextResponse.json({ 
-        error: "OpenAI API key not configured. Please add OPENAI_API_KEY to your .env.local file" 
+        error: "BFL API key not configured. Please add BFL_API_KEY to your .env.local file" 
       }, { status: 500 });
     }
 
@@ -182,7 +184,7 @@ export async function POST(request: NextRequest) {
         }, { status: 400 });
       }
 
-      // Validate file size (max 4MB for OpenAI images.edit)
+      // Validate file size (max 4MB for compatibility)
       if (fileSize > 4 * 1024 * 1024) {
         return NextResponse.json({ error: "Primary image must be smaller than 4MB" }, { status: 400 });
       }
@@ -206,7 +208,7 @@ export async function POST(request: NextRequest) {
         }, { status: 400 });
       }
 
-      // Validate file size (max 4MB for OpenAI images.edit)
+      // Validate file size (max 4MB for compatibility)
       if (fileSize > 4 * 1024 * 1024) {
         return NextResponse.json({ error: "Primary image must be smaller than 4MB" }, { status: 400 });
       }
@@ -219,7 +221,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Convert image to PNG format if needed for OpenAI compatibility
+    // Convert image to PNG format if needed for compatibility
     try {
       console.log(`Original image format: ${fileType}, size: ${imageBuffer.length} bytes`);
       
@@ -235,17 +237,17 @@ export async function POST(request: NextRequest) {
       }
       
       console.log(`Image conversion complete - Original: ${originalFileType}, Final: ${fileType}`);
-      console.log(`Final image for OpenAI: ${fileName} (${fileType}, ${imageBuffer.length} bytes)`);
+      console.log(`Final image for processing: ${fileName} (${fileType}, ${imageBuffer.length} bytes)`);
       
       // Additional validation after conversion
       if (imageBuffer.length === 0) {
         throw new Error('Converted image buffer is empty');
       }
       
-      // Check converted size doesn't exceed OpenAI limit
+      // Check converted size doesn't exceed limit
       if (imageBuffer.length > 4 * 1024 * 1024) {
         return NextResponse.json({ 
-          error: "Converted image is too large for OpenAI (max 4MB)",
+          error: "Converted image is too large (max 4MB)",
           convertedSize: imageBuffer.length,
           originalType: originalFileType
         }, { status: 400 });
@@ -263,8 +265,8 @@ export async function POST(request: NextRequest) {
         
         // Check for specific error patterns
         if (conversionError.message.includes('channels')) {
-          userFriendlyError = 'Image format incompatible with OpenAI API';
-          detailedReason = 'The image uses an unsupported color format. OpenAI requires images in RGBA, LA, or L format.';
+          userFriendlyError = 'Image format incompatible with API';
+          detailedReason = 'The image uses an unsupported color format. API requires images in RGBA, LA, or L format.';
         } else if (conversionError.message.includes('Input file contains unsupported image format')) {
           userFriendlyError = 'Unsupported image format';
           detailedReason = 'The uploaded file is not a valid image or uses an unsupported format.';
@@ -324,10 +326,10 @@ export async function POST(request: NextRequest) {
       console.log(`Image buffer size: ${imageBuffer.length} bytes`);
 
       // Always create a new File object since image may have been converted to PNG
-      console.log('Creating File-like object from converted buffer for OpenAI');
+      console.log('Creating File-like object from converted buffer for processing');
       const imageFile = createFileFromBuffer(imageBuffer, fileName, fileType);
       
-      console.log('Final File object for OpenAI:', imageFile.name, imageFile.type, imageFile.size);
+      console.log('Final File object for processing:', imageFile.name, imageFile.type, imageFile.size);
       console.log('File object constructor:', imageFile.constructor.name);
       console.log('File object has required properties:', {
         hasName: 'name' in imageFile,
@@ -336,30 +338,40 @@ export async function POST(request: NextRequest) {
         hasArrayBuffer: 'arrayBuffer' in imageFile
       });
 
-      console.log('Calling OpenAI images.edit with:', {
+      console.log('Calling BFL FLUX.1 Kontext Pro image editing with:', {
         imageType: typeof imageFile,
         imageName: imageFile.name,
         imageSize: imageFile.size,
         promptLength: promptResult.prompt.length,
         variations: settings.variations,
-        size: size
+        aspectRatio: getAspectRatio(settings.contextPreset)
       });
 
-      const response = await openai.images.edit({
-        image: imageFile,
+      // Convert image to base64 for BFL API
+      const imageBase64 = await fileToBase64(imageFile);
+      
+      const bflRequest = {
         prompt: promptResult.prompt,
-        model: "gpt-image-1", // Use gpt-image-1 for better editing results
-        n: settings.variations,
-        size: size,
-      });
+        input_image: imageBase64,
+        aspect_ratio: getAspectRatio(settings.contextPreset),
+        prompt_upsampling: true,
+        safety_tolerance: 2,
+        output_format: 'jpeg' as const,
+      };
 
-      const variations = (response.data || []).map((imageData, index) => ({
-        url: `data:image/png;base64,${imageData.b64_json}`,
+      const bflResults = await editMultipleImagesWithBFL(
+        bflRequest,
+        settings.variations,
+        settings.contextPreset
+      );
+
+      const variations = bflResults.map((result, index) => ({
+        url: result.url,
         prompt: promptResult.prompt,
         metadata: {
-          model: "gpt-image-1", // Using images.edit endpoint
+          model: "flux-1-kontext-pro",
           timestamp: new Date().toISOString(),
-          size: size,
+          size: result.metadata.size,
           quality: settings.quality,
           variation: index + 1,
           contextPreset: settings.contextPreset,
@@ -400,7 +412,7 @@ export async function POST(request: NextRequest) {
     } catch (error) {
       console.error(`Error generating images for product: ${productConfig.productImages.productName}:`, error);
       
-      // Enhanced error logging and user-friendly messages for OpenAI API issues
+      // Enhanced error logging and user-friendly messages for BFL API issues
       let userError = "Unknown error occurred during generation";
       let statusCode = 500;
       let additionalInfo = {};
@@ -409,40 +421,35 @@ export async function POST(request: NextRequest) {
         console.error('Error name:', error.name);
         console.error('Error message:', error.message);
         
-        // Check for OpenAI API response
-        if ('response' in error) {
-          const apiError = error as Error & { response?: { status?: number; data?: unknown } };
-          console.error('OpenAI API Response Status:', apiError.response?.status);
-          console.error('OpenAI API Response Data:', apiError.response?.data);
-          
-          // Handle specific OpenAI API errors
-          if (apiError.response?.status === 400) {
-            statusCode = 400;
-            
-            // Check for image format errors
-            if (error.message.includes('Invalid input image') && error.message.includes('format must be in')) {
-              userError = "Image format not supported by OpenAI API";
-              additionalInfo = {
-                issue: "The uploaded image format is not compatible with OpenAI's image editing API",
-                requiredFormats: ["RGBA", "LA", "L"],
-                receivedFormat: "RGB or other unsupported format",
-                solution: "This should have been automatically fixed. Please try uploading a different image or contact support."
-              };
-            } else if (error.message.includes('image')) {
-              userError = "Image validation failed";
-              additionalInfo = {
-                issue: "The image did not pass OpenAI's validation requirements",
-                solution: "Try a different image, ensure it's a valid image file, and check that it's under 4MB"
-              };
-            }
-          } else if (apiError.response?.status === 429) {
-            statusCode = 429;
-            userError = "API rate limit exceeded";
-            additionalInfo = {
-              issue: "Too many requests to OpenAI API",
-              solution: "Please wait a moment before trying again"
-            };
-          }
+        // Check for BFL API errors
+        if (error.message.includes('BFL API error')) {
+          statusCode = 400;
+          userError = "BFL API request failed";
+          additionalInfo = {
+            issue: "The request to Black Forest Labs API failed",
+            solution: "Please check your image and prompt, then try again"
+          };
+        } else if (error.message.includes('BFL_API_KEY not configured')) {
+          statusCode = 500;
+          userError = "API configuration error";
+          additionalInfo = {
+            issue: "BFL API key is not properly configured",
+            solution: "Please contact support"
+          };
+        } else if (error.message.includes('generation failed')) {
+          statusCode = 500;
+          userError = "Image generation failed";
+          additionalInfo = {
+            issue: "The image generation process failed",
+            solution: "Please try again with a different image or prompt"
+          };
+        } else if (error.message.includes('timed out')) {
+          statusCode = 408;
+          userError = "Generation timed out";
+          additionalInfo = {
+            issue: "The image generation took too long to complete",
+            solution: "Please try again"
+          };
         }
         
         // If we haven't identified a specific API error, use the original message

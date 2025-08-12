@@ -1,16 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
 import { ProductConfiguration, GenerationMethod, GenerationSource, ContextPreset, CONTEXT_PRESET_SETTINGS } from "@/components/image-generator/types";
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+import { 
+  generateMultipleImagesWithBFL, 
+  editMultipleImagesWithBFL,
+  getAspectRatio, 
+  fileToBase64,
+  BFLGenerationResult 
+} from "@/lib/bfl-api";
 
 export async function POST(request: NextRequest) {
   try {
-    if (!process.env.OPENAI_API_KEY) {
+    if (!process.env.BFL_API_KEY) {
       return NextResponse.json({ 
-        error: "OpenAI API key not configured. Please add OPENAI_API_KEY to your .env.local file" 
+        error: "BFL API key not configured. Please add BFL_API_KEY to your .env.local file" 
       }, { status: 500 });
     }
 
@@ -163,7 +165,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Generate images using GPT-image-1 (text-to-image)
+// Generate images using FLUX.1 Kontext Pro (text-to-image)
 async function generateTextToImage(
   profile: any,
   settings: any,
@@ -195,25 +197,28 @@ async function generateTextToImage(
 
   console.log(`Text-to-image prompt (${prompt.length} chars):`, prompt.substring(0, 200) + "...");
 
-  const response = await openai.images.generate({
-    model: "gpt-image-1",
+  const aspectRatio = getAspectRatio(contextPreset);
+  const bflRequest = {
     prompt: prompt,
-    n: 1,
-    size: CONTEXT_PRESET_SETTINGS[contextPreset].size as "1024x1024" | "1536x1024" | "1024x1536",
-    quality: "medium" // Use gpt-image-1 quality options: low, medium, high
-  });
+    aspect_ratio: aspectRatio,
+    prompt_upsampling: true,
+    safety_tolerance: 2,
+    output_format: 'jpeg' as const,
+  };
 
-  const imageData = response.data?.[0];
-  if (!imageData?.b64_json) {
-    throw new Error("No image data received from OpenAI text-to-image generation");
+  const results = await generateMultipleImagesWithBFL(bflRequest, 1, contextPreset);
+  
+  if (results.length === 0) {
+    throw new Error("No image data received from BFL text-to-image generation");
   }
 
+  const result = results[0];
   return {
-    url: `data:image/png;base64,${imageData.b64_json}`,
+    url: result.url,
     prompt: prompt,
     generationSource: {
       method: 'text-to-image' as GenerationMethod,
-      model: 'gpt-image-1',
+      model: 'flux-1-kontext-pro',
       confidence: 0.8,
       referenceImageUsed: false
     } as GenerationSource,
@@ -255,28 +260,33 @@ async function generateReferenceBased(
   
   console.log(`Reference-based prompt (${prompt.length} chars):`, prompt.substring(0, 200) + "...");
 
-  // Create proper File object for OpenAI
+  // Convert image to base64 for BFL API
   const imageFile = new File([imageBuffer], fileName, { type: fileType });
-
-  const response = await openai.images.edit({
-    image: imageFile,
+  const imageBase64 = await fileToBase64(imageFile);
+  
+  const aspectRatio = getAspectRatio(contextPreset);
+  const bflRequest = {
     prompt: prompt,
-    model: "gpt-image-1", // Use gpt-image-1 for better editing results
-    n: 1,
-    size: CONTEXT_PRESET_SETTINGS[contextPreset].size as "1024x1024" | "1024x1536" | "1536x1024"
-  });
+    input_image: imageBase64,
+    aspect_ratio: aspectRatio,
+    prompt_upsampling: true,
+    safety_tolerance: 2,
+    output_format: 'jpeg' as const,
+  };
 
-  const imageData = response.data?.[0];
-  if (!imageData?.b64_json) {
-    throw new Error("No image data received from OpenAI reference-based generation");
+  const results = await editMultipleImagesWithBFL(bflRequest, 1, contextPreset);
+  
+  if (results.length === 0) {
+    throw new Error("No image data received from BFL reference-based generation");
   }
 
+  const result = results[0];
   return {
-    url: `data:image/png;base64,${imageData.b64_json}`,
+    url: result.url,
     prompt: prompt,
     generationSource: {
       method: 'reference-based' as GenerationMethod,
-      model: 'gpt-image-1',
+      model: 'flux-1-kontext-pro',
       confidence: 0.9,
       referenceImageUsed: true
     } as GenerationSource,

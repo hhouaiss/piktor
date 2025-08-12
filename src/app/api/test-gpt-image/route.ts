@@ -1,51 +1,40 @@
 import { NextResponse } from "next/server";
-import OpenAI from "openai";
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+import { generateMultipleImagesWithBFL } from "@/lib/bfl-api";
 
 export async function GET() {
   try {
-    if (!process.env.OPENAI_API_KEY) {
+    if (!process.env.BFL_API_KEY) {
       return NextResponse.json({ 
-        error: "OpenAI API key not configured" 
+        error: "BFL API key not configured" 
       }, { status: 500 });
     }
 
-    console.log("Testing gpt-image-1 API...");
+    console.log("Testing FLUX.1 Kontext Pro API...");
 
-    const response = await openai.images.generate({
-      model: "gpt-image-1",
+    const response = await generateMultipleImagesWithBFL({
       prompt: "Generate a photorealistic image of the desk exactly as shown. Include only the open wall-mounted fold-down desk, without any additional desks or chairs. Match the shape, proportions, features and texture. Avoid adding any surrounding furniture or duplicate elements. Treat this like a product image for a real e-commerce website. Accuracy is critical and nothing should be invented.",
-      n: 1,
-      size: "1024x1024",
-      quality: "high",
-      response_format: "b64_json"
-    });
+      aspect_ratio: "1:1",
+      prompt_upsampling: false,
+      safety_tolerance: 2,
+      output_format: "jpeg"
+    }, 1);
 
     console.log("Test response received");
-    console.log("Has data:", !!response.data);
-    console.log("Data length:", response.data?.length);
-    console.log("First item keys:", response.data?.[0] ? Object.keys(response.data[0]) : 'none');
+    console.log("Has images:", !!response.images);
+    console.log("Images length:", response.images?.length);
+    console.log("First image keys:", response.images?.[0] ? Object.keys(response.images[0]) : 'none');
 
-    const firstImage = response.data?.[0];
-    let imageUrl = null;
-    
-    if (firstImage?.b64_json) {
-      imageUrl = `data:image/png;base64,${firstImage.b64_json}`;
-    } else if (firstImage?.url) {
-      imageUrl = firstImage.url;
-    }
+    const firstImage = response.images?.[0];
+    const imageUrl = firstImage?.url || null;
 
     return NextResponse.json({
       success: true,
-      hasData: !!response.data,
-      dataLength: response.data?.length,
-      hasB64Json: !!firstImage?.b64_json,
+      hasImages: !!response.images,
+      imagesLength: response.images?.length,
       hasUrl: !!firstImage?.url,
       imageUrl: imageUrl,
-      firstItemKeys: firstImage ? Object.keys(firstImage) : null,
+      firstImageKeys: firstImage ? Object.keys(firstImage) : null,
+      model: "flux-1-kontext-pro"
     });
 
   } catch (error) {

@@ -1,9 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+import { generateMultipleImagesWithBFL, getAspectRatio } from "@/lib/bfl-api";
 
 interface PromptData {
   product: {
@@ -61,9 +57,9 @@ interface PromptData {
 
 export async function POST(request: NextRequest) {
   try {
-    if (!process.env.OPENAI_API_KEY) {
+    if (!process.env.BFL_API_KEY) {
       return NextResponse.json({ 
-        error: "OpenAI API key not configured. Please add OPENAI_API_KEY to your .env.local file" 
+        error: "BFL API key not configured. Please add BFL_API_KEY to your .env.local file" 
       }, { status: 500 });
     }
 
@@ -120,69 +116,46 @@ export async function POST(request: NextRequest) {
     // Generate detailed prompt based on the configuration
     const detailedPrompt = generateDetailedPrompt(promptData);
     
-    // Validate prompt length before sending to OpenAI
-    if (detailedPrompt.length > 1000) {
-      console.error(`Prompt length validation failed: ${detailedPrompt.length}/1000 characters`);
-      const optimizedPrompt = optimizePrompt(detailedPrompt, 950); // Leave some buffer
-      console.log(`Applied prompt optimization: ${detailedPrompt.length} -> ${optimizedPrompt.length} characters`);
-      
-      return NextResponse.json({
-        error: "Prompt too long for OpenAI API",
-        details: `Original prompt was ${detailedPrompt.length} characters, limit is 1000. Please simplify product specifications or features.`,
-        suggestions: [
-          "Reduce the number of product features",
-          "Shorten product descriptions and material specifications",
-          "Simplify branding mood keywords",
-          "Use more concise constraint descriptions"
-        ],
-        promptLength: detailedPrompt.length,
-        promptLimit: 1000
-      }, { status: 400 });
-    }
+    // BFL API has more flexible prompt length limits
+    console.log(`Prompt length: ${detailedPrompt.length} characters`);
 
-    // Generate image using gpt-image-1
-    console.log("Generating image with prompt:", detailedPrompt.substring(0, 200) + "...");
+    // Generate image using FLUX.1 Kontext Pro
+    console.log("Generating image with FLUX.1 Kontext Pro:", detailedPrompt.substring(0, 200) + "...");
     console.log("Prompt length:", detailedPrompt.length);
-    console.log("Image size:", getImageSize(promptData.output.aspectRatio));
+    console.log("Aspect ratio:", getAspectRatio(promptData.output.aspectRatio as any));
     
-    const response = await openai.images.generate({
-      model: "gpt-image-1",
+    const response = await generateMultipleImagesWithBFL({
       prompt: detailedPrompt,
-      n: 1,
-      size: getImageSize(promptData.output.aspectRatio),
-      quality: "high"
-    });
+      aspect_ratio: getAspectRatio(promptData.output.aspectRatio as any),
+      prompt_upsampling: false,
+      safety_tolerance: 2,
+      output_format: "jpeg"
+    }, 1);
     
-    console.log("OpenAI response received successfully");
+    console.log("BFL API response received successfully");
     console.log("Response structure:", {
-      hasData: !!response.data,
-      dataLength: response.data?.length,
-      firstItem: response.data?.[0] ? Object.keys(response.data[0]) : 'no first item'
+      hasResults: !!response,
+      resultsLength: response?.length,
+      firstResult: response?.[0] ? Object.keys(response[0]) : 'no first result'
     });
     
-    const firstImage = response.data?.[0];
-    let generatedImageUrl: string;
+    const firstResult = response?.[0];
     
-    if (firstImage?.b64_json) {
-      // Handle base64 response (gpt-image-1 format)
-      generatedImageUrl = `data:image/png;base64,${firstImage.b64_json}`;
-      console.log("Generated image as base64 data URL");
-    } else if (firstImage?.url) {
-      // Handle URL response (fallback for other models)
-      generatedImageUrl = firstImage.url;
-      console.log("Generated image URL:", generatedImageUrl);
-    } else {
-      console.error("No URL or b64_json found in response data:", response.data);
-      console.error("First item details:", firstImage);
-      throw new Error("No image data returned from OpenAI");
+    if (!firstResult?.url) {
+      console.error("No URL found in response:", response);
+      console.error("First result details:", firstResult);
+      throw new Error("No image data returned from BFL API");
     }
+    
+    const generatedImageUrl = firstResult.url;
+    console.log("Generated image URL:", generatedImageUrl);
 
     return NextResponse.json({
       success: true,
       imageUrl: generatedImageUrl,
       prompt: detailedPrompt,
       metadata: {
-        model: "gpt-image-1",
+        model: "flux-1-kontext-pro",
         timestamp: new Date().toISOString(),
         originalImageName: image.name,
         promptData: promptData,
@@ -270,18 +243,7 @@ Create a high-quality, photorealistic image that emphasizes the furniture's craf
   return prompt;
 }
 
-function getImageSize(aspectRatio: string): "1024x1024" | "1792x1024" | "1024x1792" {
-  switch (aspectRatio) {
-    case "16:9":
-      return "1792x1024";
-    case "9:16":
-      return "1024x1792";
-    case "1:1":
-    case "4:3":
-    default:
-      return "1024x1024";
-  }
-}
+// getImageSize function removed - now using getAspectRatio from BFL API
 
 function generateJsonProfile(data: PromptData) {
   const { product, output, branding, text_overlay } = data;

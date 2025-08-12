@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
 import { ProductConfiguration, ContextPreset, UiSettings, ProductProfile } from "@/components/image-generator/types";
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+import { 
+  editMultipleImagesWithBFL, 
+  getAspectRatio, 
+  fileToBase64,
+  BFLGenerationResult 
+} from "@/lib/bfl-api";
 
 interface GenerationParams {
   contextPreset: ContextPreset;
@@ -30,9 +31,9 @@ const getGptImageSize = (contextPreset: ContextPreset): "1024x1024" | "1024x1536
 
 export async function POST(request: NextRequest) {
   try {
-    if (!process.env.OPENAI_API_KEY) {
+    if (!process.env.BFL_API_KEY) {
       return NextResponse.json({ 
-        error: "OpenAI API key not configured. Please add OPENAI_API_KEY to your .env.local file" 
+        error: "BFL API key not configured. Please add BFL_API_KEY to your .env.local file" 
       }, { status: 500 });
     }
 
@@ -68,7 +69,7 @@ export async function POST(request: NextRequest) {
     const primaryImageFile = formData.get("primaryImage") as File;
     if (!primaryImageFile) {
       return NextResponse.json({ 
-        error: "No primary reference image provided. This endpoint requires a reference image for images.edits API." 
+        error: "No primary reference image provided. This endpoint requires a reference image for FLUX.1 Kontext Pro image editing." 
       }, { status: 400 });
     }
 
@@ -82,7 +83,7 @@ export async function POST(request: NextRequest) {
     const profile = productConfig.productImages.fusedProfile;
     const settings = productConfig.uiSettings;
 
-    console.log(`Generating ${generationParams.variations} ${generationParams.contextPreset} images using images.edits`);
+    console.log(`Generating ${generationParams.variations} ${generationParams.contextPreset} images using FLUX.1 Kontext Pro image editing`);
     console.log(`Primary image: ${primaryImageFile.name}, size: ${primaryImageFile.size} bytes`);
     console.log(`Product: ${productConfig.productImages.productName}`);
 
@@ -96,61 +97,26 @@ export async function POST(request: NextRequest) {
     console.log(`Prompt length: ${prompt.length} characters`);
     console.log(`JSON profile keys: ${Object.keys(jsonProfile).join(', ')}`);
 
-    const size = getGptImageSize(generationParams.contextPreset);
+    const aspectRatio = getAspectRatio(generationParams.contextPreset);
     
-    // Generate multiple variations
-    const variations = [];
+    // Convert primary image to base64 for BFL API
+    const primaryImageBase64 = await fileToBase64(primaryImageFile);
     
-    for (let i = 0; i < generationParams.variations; i++) {
-      try {
-        console.log(`Generating variation ${i + 1}/${generationParams.variations}`);
-        
-        const response = await openai.images.generate({
-          prompt: prompt,
-          model: "gpt-image-1", // Use gpt-image-1 for better results
-          n: 1, // Generate one at a time to handle errors individually
-          size: size,
-          quality: generationParams.quality === 'high' ? 'high' : generationParams.quality === 'medium' ? 'medium' : 'low'
-        });
+    // Generate images using BFL FLUX.1 Kontext Pro image editing
+    const bflRequest = {
+      prompt: prompt,
+      input_image: primaryImageBase64,
+      aspect_ratio: aspectRatio,
+      prompt_upsampling: true,
+      safety_tolerance: 2,
+      output_format: 'jpeg' as const,
+    };
 
-        const imageData = response.data?.[0];
-        if (!imageData) {
-          throw new Error("No image data received from OpenAI");
-        }
-
-        let generatedImageUrl: string;
-        if (imageData.b64_json) {
-          generatedImageUrl = `data:image/png;base64,${imageData.b64_json}`;
-        } else if (imageData.url) {
-          generatedImageUrl = imageData.url;
-        } else {
-          throw new Error("No image URL or base64 data found in response");
-        }
-
-        variations.push({
-          url: generatedImageUrl,
-          prompt: prompt,
-          metadata: {
-            model: "gpt-image-1",
-            timestamp: new Date().toISOString(),
-            size: size,
-            quality: generationParams.quality,
-            variation: i + 1,
-            contextPreset: generationParams.contextPreset,
-            generationMethod: "reference-based-edits",
-            referenceImageUsed: true,
-            jsonProfileIncluded: true,
-            primaryImageName: primaryImageFile.name,
-            primaryImageSize: primaryImageFile.size,
-          },
-        });
-
-        console.log(`Successfully generated variation ${i + 1}`);
-      } catch (variationError) {
-        console.error(`Error generating variation ${i + 1}:`, variationError);
-        // Continue with other variations but log the error
-      }
-    }
+    const variations = await editMultipleImagesWithBFL(
+      bflRequest,
+      generationParams.variations,
+      generationParams.contextPreset
+    );
 
     if (variations.length === 0) {
       return NextResponse.json({
@@ -170,8 +136,8 @@ export async function POST(request: NextRequest) {
         prompt: prompt,
         promptLength: prompt.length,
         jsonProfile: jsonProfile,
-        model: 'gpt-image-1',
-        generationMethod: 'images-edits-with-json-profile',
+        model: 'flux-1-kontext-pro',
+        generationMethod: 'image-editing-with-json-profile',
         referenceImageUsed: true,
         primaryImageName: primaryImageFile.name,
         primaryImageSize: primaryImageFile.size,
@@ -187,7 +153,7 @@ export async function POST(request: NextRequest) {
         productName: productConfig.productImages.productName,
         contextPreset: generationParams.contextPreset,
         variationsGenerated: variations.length,
-        model: 'gpt-image-1',
+        model: 'flux-1-kontext-pro',
         approach: 'reference-based-with-json-profile',
         timestamp: new Date().toISOString(),
       },
@@ -195,8 +161,9 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error("Images.edits generation error:", error);
+    console.error("Full error object:", JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
     
-    // Enhanced error handling for OpenAI API issues
+    // Enhanced error handling for BFL API issues
     let userError = "Unknown error occurred during generation";
     let statusCode = 500;
     let additionalInfo = {};
@@ -205,30 +172,49 @@ export async function POST(request: NextRequest) {
       console.error('Error details:', {
         name: error.name,
         message: error.message,
+        stack: error.stack,
       });
       
-      // Check for OpenAI API response errors
-      if ('response' in error) {
-        const apiError = error as Error & { response?: { status?: number; data?: unknown } };
-        console.error('OpenAI API Response:', {
-          status: apiError.response?.status,
-          data: apiError.response?.data,
-        });
+      // Parse BFL API error from error message
+      if (error.message.includes('BFL API error:')) {
+        console.error('BFL API Error detected:', error.message);
         
-        if (apiError.response?.status === 400) {
-          statusCode = 400;
-          userError = "Invalid request to images.edits API";
-          additionalInfo = {
-            issue: "The image or prompt was not accepted by the images.edits API",
-            solution: "Check that the reference image is valid and the prompt meets API requirements"
-          };
-        } else if (apiError.response?.status === 429) {
-          statusCode = 429;
-          userError = "API rate limit exceeded";
-          additionalInfo = {
-            issue: "Too many requests to OpenAI API",
-            solution: "Please wait a moment before trying again"
-          };
+        // Extract status code from error message
+        const statusMatch = error.message.match(/BFL API error: (\d+)/);
+        if (statusMatch) {
+          const apiStatus = parseInt(statusMatch[1]);
+          console.error('BFL API Status Code:', apiStatus);
+          
+          if (apiStatus === 400) {
+            statusCode = 400;
+            userError = "Invalid request to BFL API";
+            additionalInfo = {
+              issue: "The image or prompt was not accepted by the BFL API",
+              solution: "Check that the reference image is valid and the prompt meets API requirements",
+              bflError: error.message
+            };
+          } else if (apiStatus === 401) {
+            statusCode = 401;
+            userError = "BFL API authentication failed";
+            additionalInfo = {
+              issue: "Invalid or missing BFL API key",
+              solution: "Check your BFL_API_KEY environment variable",
+              bflError: error.message
+            };
+          } else if (apiStatus === 429) {
+            statusCode = 429;
+            userError = "BFL API rate limit exceeded";
+            additionalInfo = {
+              issue: "Too many requests to BFL API",
+              solution: "Please wait a moment before trying again",
+              bflError: error.message
+            };
+          } else {
+            additionalInfo = {
+              bflError: error.message,
+              bflStatus: apiStatus
+            };
+          }
         }
       }
       
@@ -288,7 +274,7 @@ function generateStructuredJsonProfile(profile: ProductProfile, settings: UiSett
   const dimensions = profile.estimatedDimensions || profile.realDimensions;
   
   // Ensure dimensions have unit property
-  if (dimensions && !dimensions.unit) {
+  if (dimensions && !('unit' in dimensions)) {
     (dimensions as any).unit = 'cm';
   }
 

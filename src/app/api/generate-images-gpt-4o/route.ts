@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
-import { ProductConfiguration, ContextPreset, TextToImagePrompts, UiSettings } from "@/components/image-generator/types";
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+import { ProductConfiguration, ContextPreset, UiSettings, ProductProfile } from "@/components/image-generator/types";
+import { buildOptimizedPrompt, getImageSize, buildGptImagePrompt } from "@/lib/prompt-builder";
+import { 
+  generateMultipleImagesWithBFL, 
+  getAspectRatio, 
+  BFLGenerationResult 
+} from "@/lib/bfl-api";
 
 interface GenerationParams {
   contextPreset: ContextPreset;
@@ -12,27 +13,13 @@ interface GenerationParams {
   quality: 'high' | 'medium' | 'low';
 }
 
-// GPT-image-1 size mappings
-const getGptImageSize = (contextPreset: ContextPreset): "1024x1024" | "1024x1536" | "1536x1024" => {
-  switch (contextPreset) {
-    case 'story':
-      return "1024x1536"; // Vertical for stories (corrected from 1792)
-    case 'hero':
-    case 'lifestyle':
-      return "1536x1024"; // Horizontal for banners (corrected from 1792)
-    case 'packshot':
-    case 'instagram':
-    case 'detail':
-    default:
-      return "1024x1024"; // Square for social media
-  }
-};
+
 
 export async function POST(request: NextRequest) {
   try {
-    if (!process.env.OPENAI_API_KEY) {
+    if (!process.env.BFL_API_KEY) {
       return NextResponse.json({ 
-        error: "OpenAI API key not configured. Please add OPENAI_API_KEY to your .env.local file" 
+        error: "BFL API key not configured. Please add BFL_API_KEY to your .env.local file" 
       }, { status: 500 });
     }
 
@@ -75,54 +62,34 @@ export async function POST(request: NextRequest) {
 
     const profile = config.productImages.fusedProfile;
 
-    // Build comprehensive prompt for GPT-image-1
-    const detailedPrompt = buildGptImagePrompt(
-      profile.textToImagePrompts as TextToImagePrompts, 
-      params.contextPreset, 
-      config.uiSettings,
-      profile
-    );
+    // Build comprehensive prompt for FLUX.1 Kontext Pro
+    const detailedPrompt = buildGptImagePrompt(profile, config.uiSettings, params.contextPreset);
 
-    console.log(`Generating ${params.variations} ${params.contextPreset} images using GPT-image-1`);
+    console.log(`Generating ${params.variations} ${params.contextPreset} images using FLUX.1 Kontext Pro`);
     console.log(`Prompt length: ${detailedPrompt.length} characters`);
     console.log(`Product: ${config.productImages.productName}`);
 
     // Note: Removed prompt length validation - using comprehensive prompts for better quality
     console.log(`Using comprehensive prompt with ${detailedPrompt.length} characters for superior image generation`);
 
-    const size = getGptImageSize(params.contextPreset);
+    const aspectRatio = getAspectRatio(params.contextPreset);
     
     console.log(`Generating with comprehensive prompt derived from ${config.productImages.images.length} reference images`);
 
-    // Generate images using GPT-image-1 with text prompts derived from multi-image analysis
-    const qualityMapping = {
-      'high': 'high' as const,
-      'medium': 'medium' as const, 
-      'low': 'low' as const
+    // Generate images using BFL FLUX.1 Kontext Pro
+    const bflRequest = {
+      prompt: detailedPrompt,
+      aspect_ratio: aspectRatio,
+      prompt_upsampling: true,
+      safety_tolerance: 2,
+      output_format: 'jpeg' as const,
     };
-    
-    const response = await openai.images.generate({
-      model: "gpt-image-1",
-      prompt: detailedPrompt,
-      n: params.variations,
-      size: size,
-      quality: qualityMapping[params.quality]
-    });
 
-    const variations = (response.data || []).map((imageData, index) => ({
-      url: imageData.url || `data:image/png;base64,${imageData.b64_json}`,
-      prompt: detailedPrompt,
-      metadata: {
-        model: "gpt-image-1",
-        timestamp: new Date().toISOString(),
-        size: size,
-        quality: params.quality,
-        variation: index + 1,
-        contextPreset: params.contextPreset,
-        generationMethod: "text-to-image" as const,
-        referenceImagesAnalyzed: config.productImages.images.length,
-      },
-    }));
+    const variations = await generateMultipleImagesWithBFL(
+      bflRequest,
+      params.variations,
+      params.contextPreset
+    );
 
     const result = {
       productConfigId: config.id,
@@ -134,7 +101,7 @@ export async function POST(request: NextRequest) {
         profileSource: 'gpt-4o-multi-image-analysis',
         prompt: detailedPrompt,
         promptLength: detailedPrompt.length,
-        model: 'gpt-image-1',
+        model: 'flux-1-kontext-pro',
         generationMethod: 'text-to-image',
         referenceImagesAnalyzed: config.productImages.images.length
       }
@@ -147,15 +114,15 @@ export async function POST(request: NextRequest) {
         productName: config.productImages.productName,
         contextPreset: params.contextPreset,
         variationsGenerated: variations.length,
-        model: 'gpt-image-1',
+        model: 'flux-1-kontext-pro',
         timestamp: new Date().toISOString(),
       },
     });
 
   } catch (error) {
-    console.error("GPT-image-1 generation error:", error);
+    console.error("FLUX.1 Kontext Pro generation error:", error);
     
-    // Enhanced error handling for OpenAI API issues
+    // Enhanced error handling for BFL API issues
     let userError = "Unknown error occurred during generation";
     let statusCode = 500;
     let additionalInfo = {};
@@ -166,26 +133,26 @@ export async function POST(request: NextRequest) {
         message: error.message,
       });
       
-      // Check for OpenAI API response errors
+      // Check for BFL API response errors
       if ('response' in error) {
         const apiError = error as Error & { response?: { status?: number; data?: unknown } };
-        console.error('OpenAI API Response:', {
+        console.error('BFL API Response:', {
           status: apiError.response?.status,
           data: apiError.response?.data,
         });
         
         if (apiError.response?.status === 400) {
           statusCode = 400;
-          userError = "Invalid request to GPT-image-1";
+          userError = "Invalid request to FLUX.1 Kontext Pro";
           additionalInfo = {
-            issue: "The prompt or parameters were not accepted by GPT-image-1",
+            issue: "The prompt or parameters were not accepted by FLUX.1 Kontext Pro",
             solution: "Try simplifying the prompt or adjusting generation parameters"
           };
         } else if (apiError.response?.status === 429) {
           statusCode = 429;
           userError = "API rate limit exceeded";
           additionalInfo = {
-            issue: "Too many requests to OpenAI API",
+            issue: "Too many requests to BFL API",
             solution: "Please wait a moment before trying again"
           };
         }
@@ -224,112 +191,3 @@ Color: ${productData.color}
 Style: ${productData.style}
 Features: ${productData.features.join(', ')}`;
 }
-
-function buildGptImagePrompt(
-  textPrompts: TextToImagePrompts,
-  contextPreset: ContextPreset,
-  uiSettings: UiSettings,
-  profileData: any
-): string {
-  const contextPrompt = (contextPreset in textPrompts ? textPrompts[contextPreset] : null) || textPrompts.packshot || "Clean product shot";
-  const photographySpecs = textPrompts.photographySpecs || {
-    cameraAngle: 'Professional three-quarter view',
-    lightingSetup: 'Professional studio lighting',
-    depthOfField: 'Product in sharp focus',
-    composition: 'Balanced professional composition'
-  };
-  const visualDetails = textPrompts.visualDetails || {
-    materialTextures: 'High-quality materials',
-    colorPalette: 'Accurate product colors',
-    hardwareDetails: 'Detailed hardware elements',
-    proportionalRelationships: 'Correct product proportions'
-  };
-
-  // Get structured product description
-  const productDescription = convertProfileToStructuredDescription(profileData);
-
-  // Build concise hierarchical prompt for GPT-image-1
-  let prompt = `${contextPrompt}
-
-PRODUCT SPECIFICATIONS:
-${productDescription}
-
-MATERIALS: ${visualDetails.materialTextures}
-COLORS: ${visualDetails.colorPalette}  
-CONSTRUCTION: ${visualDetails.hardwareDetails}
-PROPORTIONS: ${visualDetails.proportionalRelationships}
-
-PHOTOGRAPHY CONSTRAINTS:
-- Camera: ${photographySpecs.cameraAngle}
-- Lighting: ${photographySpecs.lightingSetup}
-- Focus: ${photographySpecs.depthOfField}
-- Composition: ${photographySpecs.composition}
-
-CONTEXT REQUIREMENTS:
-- Background: ${uiSettings.backgroundStyle}
-- Position: ${uiSettings.productPosition}
-- Lighting: ${uiSettings.lighting?.replace('_', ' ')}
-- Quality: Professional commercial standard`;
-
-  // Add context-specific constraints
-  switch (contextPreset) {
-    case 'packshot':
-      prompt += `\n\nPACKSHOT CONSTRAINTS:
-- Clean background, no distractions
-- Studio lighting, sharp detail
-- Product as focal point
-- E-commerce catalog quality`;
-      break;
-      
-    case 'lifestyle':
-      prompt += `\n\nLIFESTYLE CONSTRAINTS:
-- Authentic home environment
-- Natural lighting, lived-in feel
-- Product integrated organically
-- Emotional connection`;
-      break;
-      
-    case 'hero':
-      prompt += `\n\nHERO CONSTRAINTS:
-- Bold dramatic composition
-- High-end marketing quality
-- Visual impact, premium feel
-- Space for text overlay`;
-      break;
-      
-    case 'story':
-      prompt += `\n\nSTORY CONSTRAINTS:
-- Vertical mobile-optimized
-- Eye-catching, vibrant
-- Product in upper section
-- Social media appeal`;
-      break;
-      
-    case 'instagram':
-      prompt += `\n\nINSTAGRAM CONSTRAINTS:
-- Square composition
-- Feed-optimized aesthetics
-- Thumb-stopping appeal
-- Contemporary trends`;
-      break;
-      
-    case 'detail':
-      prompt += `\n\nDETAIL CONSTRAINTS:
-- Extreme close-up focus
-- Material quality showcase
-- Craftsmanship emphasis
-- Technical documentation quality`;
-      break;
-  }
-
-  // Add quality standards
-  prompt += `\n\nQUALITY REQUIREMENTS:
-- Photorealistic rendering with accurate materials
-- Sharp detail and proper depth of field
-- Commercial photography standards
-- No artifacts, clean composition`;
-
-  return prompt.trim();
-}
-
-// Removed optimizeGptImagePrompt function - we're now using comprehensive prompts without length restrictions

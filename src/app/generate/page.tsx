@@ -424,7 +424,14 @@ Solution: ${errorData.solution}`;
 
   const downloadImage = async (imageUrl: string, filename: string) => {
     try {
-      const response = await fetch(imageUrl);
+      // Use proxy API to download image (BFL delivery URLs don't support CORS)
+      const proxyUrl = `/api/download-image?url=${encodeURIComponent(imageUrl)}&filename=${encodeURIComponent(filename)}`;
+      const response = await fetch(proxyUrl);
+      
+      if (!response.ok) {
+        throw new Error(`Download failed: ${response.status}`);
+      }
+      
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       
