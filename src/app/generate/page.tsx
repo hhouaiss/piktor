@@ -15,6 +15,12 @@ import {
   generateSlug,
   GenerationMethod
 } from "@/components/image-generator/types";
+import { 
+  validateBFLImageUrl, 
+  generateSafeFilename, 
+  getDownloadErrorMessage,
+  downloadWithRetry 
+} from "@/lib/download-utils";
 
 export default function GeneratePage() {
   const [state, setState] = useState<ImageGeneratorState>({
@@ -422,41 +428,177 @@ Solution: ${errorData.solution}`;
     }
   };
 
-  const downloadImage = async (imageUrl: string, filename: string) => {
-    try {
+  const [downloadingImages, setDownloadingImages] = useState<Set<string>>(new Set());
+  const [downloadErrors, setDownloadErrors] = useState<Record<string, string>>({});
+
+  const downloadImage = async (imageUrl: string, filename: string, imageId?: string) => {
+    const downloadId = imageId || imageUrl;
+    
+    // Pre-validate the URL
+    const validation = validateBFLImageUrl(imageUrl);
+    if (!validation.isValid) {
+      const errorMessage = `Invalid image URL: ${validation.issues.join(', ')}`;
+      console.error('[Client] URL validation failed:', validation);
+      setDownloadErrors(prev => ({
+        ...prev,
+        [downloadId]: errorMessage
+      }));
+      alert(`Download failed: ${errorMessage}`);
+      return;
+    }
+    
+    const downloadFn = async () => {
+      // Set downloading state
+      setDownloadingImages(prev => new Set([...prev, downloadId]));
+      setDownloadErrors(prev => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { [downloadId]: _, ...rest } = prev;
+        return rest;
+      });
+
+      console.log(`[Client] Starting download for: ${filename}`);
+      console.log(`[Client] Image URL: ${imageUrl}`);
+      console.log(`[Client] Validation passed for domain: ${validation.domain}`);
+      
       // Use proxy API to download image (BFL delivery URLs don't support CORS)
       const proxyUrl = `/api/download-image?url=${encodeURIComponent(imageUrl)}&filename=${encodeURIComponent(filename)}`;
       const response = await fetch(proxyUrl);
       
       if (!response.ok) {
-        throw new Error(`Download failed: ${response.status}`);
+        let errorMessage = `Download failed: HTTP ${response.status}`;
+        
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+          
+          if (errorData.details) {
+            errorMessage += ` - ${errorData.details}`;
+          }
+          
+          console.error('[Client] Download API error:', errorData);
+          
+          // Log additional debugging info
+          if (errorData.imageUrl) {
+            console.error('[Client] Failed URL:', errorData.imageUrl);
+          }
+          if (errorData.allowedDomains) {
+            console.error('[Client] Allowed domains:', errorData.allowedDomains);
+          }
+          if (errorData.bflError) {
+            console.error('[Client] BFL API error:', errorData.bflError);
+          }
+        } catch (jsonError) {
+          console.error('[Client] Could not parse error response:', jsonError);
+          errorMessage += ` (Status: ${response.status} ${response.statusText})`;
+        }
+        
+        throw new Error(errorMessage);
       }
       
       const blob = await response.blob();
+      
+      if (blob.size === 0) {
+        throw new Error('Downloaded file is empty');
+      }
+      
+      console.log(`[Client] Downloaded blob size: ${blob.size} bytes`);
+      
       const url = URL.createObjectURL(blob);
       
       const a = document.createElement('a');
       a.href = url;
       a.download = filename;
+      a.style.display = 'none';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+      
+      console.log(`[Client] Download completed successfully: ${filename}`);
+    };
+    
+    try {
+      await downloadWithRetry(downloadFn, 3, 1000);
     } catch (error) {
-      console.error('Download failed:', error);
+      const errorMessage = getDownloadErrorMessage(error);
+      console.error('[Client] Download failed after retries:', error);
+      console.error('[Client] Error details:', {
+        imageUrl,
+        filename,
+        downloadId,
+        error: errorMessage,
+        validation
+      });
+      
+      setDownloadErrors(prev => ({
+        ...prev,
+        [downloadId]: errorMessage
+      }));
+      
+      // Show user-friendly error notification
+      alert(`Download failed: ${errorMessage}`);
+      
+    } finally {
+      // Clear downloading state
+      setDownloadingImages(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(downloadId);
+        return newSet;
+      });
     }
   };
 
+  const [downloadingAll, setDownloadingAll] = useState(false);
+
   const downloadAll = async () => {
-    if (!state.productConfiguration) return;
+    if (!state.productConfiguration || state.generatedImages.length === 0) {
+      alert('No images to download');
+      return;
+    }
     
-    for (const image of state.generatedImages) {
-      const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
-      const productName = state.productConfiguration.productImages.productName.replace(/[^a-z0-9]/gi, '-').toLowerCase();
-      const filename = `piktor-${productName}-${state.productConfiguration.uiSettings.contextPreset}-${timestamp}.png`;
+    setDownloadingAll(true);
+    let successCount = 0;
+    let failureCount = 0;
+    
+    try {
+      console.log(`[Client] Starting bulk download of ${state.generatedImages.length} images`);
       
-      await downloadImage(image.url, filename);
-      await new Promise(resolve => setTimeout(resolve, 100));
+      for (let i = 0; i < state.generatedImages.length; i++) {
+        const image = state.generatedImages[i];
+        const filename = generateSafeFilename(
+          state.productConfiguration.productImages.productName,
+          state.productConfiguration.uiSettings.contextPreset,
+          i + 1,
+          'jpg'
+        );
+        
+        try {
+          await downloadImage(image.url, filename, `bulk_${image.id}`);
+          successCount++;
+          console.log(`[Client] Bulk download progress: ${successCount}/${state.generatedImages.length}`);
+        } catch (error) {
+          failureCount++;
+          console.error(`[Client] Failed to download image ${i + 1}:`, error);
+        }
+        
+        // Add delay between downloads to prevent overwhelming the server
+        if (i < state.generatedImages.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+      
+      // Show completion status
+      if (failureCount === 0) {
+        alert(`Successfully downloaded all ${successCount} images!`);
+      } else {
+        alert(`Download completed: ${successCount} successful, ${failureCount} failed`);
+      }
+      
+    } catch (error) {
+      console.error('[Client] Bulk download error:', error);
+      alert(`Bulk download failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setDownloadingAll(false);
     }
   };
 
@@ -523,8 +665,11 @@ Solution: ${errorData.solution}`;
                  setGenerationApproach(prev => prev === 'reference' ? 'text' : 'reference');
                }}
               onRegenerate={regenerateImage}
-              onDownload={downloadImage}
+              onDownload={(imageUrl, filename, imageId) => downloadImage(imageUrl, filename, imageId)}
               onDownloadAll={downloadAll}
+              downloadingImages={downloadingImages}
+              downloadErrors={downloadErrors}
+              downloadingAll={downloadingAll}
               isActive={state.currentStep === 4}
             />
           )}

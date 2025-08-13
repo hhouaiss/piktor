@@ -1,4 +1,7 @@
 import { ProductProfile, UiSettings, ContextPreset, TextToImagePrompts, getFieldValue } from '@/lib/types';
+import { buildFurniturePrompt } from './prompt-templates';
+import { buildConstraintEnforcement } from './constraint-enforcement';
+import { getFurnitureTypeDescription, buildMaterialSpecification } from './furniture-vocabulary';
 
 // OpenAI GPT-4 image generation prompt limit
 const OPENAI_PROMPT_LIMIT = 1000;
@@ -31,103 +34,144 @@ export function buildPrompt(
       typeof profile.textToImagePrompts === 'object' && 
       'baseDescription' in profile.textToImagePrompts) {
     
-    // Use the rich prompts from GPT-4o analysis
-    return buildGptImagePrompt(profile.textToImagePrompts, contextPreset, settings);
+    // Use the enhanced furniture-industry prompt system
+    return buildEnhancedFurniturePrompt(profile, settings, contextPreset);
   }
   
-  // Fallback to legacy prompt building for backward compatibility
-  const result = buildOptimizedPrompt(profile, settings, contextPreset);
-  return result.prompt;
+  // Use new centralized furniture prompt system for legacy data
+  return buildFurniturePrompt(profile, settings, contextPreset);
 }
 
-// New function to build prompts using GPT-4o enhanced analysis
+// Enhanced furniture-industry prompt builder using GPT-4o analysis data
+export function buildEnhancedFurniturePrompt(
+  profile: ProductProfile,
+  settings: UiSettings,
+  contextPreset: ContextPreset
+): string {
+  const textPrompts = profile.textToImagePrompts!;
+  return buildGptImagePrompt(textPrompts, contextPreset, settings, profile);
+}
+
+// Enhanced GPT image prompt builder with furniture industry focus and systematic constraint enforcement
 export function buildGptImagePrompt(
   textPrompts: TextToImagePrompts,
   contextPreset: ContextPreset,
-  settings: UiSettings
+  settings: UiSettings,
+  profile?: ProductProfile
 ): string {
-  const baseDescription = textPrompts.baseDescription || "Professional product image";
-  const contextPrompt = textPrompts[contextPreset] || textPrompts.packshot || "Clean product shot";
+  // Enhanced furniture industry base description with technical details
+  const baseDescription = textPrompts.baseDescription || "Professional commercial furniture photography meeting enterprise catalog standards";
+  const contextPrompt = textPrompts[contextPreset] || textPrompts.packshot || "Clean commercial furniture packshot with professional studio lighting";
   const photographySpecs = textPrompts.photographySpecs || {};
   const visualDetails = textPrompts.visualDetails || {};
 
-  // Build comprehensive prompt for GPT-image-1
-  let prompt = `${contextPrompt}
+  // Determine furniture category for specialized handling
+  const furnitureType = profile ? getFurnitureTypeDescription(String(getFieldValue(profile.type) || 'furniture')) : 'commercial_grade_furniture';
+  
+  // Build comprehensive enterprise furniture industry prompt
+  let prompt = `🏢 ENTERPRISE FURNITURE PHOTOGRAPHY SPECIFICATION:
+${contextPrompt}
 
-PRODUCT DETAILS:
+📋 COMMERCIAL FURNITURE TECHNICAL REQUIREMENTS:
 ${baseDescription}
 
-VISUAL SPECIFICATIONS:
-- Materials: ${visualDetails.materialTextures || 'High-quality materials'}
-- Colors: ${visualDetails.colorPalette || 'Accurate product colors'}  
-- Hardware: ${visualDetails.hardwareDetails || 'Detailed hardware elements'}
-- Proportions: ${visualDetails.proportionalRelationships || 'Correct product proportions'}
+🔧 ADVANCED MATERIAL & CONSTRUCTION SPECIFICATIONS:
+- Primary Materials & Construction: ${visualDetails.materialTextures || 'Commercial-grade furniture materials with authentic surface textures, grain patterns, and finish characteristics meeting furniture industry standards'}
+- Color Precision & Fidelity: ${visualDetails.colorPalette || 'Precise color reproduction with accurate undertones, highlights, and material-specific reflectance properties matching commercial furniture specifications'}  
+- Hardware & Mechanical Components: ${visualDetails.hardwareDetails || 'Professional furniture hardware with commercial-grade specifications, proper joint construction, and mechanism visibility appropriate for enterprise furniture'}
+- Dimensional & Proportional Accuracy: ${visualDetails.proportionalRelationships || 'Industry-standard furniture proportions and scaling meeting commercial furniture dimensional requirements with authentic size relationships'}
 
-PHOTOGRAPHY SPECIFICATIONS:
-- Camera Angle: ${photographySpecs.cameraAngle || 'Professional three-quarter view'}
-- Lighting: ${photographySpecs.lightingSetup || 'Professional studio lighting'}
-- Depth of Field: ${photographySpecs.depthOfField || 'Product in sharp focus'}
-- Composition: ${photographySpecs.composition || 'Balanced professional composition'}
+📸 PROFESSIONAL COMMERCIAL PHOTOGRAPHY SPECIFICATIONS:
+- Camera Position & Perspective: ${photographySpecs.cameraAngle || 'Professional three-quarter view angle with optimal furniture detail visibility and human-scale perspective reference'}
+- Advanced Lighting Configuration: ${photographySpecs.lightingSetup || 'Commercial furniture photography lighting setup with three-point lighting, 5600K color temperature, and professional shadow control'}
+- Optical Focus Requirements: ${photographySpecs.depthOfField || 'Sharp product focus throughout with f/8 aperture for optimal depth coverage and material detail clarity'}
+- Professional Composition Standards: ${photographySpecs.composition || 'Professional furniture catalog composition following commercial photography principles with proper negative space and visual hierarchy'}
 
-CONTEXT SETTINGS:
-- Background: ${settings.backgroundStyle || 'neutral'}
-- Product Position: ${settings.productPosition || 'center'}
-- Lighting Style: ${settings.lighting?.replace('_', ' ') || 'soft daylight'}`;
+⚙️ CLIENT-SPECIFIC CONFIGURATION SETTINGS:
+- Background Treatment: ${settings.backgroundStyle || 'professional neutral backdrop'} - enterprise furniture presentation standards with appropriate lighting treatment
+- Product Positioning Strategy: ${settings.productPosition || 'centered'} placement with optimal viewing angle for furniture category: ${furnitureType}
+- Lighting Style Preference: ${settings.lighting?.replace('_', ' ') || 'soft commercial lighting'} specifically optimized for furniture photography and material enhancement`;
 
-  // Add context-specific requirements
+  // Add enhanced furniture industry context-specific requirements with systematic constraint enforcement
   switch (contextPreset) {
     case 'packshot':
-      prompt += `\n\nPACKSHOT REQUIREMENTS:
-- Clean, minimal background
-- Studio lighting setup
-- Product as primary focus
-- Commercial photography quality
-- No distracting elements`;
+      prompt += `\n\n🎯 ENTERPRISE COMMERCIAL PACKSHOT REQUIREMENTS:
+- Seamless white cyc studio backdrop meeting furniture catalog industry standards with professional gradient lighting
+- Three-point commercial lighting setup: 5600K daylight balanced strobes with key light 45-degree placement, fill light 1:3 ratio, rim light for edge separation
+- Furniture product as exclusive visual focus with zero competing elements or distractions
+- Enterprise furniture catalog photography quality suitable for large format printing and commercial marketing
+- Absolute prohibition of environmental elements, props, or visual distractions not specifically approved
+- Professional product isolation optimized for marketing material integration and text overlay capability
+- Commercial furniture industry color accuracy and material fidelity standards enforcement`;
       break;
       
     case 'lifestyle':
-      prompt += `\n\nLIFESTYLE REQUIREMENTS:
-- Realistic home environment
-- Natural lighting conditions
-- Contextual scene elements
-- Lived-in atmosphere
-- Product integrated naturally`;
+      prompt += `\n\n🏠 ENTERPRISE FURNITURE LIFESTYLE ENVIRONMENT REQUIREMENTS:
+- Authentic commercial office or upscale residential interior environment appropriate for furniture category and target market
+- Natural ambient lighting balanced with architectural context: 5000K-5500K daylight with soft directional quality
+- Contextual furniture arrangement showing realistic spatial relationships and usage scenarios
+- Professionally styled interior design atmosphere following current commercial design trends
+- Furniture naturally integrated within realistic setting demonstrating authentic usage and spatial context
+- Commercial interior design aesthetic standards with supporting elements that enhance product story
+- Environmental context that elevates furniture appeal while maintaining clear product focus and commercial presentation quality`;
       break;
       
     case 'hero':
-      prompt += `\n\nHERO BANNER REQUIREMENTS:
-- Dramatic composition
-- Professional lighting
-- Visual impact suitable for website headers
-- Space for text overlay consideration
-- High-end commercial appeal`;
+      prompt += `\n\n🌟 ENTERPRISE FURNITURE HERO BANNER REQUIREMENTS:
+- Dramatic architectural composition optimized for website header placement with 16:9 or wider aspect ratio
+- Professional commercial lighting creating strong visual impact while preserving material detail and authenticity
+- Furniture prominently featured for premium brand representation with luxury commercial appeal
+- Strategic negative space reserved for text overlay integration in specified zones without compromising product visibility
+- High-end furniture brand commercial appeal meeting luxury market presentation standards
+- Banner-ready composition following web design best practices with clear visual hierarchy
+- Professional color grading and tonal balance supporting premium brand aesthetic and marketing objectives`;
       break;
       
     case 'story':
-      prompt += `\n\nSTORY FORMAT REQUIREMENTS:
-- Vertical mobile-optimized composition
-- Eye-catching visual appeal
-- Product prominently displayed
-- Social media friendly
-- Thumb-stopping quality`;
+      prompt += `\n\n📱 MOBILE STORY FORMAT FURNITURE REQUIREMENTS:
+- Vertical 9:16 mobile-optimized furniture composition designed for Instagram/Facebook story formats
+- Eye-catching furniture presentation optimized for mobile viewing and social media engagement
+- Product prominently displayed within vertical mobile frame with thumb-stopping visual appeal
+- Social media furniture marketing optimization with mobile-first viewing considerations
+- Clean, uncluttered vertical composition maintaining professional furniture brand standards
+- Quick visual impact design suitable for story format consumption patterns and mobile user behavior`;
       break;
       
     case 'instagram':
-      prompt += `\n\nINSTAGRAM POST REQUIREMENTS:
-- Square composition optimized for feeds
-- Social media engagement appeal
-- Balanced lighting for mobile screens
-- Professional yet approachable aesthetic`;
+      prompt += `\n\n📷 ENTERPRISE FURNITURE INSTAGRAM REQUIREMENTS:
+- Square 1:1 composition specifically optimized for Instagram feed furniture showcase and social media engagement
+- Social media furniture engagement appeal balanced with professional brand consistency
+- Mobile-optimized lighting ensuring furniture visibility across various mobile device screens and viewing conditions
+- Professional furniture brand aesthetic maintaining commercial quality while achieving social media appeal
+- Instagram furniture content standards meeting platform optimization while preserving enterprise furniture presentation quality
+- Brand-consistent visual identity supporting social media marketing objectives and furniture brand positioning`;
+      break;
+      
+    case 'detail':
+      prompt += `\n\n🔍 ENTERPRISE FURNITURE DETAIL CRAFTSMANSHIP REQUIREMENTS:
+- Macro-level furniture craftsmanship photography showcasing commercial construction quality and material authenticity
+- Close-up material texture and construction detail emphasis revealing furniture quality indicators
+- Furniture workmanship showcase highlighting enterprise-grade construction methods and quality standards
+- Professional furniture detail photography standards with macro lens clarity and material texture definition
+- Material authenticity and construction clarity demonstrating commercial furniture manufacturing excellence
+- Quality indicator emphasis showing construction details, joinery, hardware, and finish quality appropriate for enterprise furniture catalogs`;
       break;
   }
 
-  // Add quality constraints
-  prompt += `\n\nQUALITY REQUIREMENTS:
-- Photorealistic rendering
-- High detail and clarity
-- Professional commercial photography quality
-- Accurate product representation
-- No text, labels, or watermarks in image`;
+  // Add enhanced furniture industry constraints
+  if (profile) {
+    prompt += buildConstraintEnforcement(profile, settings, contextPreset);
+  } else {
+    // Fallback furniture quality requirements
+    prompt += `\n\n🎯 FURNITURE INDUSTRY QUALITY STANDARDS:
+- Photorealistic commercial furniture rendering
+- High-resolution detail with material clarity
+- Enterprise furniture photography quality
+- Accurate furniture product representation
+- Professional furniture catalog standards
+- No text, labels, model numbers, or watermarks
+- Commercial furniture brand presentation quality`;
+  }
 
   return prompt.trim();
 }
@@ -191,44 +235,53 @@ ${negativePrompt}`.trim();
 }
 
 function getBasePrompt(contextPreset: ContextPreset): string {
-  const contextDescriptions = {
-    packshot: 'professional product packshot',
-    instagram: 'Instagram-ready product post',
-    story: 'Instagram/Facebook story format product image',
-    hero: 'website hero banner product image',
-    lifestyle: 'lifestyle product image in realistic home setting',
-    detail: 'detailed close-up product shot'
+  const furnitureContextDescriptions = {
+    packshot: 'professional commercial furniture packshot',
+    instagram: 'Instagram-ready furniture showcase post',
+    story: 'Instagram/Facebook story format furniture presentation',
+    hero: 'website hero banner furniture showcase',
+    lifestyle: 'lifestyle furniture image in realistic interior setting',
+    detail: 'detailed close-up furniture craftsmanship shot'
   };
   
-  return `Create a high-quality ${contextDescriptions[contextPreset]} using the uploaded reference image as the foundation. The result should be a commercial-grade product visualization that maintains exact product fidelity while enhancing the presentation.`;
+  return `Create a high-quality ${furnitureContextDescriptions[contextPreset]} using professional furniture photography standards. The result should be enterprise-grade furniture visualization that maintains exact product fidelity while meeting commercial furniture industry presentation requirements.`;
 }
 
 function buildProductDescription(profile: ProductProfile): string {
   const featuresValue = getFieldValue(profile.features);
-  const features = Array.isArray(featuresValue) && featuresValue.length > 0
-    ? `Features: ${featuresValue.join(', ')}.` 
+  const furnitureFeatures = Array.isArray(featuresValue) && featuresValue.length > 0
+    ? `Commercial Features: ${featuresValue.map(f => `professional ${f}`).join(', ')}.` 
     : '';
+  
+  // Enhanced furniture type description
+  const furnitureType = getFurnitureTypeDescription(String(getFieldValue(profile.type) || 'furniture'));
+  
+  // Enhanced material specification
+  const materialsValue = getFieldValue(profile.materials);
+  const furnitureMaterials = materialsValue ? 
+    buildMaterialSpecification(Array.isArray(materialsValue) ? materialsValue : [String(materialsValue)]) :
+    'commercial-grade furniture materials';
   
   // Use color override if available, otherwise use detected color
   const effectiveColor = profile.colorOverride || getFieldValue(profile.detectedColor);
   
   const wallMountedNote = getFieldValue(profile.wallMounted)
-    ? 'IMPORTANT: This is a wall-mounted product - keep it attached to the wall; no floor contact.'
+    ? buildWallMountedNote(profile)
     : '';
 
   const dimensionsNote = profile.realDimensions && 
     (profile.realDimensions.width || profile.realDimensions.height || profile.realDimensions.depth)
-    ? `Real dimensions: ${profile.realDimensions.width}cm W × ${profile.realDimensions.height}cm H × ${profile.realDimensions.depth}cm D.`
+    ? `Commercial Dimensions: ${profile.realDimensions.width}cm W × ${profile.realDimensions.height}cm H × ${profile.realDimensions.depth}cm D (industry standard proportions).`
     : '';
 
-  const additionalNotes = profile.notes ? `Additional context: ${profile.notes}` : '';
+  const additionalNotes = profile.notes ? `Enterprise Context: ${profile.notes}` : '';
 
-  return `PRODUCT SPECIFICATIONS:
-- Type: ${getFieldValue(profile.type)}
-- Materials: ${getFieldValue(profile.materials)}
-- Color: ${effectiveColor}
-- Style: ${getFieldValue(profile.style)}
-${features}
+  return `🏢 COMMERCIAL FURNITURE SPECIFICATIONS:
+- Furniture Type: ${furnitureType}
+- Construction Materials: ${furnitureMaterials}
+- Color Specification: ${effectiveColor} (with accurate material undertones)
+- Design Style: ${getFieldValue(profile.style)} commercial aesthetic
+${furnitureFeatures}
 ${dimensionsNote}
 ${wallMountedNote}
 ${additionalNotes}`.trim();
@@ -256,74 +309,59 @@ ${propsInstruction}
 }
 
 function buildConstraintsBlock(settings: UiSettings, profile: ProductProfile): string {
-  const constraints = [
-    'PRODUCT FIDELITY: Maintain exact product shape, proportions, materials, and color from reference.',
-    'PHOTOREALISTIC: Achieve commercial photography quality suitable for e-commerce.',
-  ];
-
-  if (settings.strictMode) {
-    constraints.push('NO TEXT: Absolutely no text, labels, numbers, watermarks, logos, or UI elements.');
-    constraints.push('NO EXTRA OBJECTS: Do not add furniture or products not specifically listed in props.');
-    
-    if (getFieldValue(profile.wallMounted)) {
-      constraints.push('WALL-MOUNTED: Product must remain attached to wall - never place on floor or furniture.');
-    }
-    
-    constraints.push('COMMERCIAL QUALITY: Clean, professional look suitable for premium e-commerce.');
-  }
-
-  // Add color override constraint if applicable
-  if (profile.colorOverride && profile.colorOverride !== getFieldValue(profile.detectedColor)) {
-    constraints.push(`COLOR OVERRIDE: Use color ${profile.colorOverride} instead of detected color - preserve exact geometry but change color only.`);
-  }
-
-  return `CONSTRAINTS (STRICT ADHERENCE REQUIRED):
-${constraints.map(c => `- ${c}`).join('\n')}`;
+  // Use the new comprehensive constraint enforcement system
+  return buildConstraintEnforcement(profile, settings, settings.contextPreset);
 }
 
 function getContextSpecificInstructions(contextPreset: ContextPreset, settings: UiSettings): string {
   switch (contextPreset) {
     case 'hero':
-      return `HERO BANNER REQUIREMENTS:
+      return `🌟 FURNITURE HERO BANNER REQUIREMENTS:
 - Ensure visual balance and negative space for text overlay placement
-- Leave breathing room ${settings.reservedTextZone ? `on the ${settings.reservedTextZone} side` : 'opposite the product position'}
-- High-impact composition that works as a website header
-- Do not render any text in the image - text will be added later by the website`;
+- Leave breathing room ${settings.reservedTextZone ? `on the ${settings.reservedTextZone} side` : 'opposite the furniture positioning'}
+- High-impact furniture composition suitable for commercial website headers
+- Professional furniture brand presentation - no text in image (added by website)
+- Commercial furniture hero banner standards`;
       
     case 'story':
-      return `STORY FORMAT REQUIREMENTS:
-- Vertical composition optimized for mobile viewing
-- Product should be well-centered and prominent
-- Consider how this will appear in a mobile story format
-- Clean, thumb-stopping visual appeal`;
+      return `📱 FURNITURE STORY FORMAT REQUIREMENTS:
+- Vertical composition optimized for mobile furniture showcase
+- Furniture should be prominently centered and featured
+- Mobile story format considerations for furniture visibility
+- Clean, thumb-stopping furniture visual appeal
+- Social media furniture content standards`;
       
     case 'packshot':
-      return `PACKSHOT REQUIREMENTS:
-- Clean, neutral presentation focusing entirely on the product
-- Minimal distractions - product is the hero
-- Suitable for catalog and product listing pages
-- Professional studio-quality lighting and composition`;
+      return `🎯 COMMERCIAL FURNITURE PACKSHOT REQUIREMENTS:
+- Clean, neutral presentation focusing entirely on furniture product
+- Minimal distractions - furniture as exclusive focus
+- Suitable for furniture catalogs and commercial product listings
+- Professional studio-quality lighting for furniture photography
+- Enterprise furniture packshot standards`;
       
     case 'instagram':
-      return `INSTAGRAM POST REQUIREMENTS:
-- Engaging, social-media ready composition
-- Consider how this will appear in Instagram feeds
-- Balanced lighting that looks great on mobile screens
-- Professional yet approachable aesthetic`;
+      return `📷 FURNITURE INSTAGRAM REQUIREMENTS:
+- Engaging, social-media ready furniture composition
+- Consider furniture visibility in Instagram feed context
+- Balanced lighting optimized for furniture on mobile screens
+- Professional yet approachable furniture aesthetic
+- Commercial furniture brand social media standards`;
       
     case 'lifestyle':
-      return `LIFESTYLE REQUIREMENTS:
-- Product shown in realistic home environment
-- Natural lighting and contextual elements
-- Lived-in atmosphere with complementary props
-- Product integrated naturally into the scene`;
+      return `🏠 FURNITURE LIFESTYLE REQUIREMENTS:
+- Furniture shown in realistic commercial or residential environment
+- Natural lighting with architectural context for furniture
+- Lived-in atmosphere with complementary interior elements
+- Furniture naturally integrated within professional interior scene
+- Commercial furniture environmental showcase standards`;
       
     case 'detail':
-      return `DETAIL SHOT REQUIREMENTS:
-- Close-up focus on product features and craftsmanship
-- High detail and clarity of materials and construction
-- Suitable for showcasing quality and workmanship
-- Minimal background distractions`;
+      return `🔍 FURNITURE DETAIL REQUIREMENTS:
+- Close-up focus on furniture craftsmanship and construction quality
+- High detail clarity of materials, joinery, and hardware
+- Showcase furniture quality indicators and workmanship
+- Professional furniture detail photography standards
+- Commercial furniture construction detail emphasis`;
       
     default:
       return '';
@@ -331,7 +369,8 @@ function getContextSpecificInstructions(contextPreset: ContextPreset, settings: 
 }
 
 function getNegativePrompt(): string {
-  return `AVOID AT ALL COSTS: text overlays, captions, logos, stickers, price tags, annotations, extra furniture not listed in props, floor contact for wall-mounted items, unrealistic reflections, heavy noise, over-saturation, cartoonish appearance, duplicate products, cluttered composition.`;
+  return `🚫 FURNITURE PHOTOGRAPHY PROHIBITIONS (AVOID AT ALL COSTS): 
+text overlays, captions, logos, stickers, price tags, model numbers, annotations, extra furniture not listed in approved props, floor contact for wall-mounted furniture, unrealistic reflections, heavy noise, over-saturation, cartoonish appearance, duplicate furniture pieces, cluttered composition, consumer-grade photography aesthetics, amateur furniture staging, non-commercial presentation quality.`;
 }
 
 export function getImageSize(contextPreset: ContextPreset): "1024x1024" | "1024x1536" | "1536x1024" {
@@ -533,4 +572,14 @@ function applyProgressiveOptimization(prompt: string, targetLength: number): str
 function truncateText(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text;
   return text.substring(0, maxLength - 3) + '...';
+}
+
+function buildWallMountedNote(profile: ProductProfile): string {
+  const productType = String(getFieldValue(profile.type) || '').toLowerCase();
+  
+  if (productType.includes('desk') || productType.includes('workstation')) {
+    return 'CRITICAL WALL-MOUNTED DESK REQUIREMENT: This desk MUST be wall-mounted at exactly 75cm (29.5 inches) from floor to desktop surface - never show floor contact, legs, or free-standing placement. Show heavy-duty mounting brackets and clear space underneath. The desk must appear suspended at standard ergonomic working height.';
+  }
+  
+  return 'CRITICAL WALL-MOUNTED REQUIREMENT: This furniture piece MUST remain securely wall-mounted - never show floor contact or free-standing placement. Maintain proper commercial wall-mounting system visibility.';
 }

@@ -11,6 +11,7 @@ import { Sparkles, Download, RefreshCw, Loader2, AlertCircle, CheckCircle, Eye, 
 import { ProductConfiguration, GeneratedImage, getFieldValue } from "./types";
 // Removed buildOptimizedPrompt import - using comprehensive prompts without optimization
 import { cn } from "@/lib/utils";
+import { generateSafeFilename } from "@/lib/download-utils";
 
 interface StepGenerateProps {
   productConfiguration: ProductConfiguration | null;
@@ -25,8 +26,11 @@ interface StepGenerateProps {
   generationApproach: 'reference' | 'text';
   onGenerate: (useReferenceApproach?: boolean) => void;
   onRegenerate: (imageId: string) => void;
-  onDownload: (imageUrl: string, filename: string) => void;
+  onDownload: (imageUrl: string, filename: string, imageId?: string) => void;
   onDownloadAll: () => void;
+  downloadingImages?: Set<string>;
+  downloadErrors?: Record<string, string>;
+  downloadingAll?: boolean;
   isActive: boolean;
 }
 
@@ -41,6 +45,9 @@ export function StepGenerate({
   onRegenerate,
   onDownload,
   onDownloadAll,
+  downloadingImages = new Set(),
+  downloadErrors = {},
+  downloadingAll = false,
   isActive,
 }: StepGenerateProps) {
   const [selectedImage, setSelectedImage] = useState<GeneratedImage | null>(null);
@@ -55,18 +62,21 @@ export function StepGenerate({
   const totalExpectedImages = settings.variations;
   const hasGeneratedImages = generatedImages.length > 0;
 
-  const downloadImage = async (imageUrl: string, filename: string) => {
-    onDownload(imageUrl, filename);
+  const downloadImage = async (imageUrl: string, filename: string, imageId?: string) => {
+    onDownload(imageUrl, filename, imageId);
   };
 
   const regenerateImage = (imageId: string) => {
     onRegenerate(imageId);
   };
 
-  const getImageFilename = () => {
-    const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
-    const productName = productImages.productName.replace(/[^a-z0-9]/gi, '-').toLowerCase();
-    return `piktor-${productName}-${settings.contextPreset}-${timestamp}.png`;
+  const getImageFilename = (variation?: number) => {
+    return generateSafeFilename(
+      productImages.productName,
+      settings.contextPreset,
+      variation,
+      'jpg'
+    );
   };
 
   return (
@@ -221,9 +231,17 @@ export function StepGenerate({
                 Generated Images ({generatedImages.length})
               </h3>
               {generatedImages.length > 1 && (
-                <Button variant="outline" onClick={onDownloadAll}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Download All
+                <Button 
+                  variant="outline" 
+                  onClick={onDownloadAll}
+                  disabled={downloadingAll}
+                >
+                  {downloadingAll ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4 mr-2" />
+                  )}
+                  {downloadingAll ? 'Downloading...' : 'Download All'}
                 </Button>
               )}
             </div>
@@ -254,10 +272,15 @@ export function StepGenerate({
                         <Button
                           size="sm"
                           variant="secondary"
-                          onClick={() => downloadImage(image.url, getImageFilename())}
+                          onClick={() => downloadImage(image.url, getImageFilename(image.metadata.variation), image.id)}
+                          disabled={downloadingImages.has(image.id)}
                         >
-                          <Download className="h-3 w-3 mr-1" />
-                          Download
+                          {downloadingImages.has(image.id) ? (
+                            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                          ) : (
+                            <Download className="h-3 w-3 mr-1" />
+                          )}
+                          {downloadingImages.has(image.id) ? 'Downloading...' : 'Download'}
                         </Button>
                         <Button
                           size="sm"
@@ -285,10 +308,15 @@ export function StepGenerate({
                           size="sm"
                           variant="outline"
                           className="flex-1"
-                          onClick={() => downloadImage(image.url, getImageFilename())}
+                          onClick={() => downloadImage(image.url, getImageFilename(image.metadata.variation), image.id)}
+                          disabled={downloadingImages.has(image.id)}
                         >
-                          <Download className="h-3 w-3 mr-1" />
-                          Download
+                          {downloadingImages.has(image.id) ? (
+                            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                          ) : (
+                            <Download className="h-3 w-3 mr-1" />
+                          )}
+                          {downloadingImages.has(image.id) ? 'Downloading...' : 'Download'}
                         </Button>
                         <Button
                           size="sm"
@@ -302,6 +330,14 @@ export function StepGenerate({
                       <div className="text-xs text-muted-foreground">
                         <p>Quality: {image.metadata.quality}</p>
                         <p>Generated: {new Date(image.metadata.timestamp).toLocaleString()}</p>
+                        {downloadErrors[image.id] && (
+                          <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-red-700">
+                            <div className="flex items-start gap-1">
+                              <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                              <span className="text-xs">{downloadErrors[image.id]}</span>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -365,10 +401,15 @@ export function StepGenerate({
                 <div className="flex gap-2">
                   <Button
                     size="sm"
-                    onClick={() => downloadImage(selectedImage.url, getImageFilename())}
+                    onClick={() => downloadImage(selectedImage.url, getImageFilename(selectedImage.metadata.variation), selectedImage.id)}
+                    disabled={downloadingImages.has(selectedImage.id)}
                   >
-                    <Download className="h-3 w-3 mr-1" />
-                    Download
+                    {downloadingImages.has(selectedImage.id) ? (
+                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                    ) : (
+                      <Download className="h-3 w-3 mr-1" />
+                    )}
+                    {downloadingImages.has(selectedImage.id) ? 'Downloading...' : 'Download'}
                   </Button>
                   <Button
                     size="sm"

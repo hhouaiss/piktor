@@ -41,54 +41,87 @@ export async function POST(request: NextRequest) {
           content: [
             {
               type: "text",
-              text: `Analyze this furniture image and generate a JSON profile matching the structure below. This is a wall-mounted fold-down desk, so avoid describing any floor-based furniture. Do not invent or add unrelated elements. Focus only on the visible structure and material. Provide realistic outputs and constrain hallucinations. Do not add any text, labels, or written information in the image. Return ONLY a valid JSON object with this exact structure:
+              text: `🏢 ENTERPRISE FURNITURE ANALYSIS REQUEST: Analyze this commercial furniture image using professional furniture industry standards and terminology identical to analyze-product-profile endpoint. Generate a comprehensive JSON profile for enterprise furniture catalog integration.
+
+🎯 ANALYSIS OBJECTIVES:
+- Use precise furniture industry terminology from our centralized vocabulary system
+- Focus on commercial-grade construction details and enterprise specifications
+- Identify enterprise furniture materials with technical accuracy using standardized terms
+- Determine wall-mounting requirements with commercial installation specifications
+- Assess furniture for commercial environment suitability using industry classifications
+
+⚠️ CRITICAL CONSTRAINTS:
+- Do not invent elements not visible in the image
+- Use only professional furniture industry terminology from FURNITURE_CATEGORIES vocabulary
+- Focus exclusively on visible commercial furniture construction and materials
+- Provide realistic specifications matching commercial furniture industry standards
+- Avoid consumer-grade or residential furniture descriptions
+- No text, labels, or written information should be added to descriptions
+- Follow same analysis depth as analyze-product-profile endpoint for consistency
+
+🔍 REQUIRED ANALYSIS DEPTH (matching analyze-product-profile standards):
+- Materials: Specify exact material types using FURNITURE_MATERIALS terminology
+- Construction: Identify commercial-grade construction methods and quality indicators
+- Hardware: Detail visible hardware specifications using WALL_MOUNTING_TYPES if applicable
+- Dimensions: Provide realistic commercial furniture dimensional estimates
+- Features: Focus on functional features using FURNITURE_FEATURES classifications
+- Style: Use FURNITURE_STYLES classifications for design aesthetic
+- Color: Specify using COLOR_DESCRIPTIONS terminology
+
+Return ONLY a valid JSON object with this exact structure:`
+            },
+            {
+              type: "text",
+              text: `
 
 {
   "product": {
-    "type": "desk",
-    "name": "descriptive name based on style and material",
+    "type": "wall_mounted_fold_down_workstation",
+    "name": "descriptive name using commercial furniture terminology based on style and construction",
     "dimensions": [
       {
         "name": "width",
-        "value": "estimate number",
+        "value": "realistic estimate number",
         "unit": "cm"
       },
       {
         "name": "depth", 
-        "value": "estimate number",
+        "value": "realistic estimate number",
         "unit": "cm"
       },
       {
         "name": "height",
-        "value": "estimate number", 
+        "value": "realistic estimate number", 
         "unit": "cm"
       }
     ],
-    "material": "detailed material description",
-    "color": "hex color code of dominant wood/surface color",
-    "style": "style category (modern minimalist, industrial, etc.)",
+    "material": "detailed commercial furniture material specification using industry terminology",
+    "color": "hex color code of dominant surface color with material-appropriate characteristics",
+    "style": "commercial furniture style classification (contemporary_commercial, industrial_modern, etc.)",
     "features": [
       {
-        "name": "feature name if visible",
-        "description": "detailed description of the feature",
-        "location": "where the feature is located",
-        "visibility": "how visible/prominent the feature is"
+        "name": "commercial feature name using furniture industry terminology",
+        "description": "detailed description focusing on commercial functionality and construction quality",
+        "location": "precise location using furniture component terminology",
+        "visibility": "visibility assessment with commercial importance rating"
       }
     ]
   },
   "output": {
     "type": "packshot",
-    "prompt": "Generate a photorealistic packshot of the Supreme wall-mounted desk, fully open. Do not include any surrounding furniture or duplicated desks. Match the dimensions, materials, and design precisely. Show the desk against a neutral studio background with soft lighting.",
+    "prompt": "Generate a professional commercial furniture packshot of this wall-mounted fold-down workstation in fully deployed position. Use enterprise furniture catalog photography standards with studio lighting and seamless white backdrop. Match exact dimensions, commercial materials, and construction details precisely. No surrounding furniture, no floor contact, no duplicated products. Professional three-point lighting with material detail emphasis.",
     "aspect_ratio": "16:9",
     "resolution": "2048x1536",
-    "camera_angle": "front_center"
+    "camera_angle": "three_quarter_commercial_view"
   },
   "constraints": {
     "strict_mode": true,
+    "commercial_furniture_standards": true,
     "must_be_wall_mounted": true,
-    "no_furniture_on_floor": true,
-    "no_extra_objects": true,
-    "respect_all_dimensions": true
+    "no_floor_contact_ever": true,
+    "no_extra_furniture_objects": true,
+    "respect_all_commercial_dimensions": true,
+    "enterprise_catalog_quality": true
   }
 }
 
