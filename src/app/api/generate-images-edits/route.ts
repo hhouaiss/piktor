@@ -89,9 +89,23 @@ export async function POST(request: NextRequest) {
     // Generate JSON profile for direct inclusion in prompt
     const jsonProfile = generateStructuredJsonProfile(profile, settings, generationParams.contextPreset);
     
+    // Check for wall-mounted furniture and add critical constraints
+    const isWallMounted = profile.wallMounted;
+    const productType = String(profile.type || '').toLowerCase();
+    
+    // Build critical wall-mounting prefix if needed
+    let wallMountingPrefix = '';
+    if (isWallMounted) {
+      if (productType.includes('desk') || productType.includes('workstation')) {
+        wallMountingPrefix = `🚨 CRITICAL: Wall-mounted desk at exactly 75cm height with NO floor contact. `;
+      } else {
+        wallMountingPrefix = `🚨 CRITICAL: Wall-mounted furniture with NO floor contact whatsoever. `;
+      }
+    }
+    
     // Build the exact prompt structure from your working example
     const contextDescription = getContextDescription(generationParams.contextPreset);
-    const prompt = `Create a ${contextDescription} image for our ecommerce website of our main product in the images and follow strictly the instructions included in the json profile below: ${JSON.stringify(jsonProfile)}`;
+    const prompt = `${wallMountingPrefix}Create a ${contextDescription} image for our ecommerce website of our main product in the images and follow strictly the instructions included in the json profile below: ${JSON.stringify(jsonProfile)}`;
 
     console.log(`Prompt length: ${prompt.length} characters`);
     console.log(`JSON profile keys: ${Object.keys(jsonProfile).join(', ')}`);
@@ -337,7 +351,14 @@ function generateStructuredJsonProfile(profile: ProductProfile, settings: UiSett
       no_logos: settings.strictMode,
       maintain_product_fidelity: true,
       respect_aspect_ratio: true,
-      commercial_use: true
+      commercial_use: true,
+      // Wall-mounting specific constraints
+      wall_mounted_furniture_must_not_touch_floor: !!profile.wallMounted,
+      wall_mounted_desk_height_75cm_mandatory: !!profile.wallMounted && String(profile.type || '').toLowerCase().includes('desk'),
+      no_legs_or_supports_on_floor: !!profile.wallMounted,
+      visible_wall_mounting_hardware_required: !!profile.wallMounted,
+      floating_suspension_appearance_required: !!profile.wallMounted,
+      minimum_5cm_floor_clearance: !!profile.wallMounted
     }
   };
 
@@ -379,7 +400,8 @@ function getContextSpecificJsonRequirements(contextPreset: ContextPreset, settin
         lighting_requirement: "Even studio lighting with no harsh shadows",
         composition_requirement: "Product centered, fills appropriate portion of frame",
         focus_requirement: "Product in sharp focus throughout",
-        context: "E-commerce catalog presentation"
+        context: "E-commerce catalog presentation",
+        wall_mounting_requirement: "If wall-mounted: MUST show floating/suspended at correct height with visible mounting hardware and NO floor contact"
       };
       
     case 'lifestyle':

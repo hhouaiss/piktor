@@ -111,7 +111,19 @@ export async function POST(request: NextRequest) {
               },
               wallMounted: {
                 type: "boolean",
-                description: "Whether the product is designed to be wall-mounted"
+                description: "CRITICAL DETERMINATION: Whether the product is specifically designed to be wall-mounted (look for mounting hardware, brackets, cleats, absence of floor-touching supports, cantilever design, fold-down mechanisms, or floating mounting systems)"
+              },
+              wallMountingDetails: {
+                type: "object",
+                properties: {
+                  mountingSystemType: { type: "string", description: "Type of wall mounting system (cantilever_bracket, french_cleat, hidden_bracket, fold_down_mechanism, floating_system, etc.)" },
+                  standardHeight: { type: "string", description: "If desk/workstation: specify if designed for 75cm wall-mounting height" },
+                  hardwareVisible: { type: "boolean", description: "Whether mounting hardware or brackets are visible in the images" },
+                  loadCapacity: { type: "string", description: "Estimated load capacity category (light_duty, medium_duty, heavy_duty, commercial_grade)" }
+                },
+                required: ["mountingSystemType", "standardHeight", "hardwareVisible", "loadCapacity"],
+                additionalProperties: false,
+                description: "Detailed wall-mounting system analysis (only if wallMounted is true)"
               },
               features: {
                 type: "array",
@@ -259,7 +271,7 @@ export async function POST(request: NextRequest) {
                 additionalProperties: false
               }
             },
-            required: ["type", "materials", "primaryColor", "style", "wallMounted", "features", "dimensions", "contextRecommendations", "confidence", "notes", "textToImagePrompts"],
+            required: ["type", "materials", "primaryColor", "style", "wallMounted", "wallMountingDetails", "features", "dimensions", "contextRecommendations", "confidence", "notes", "textToImagePrompts"],
             additionalProperties: false
           }
         }
@@ -353,6 +365,15 @@ function buildAnalysisPrompt(imageCount: number): string {
 - Note variations in lighting, angles, and visible details across images
 - Combine information from ALL perspectives to create the most complete description possible
 - Pay special attention to details that are only visible in certain angles/lighting
+
+🚨 CRITICAL WALL-MOUNTING DETECTION PROTOCOL:
+- MANDATORY: Scan every image for mounting hardware (brackets, cleats, rails, hinges)
+- MANDATORY: Look for structural evidence of wall-mounting design (no floor supports, cantilever structure)
+- MANDATORY: Identify wall-attachment points, mounting plates, or bracket systems
+- MANDATORY: For desks/workstations: Determine if designed for standard 75cm wall-mounting height
+- CRITICAL: Distinguish between free-standing and wall-mounted based on structural design, not current positioning
+- CRITICAL: Note fold-down mechanisms, floating designs, or suspension systems
+- CRITICAL: If wall-mounted, analyze and document the mounting system type and hardware specifications
 
 🔍 ULTRA-DETAILED VISUAL ANALYSIS REQUIREMENTS:
 

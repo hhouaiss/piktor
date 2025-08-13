@@ -35,7 +35,7 @@ export const WALL_MOUNTED_CONSTRAINTS: ConstraintRule[] = [
     name: 'Wall-Mounted Safety Positioning',
     description: 'Product must remain securely attached to wall with no floor contact whatsoever',
     severity: ConstraintSeverity.CRITICAL,
-    enforcement: '🚨 CRITICAL WALL-MOUNTED SAFETY REQUIREMENT: This furniture piece MUST remain securely attached to the wall at all times. ABSOLUTE PROHIBITION: No floor contact, no legs touching ground, no free-standing placement, no detached positioning, no support from floor or other furniture. The product must appear properly wall-mounted with minimum 2-inch clearance from floor surface. Wall attachment points must be visible and structurally appropriate. This is a SAFETY-CRITICAL requirement that cannot be violated.',
+    enforcement: '🚨🚨🚨 CRITICAL WALL-MOUNTED SAFETY REQUIREMENT - MANDATORY COMPLIANCE: This furniture piece MUST remain securely attached to the wall at all times. ABSOLUTE ZERO-TOLERANCE PROHIBITION: No floor contact whatsoever, no legs touching ground, no free-standing placement, no detached positioning, no support from floor or other furniture, no base touching floor, no feet on ground, no floor-based stability. The product must appear properly wall-mounted with minimum 5cm clearance from floor surface. Wall attachment points must be clearly visible and structurally appropriate. This is a SAFETY-CRITICAL requirement that CANNOT be violated under any circumstances. VIOLATION OF THIS CONSTRAINT RESULTS IN COMPLETE GENERATION FAILURE.',
     validation: (profile) => !!getFieldValue(profile.wallMounted)
   },
   {
@@ -43,7 +43,7 @@ export const WALL_MOUNTED_CONSTRAINTS: ConstraintRule[] = [
     name: 'Wall-Mounted Desk Standard Height Positioning',
     description: 'Wall-mounted desks must be positioned at exactly 75cm from floor to desktop surface',
     severity: ConstraintSeverity.CRITICAL,
-    enforcement: '🏢 CRITICAL DESK HEIGHT REQUIREMENT: Wall-mounted desks MUST be positioned at exactly 75cm (29.5 inches) from the floor to the desktop surface. This is the ergonomic standard height for wall-mounted workspace furniture. The desk must appear suspended at this precise height with visible heavy-duty mounting hardware. Show clear space underneath the desk extending from floor to 75cm height. The mounting system must be appropriate for desk loads and visible in the photography. No legs, supports, or floor contact permitted - desk must appear to "float" at the standard 75cm working height.',
+    enforcement: '🏢🚨 CRITICAL DESK HEIGHT REQUIREMENT - ABSOLUTE MANDATE: Wall-mounted desks MUST be positioned at exactly 75cm (29.5 inches) from the floor to the desktop surface. This is the NON-NEGOTIABLE ergonomic standard height for wall-mounted workspace furniture. The desk MUST appear suspended at this precise height with visible heavy-duty mounting hardware. Show clear open space underneath the desk extending from floor to 75cm height. The mounting system must be appropriate for desk loads and clearly visible in the photography. ABSOLUTE PROHIBITION: No legs, supports, pedestals, or floor contact permitted - desk MUST appear to "float" at the standard 75cm working height. Any deviation from this specification constitutes COMPLETE FAILURE.',
     validation: (profile) => !!getFieldValue(profile.wallMounted) && String(getFieldValue(profile.type) || '').toLowerCase().includes('desk')
   },
   {
@@ -60,6 +60,22 @@ export const WALL_MOUNTED_CONSTRAINTS: ConstraintRule[] = [
     description: 'Exact spacing requirements between product and wall surface for proper installation',
     severity: ConstraintSeverity.HIGH,
     enforcement: '📐 INSTALLATION CLEARANCE REQUIREMENT: Maintain precise clearance specifications between furniture piece and wall surface. For wall-mounted desks: 75cm clearance from floor to desktop surface, 5-10cm mounting depth from wall, cable management space behind desk. For shelves: minimum 2-inch clearance from floor, appropriate mounting depth (1-3 inches). For cabinets: proper spacing for doors/drawers (2-4 inches from wall). Clearance must allow for realistic installation accessibility and proper furniture functionality.',
+    validation: (profile) => !!getFieldValue(profile.wallMounted)
+  },
+  {
+    id: 'absolute_floor_contact_prohibition',
+    name: 'Absolute Floor Contact Prohibition',
+    description: 'Zero tolerance for any part of wall-mounted furniture touching the floor',
+    severity: ConstraintSeverity.CRITICAL,
+    enforcement: '🚫🚫🚫 ABSOLUTE FLOOR CONTACT PROHIBITION - ZERO TOLERANCE: NO PART of this wall-mounted furniture may touch, contact, rest on, or be supported by the floor. MANDATORY CLEARANCE: Minimum 5cm visible gap between lowest point of furniture and floor surface. PROHIBITED ELEMENTS: Legs, feet, bases, supports, pedestals, stands, floor contact points of any kind. REQUIRED APPEARANCE: Furniture must appear to float or be suspended from wall mounting system. Any visible floor contact constitutes IMMEDIATE AND COMPLETE FAILURE.',
+    validation: (profile) => !!getFieldValue(profile.wallMounted)
+  },
+  {
+    id: 'wall_suspension_visual_verification',
+    name: 'Wall Suspension Visual Verification',
+    description: 'Furniture must visually appear suspended from wall mounting system',
+    severity: ConstraintSeverity.CRITICAL,
+    enforcement: '🎯🔗 WALL SUSPENSION VERIFICATION REQUIREMENT: The furniture MUST visually demonstrate clear suspension from the wall mounting system. MANDATORY VISUAL ELEMENTS: Visible mounting hardware, clear space beneath furniture, wall attachment points, floating appearance. PROHIBITED VISUAL ELEMENTS: Any suggestion of floor support, ground contact, or free-standing stability. The viewer must clearly understand that the furniture derives ALL support from the wall mounting system.',
     validation: (profile) => !!getFieldValue(profile.wallMounted)
   },
   {

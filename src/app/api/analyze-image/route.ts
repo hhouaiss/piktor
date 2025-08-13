@@ -68,6 +68,15 @@ export async function POST(request: NextRequest) {
 - Style: Use FURNITURE_STYLES classifications for design aesthetic
 - Color: Specify using COLOR_DESCRIPTIONS terminology
 
+🚨 CRITICAL WALL-MOUNTED FURNITURE DETECTION REQUIREMENTS:
+- MANDATORY: Examine mounting hardware, brackets, cleats, or wall-attachment systems
+- MANDATORY: Look for absence of floor-touching legs, supports, or contact points
+- MANDATORY: Identify fold-down mechanisms, cantilever brackets, or floating mounting systems
+- MANDATORY: For desks/workstations: Determine if designed for 75cm wall-mounting height
+- MANDATORY: Note any visible wall-mounting preparation or mounting point indicators
+- CRITICAL: Distinguish between free-standing and wall-mounted designs based on structural evidence
+- CRITICAL: If wall-mounted, specify mounting system type and load requirements
+
 Return ONLY a valid JSON object with this exact structure:`
             },
             {
@@ -118,10 +127,14 @@ Return ONLY a valid JSON object with this exact structure:`
     "strict_mode": true,
     "commercial_furniture_standards": true,
     "must_be_wall_mounted": true,
+    "wall_mounted_height_75cm_mandatory": true,
     "no_floor_contact_ever": true,
+    "no_legs_supports_floor_touching": true,
+    "visible_mounting_hardware_required": true,
     "no_extra_furniture_objects": true,
     "respect_all_commercial_dimensions": true,
-    "enterprise_catalog_quality": true
+    "enterprise_catalog_quality": true,
+    "floating_suspension_appearance_required": true
   }
 }
 
