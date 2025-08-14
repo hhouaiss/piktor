@@ -603,14 +603,23 @@ Solution: ${errorData.solution}`;
   };
 
   return (
-    <div className="container mx-auto px-4 py-4 md:py-8 max-w-screen-2xl">
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-6 md:mb-8">
-          <h1 className="text-2xl md:text-3xl font-bold mb-2 md:mb-4">Piktor Image Generator v4</h1>
-          <p className="text-sm md:text-base text-muted-foreground px-2">
-            Multi-image product analysis with GPT-4o and reference-based image generation using images.edits API
-          </p>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-sophisticated-gray-50 via-white to-ocean-blue-50/30 dark:from-sophisticated-gray-950 dark:via-sophisticated-gray-900 dark:to-sophisticated-gray-800">
+      <div className="container mx-auto px-4 py-8 md:py-12 max-w-screen-2xl">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-8 md:mb-12 animate-fade-in">
+            <div className="mb-4">
+              <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-ocean-blue-50 to-warm-gold-50 border border-ocean-blue-200 rounded-full text-sm font-medium text-ocean-blue-700 dark:from-ocean-blue-900/50 dark:to-warm-gold-900/50 dark:border-ocean-blue-700 dark:text-ocean-blue-300">
+                <span className="w-2 h-2 bg-gradient-ocean-gold rounded-full mr-2 animate-pulse"></span>
+                AI-Powered Image Studio
+              </div>
+            </div>
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 bg-gradient-to-br from-sophisticated-gray-900 via-ocean-blue-700 to-sophisticated-gray-700 bg-clip-text text-transparent dark:from-sophisticated-gray-100 dark:via-ocean-blue-300 dark:to-sophisticated-gray-300">
+              Create Professional Product Images
+            </h1>
+            <p className="text-lg text-sophisticated-gray-600 dark:text-sophisticated-gray-400 px-2 max-w-3xl mx-auto leading-relaxed">
+              Upload your furniture photos and let our advanced AI create stunning marketing visuals with professional lighting, staging, and context.
+            </p>
+          </div>
 
         <Stepper currentStep={state.currentStep} />
 
@@ -675,6 +684,7 @@ Solution: ${errorData.solution}`;
           )}
         </div>
       </div>
+    </div>
     </div>
   );
 }
