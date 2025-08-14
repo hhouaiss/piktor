@@ -37,7 +37,8 @@ const steps = [
 export function Stepper({ currentStep }: StepperProps) {
   return (
     <div className="mb-8">
-      <div className="flex items-center justify-between max-w-2xl mx-auto">
+      {/* Desktop Stepper */}
+      <div className="hidden md:flex items-center justify-between max-w-2xl mx-auto">
         {steps.map((step, index) => {
           const isActive = currentStep === step.step;
           const isCompleted = currentStep > step.step;
@@ -80,6 +81,43 @@ export function Stepper({ currentStep }: StepperProps) {
             </div>
           );
         })}
+      </div>
+
+      {/* Mobile Stepper */}
+      <div className="md:hidden">
+        {/* Progress Bar */}
+        <div className="mb-4">
+          <div className="bg-muted h-2 rounded-full">
+            <div 
+              className="bg-primary h-2 rounded-full transition-all duration-300"
+              style={{ width: `${(currentStep / steps.length) * 100}%` }}
+            />
+          </div>
+          <div className="flex justify-between text-xs text-muted-foreground mt-1">
+            <span>Step {currentStep}</span>
+            <span>{steps.length} steps</span>
+          </div>
+        </div>
+        
+        {/* Current Step Info */}
+        <div className="text-center">
+          {steps.map((step) => {
+            const isActive = currentStep === step.step;
+            const Icon = step.icon;
+            
+            if (!isActive) return null;
+            
+            return (
+              <div key={step.step} className="flex flex-col items-center">
+                <div className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center mb-2">
+                  <Icon className="h-6 w-6" />
+                </div>
+                <h3 className="text-lg font-semibold">{step.title}</h3>
+                <p className="text-sm text-muted-foreground">{step.description}</p>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

@@ -246,7 +246,7 @@ export function StepGenerate({
               )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
               {generatedImages.map((image) => {
                 return (
                   <div key={image.id} className="group border rounded-lg overflow-hidden">
@@ -259,8 +259,8 @@ export function StepGenerate({
                         unoptimized
                       />
                       
-                      {/* Hover Overlay */}
-                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                      {/* Overlay - Always visible on mobile, hover on desktop */}
+                      <div className="absolute inset-0 bg-black/50 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                         <Button
                           size="sm"
                           variant="secondary"

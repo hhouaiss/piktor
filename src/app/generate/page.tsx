@@ -603,18 +603,18 @@ Solution: ${errorData.solution}`;
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-screen-2xl">
+    <div className="container mx-auto px-4 py-4 md:py-8 max-w-screen-2xl">
       <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-4">Piktor Image Generator v4</h1>
-          <p className="text-muted-foreground">
+        <div className="text-center mb-6 md:mb-8">
+          <h1 className="text-2xl md:text-3xl font-bold mb-2 md:mb-4">Piktor Image Generator v4</h1>
+          <p className="text-sm md:text-base text-muted-foreground px-2">
             Multi-image product analysis with GPT-4o and reference-based image generation using images.edits API
           </p>
         </div>
 
         <Stepper currentStep={state.currentStep} />
 
-        <div className="space-y-8">
+        <div className="space-y-4 md:space-y-8">
           {/* Step 1: Product Block */}
           <StepProductBlock
             productImages={state.productConfiguration?.productImages || null}
