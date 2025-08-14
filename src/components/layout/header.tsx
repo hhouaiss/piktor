@@ -32,24 +32,24 @@ export function Header() {
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-8 text-sm font-medium ml-12">
           <Link
-            href="/templates"
+            href="/upload"
             className="relative py-2 px-1 text-sophisticated-gray-600 hover:text-ocean-blue-700 dark:text-sophisticated-gray-400 dark:hover:text-ocean-blue-400 transition-all duration-200 hover:scale-105"
           >
-            Examples
+            Free Json profile generator
             <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-ocean-gold transition-all duration-200 hover:w-full"></span>
           </Link>
           <Link
             href="/generate"
             className="relative py-2 px-1 text-sophisticated-gray-600 hover:text-ocean-blue-700 dark:text-sophisticated-gray-400 dark:hover:text-ocean-blue-400 transition-all duration-200 hover:scale-105"
           >
-            How It Works
+            AI image generator
             <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-ocean-gold transition-all duration-200 hover:w-full"></span>
           </Link>
           <Link
-            href="#pricing"
+            href="/templates"
             className="relative py-2 px-1 text-sophisticated-gray-600 hover:text-ocean-blue-700 dark:text-sophisticated-gray-400 dark:hover:text-ocean-blue-400 transition-all duration-200 hover:scale-105"
           >
-            Pricing
+            Templates
             <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-ocean-gold transition-all duration-200 hover:w-full"></span>
           </Link>
         </nav>

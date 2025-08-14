@@ -42,11 +42,11 @@ export default function Home() {
           </div>
         </div>
         <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-6 bg-gradient-to-br from-sophisticated-gray-900 via-ocean-blue-800 to-sophisticated-gray-700 bg-clip-text text-transparent dark:from-sophisticated-gray-100 dark:via-ocean-blue-300 dark:to-sophisticated-gray-300 leading-tight">
-          Transform Product Photos Into 
-          <span className="block bg-gradient-ocean-gold bg-clip-text text-transparent">Marketing Magic</span>
+          Elevate Your Furniture Photos into
+          <span className="block bg-gradient-ocean-gold bg-clip-text text-transparent">Sales-Driving Visuals</span>
         </h1>
         <p className="text-xl md:text-2xl text-sophisticated-gray-600 dark:text-sophisticated-gray-400 mb-6 max-w-3xl mx-auto leading-relaxed">
-          Turn basic furniture photos into professional marketing assets in minutes. Generate lifestyle scenes, social media visuals, and catalog images that convert browsers into buyers.
+          Instantly transform basic product shots into stunning, photorealistic lifestyle scenes, social media assets, and catalog images that captivate and convert.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-sophisticated-gray-600 dark:text-sophisticated-gray-400 mb-10">
           <div className="flex items-center gap-2 bg-white/50 dark:bg-sophisticated-gray-800/50 px-3 py-2 rounded-lg backdrop-blur border border-sophisticated-gray-200/50 dark:border-sophisticated-gray-700/50">
@@ -76,7 +76,7 @@ export default function Home() {
         </div>
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-4">
           <Button asChild size="xl" variant="primary" className="shadow-premium animate-scale-in font-bold">
-            <Link href="/upload">Transform Your First Image - Free</Link>
+            <Link href="/generate">Transform Your First Image - Free</Link>
           </Button>
           <Button variant="outline" size="xl" asChild className="font-semibold">
             <Link href="/templates">See Example Results</Link>
