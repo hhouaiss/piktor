@@ -28,29 +28,32 @@ export function Header() {
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-6 text-sm font-medium ml-8">
           <Link
-            href="/upload"
+            href="/templates"
             className="transition-colors hover:text-foreground/80 text-foreground/60"
           >
-            Upload
+            Examples
           </Link>
           <Link
             href="/generate"
             className="transition-colors hover:text-foreground/80 text-foreground/60"
           >
-            Generate
+            How It Works
           </Link>
           <Link
-            href="/templates"
+            href="#pricing"
             className="transition-colors hover:text-foreground/80 text-foreground/60"
           >
-            Templates
+            Pricing
           </Link>
         </nav>
 
         {/* Desktop CTA Button */}
-        <div className="hidden md:flex flex-1 items-center justify-end space-x-2">
-          <Button variant="default" size="sm" asChild>
-            <Link href="/upload">Get Started</Link>
+        <div className="hidden md:flex flex-1 items-center justify-end space-x-4">
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/upload">Try Free</Link>
+          </Button>
+          <Button variant="default" size="sm" asChild className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+            <Link href="/upload">Start Creating</Link>
           </Button>
         </div>
 
@@ -84,29 +87,32 @@ export function Header() {
         <div className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <nav className="container mx-auto px-4 py-4 space-y-3">
             <Link
-              href="/upload"
+              href="/templates"
               className="block py-2 text-sm font-medium transition-colors hover:text-foreground/80 text-foreground/60"
               onClick={closeMenu}
             >
-              Upload
+              Examples
             </Link>
             <Link
               href="/generate"
               className="block py-2 text-sm font-medium transition-colors hover:text-foreground/80 text-foreground/60"
               onClick={closeMenu}
             >
-              Generate
+              How It Works
             </Link>
             <Link
-              href="/templates"
+              href="#pricing"
               className="block py-2 text-sm font-medium transition-colors hover:text-foreground/80 text-foreground/60"
               onClick={closeMenu}
             >
-              Templates
+              Pricing
             </Link>
-            <div className="pt-2">
-              <Button variant="default" size="sm" asChild className="w-full">
-                <Link href="/upload" onClick={closeMenu}>Get Started</Link>
+            <div className="pt-2 space-y-2">
+              <Button variant="outline" size="sm" asChild className="w-full">
+                <Link href="/upload" onClick={closeMenu}>Try Free</Link>
+              </Button>
+              <Button variant="default" size="sm" asChild className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+                <Link href="/upload" onClick={closeMenu}>Start Creating</Link>
               </Button>
             </div>
           </nav>

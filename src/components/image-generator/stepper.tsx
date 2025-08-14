@@ -10,26 +10,26 @@ interface StepperProps {
 const steps = [
   {
     step: 1,
-    title: "Product Block",
-    description: "Setup product",
+    title: "Upload Your Product",
+    description: "Add your furniture photos",
     icon: Package,
   },
   {
     step: 2,
-    title: "Product Specs",
-    description: "AI analysis",
+    title: "AI Analysis",
+    description: "We understand your style",
     icon: Cog,
   },
   {
     step: 3,
-    title: "Generation Settings",
-    description: "Configure context",
+    title: "Choose Your Style",
+    description: "Select scene & context",
     icon: Settings,
   },
   {
     step: 4,
-    title: "Generate",
-    description: "Create images",
+    title: "Generate Images",
+    description: "Get marketing-ready visuals",
     icon: Sparkles,
   },
 ];
