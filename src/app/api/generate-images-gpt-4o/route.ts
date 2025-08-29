@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { ProductConfiguration, ContextPreset } from "@/lib/types";
 import { buildGptImagePrompt } from "@/lib/prompt-builder";
 import { 
-  generateMultipleImagesWithBFL, 
-  getAspectRatio
-} from "@/lib/bfl-api";
+  generateMultipleImagesWithGemini, 
+  getGeminiAspectRatio
+} from "@/lib/gemini-api";
 
 interface GenerationParams {
   contextPreset: ContextPreset;
@@ -16,9 +16,9 @@ interface GenerationParams {
 
 export async function POST(request: NextRequest) {
   try {
-    if (!process.env.BFL_API_KEY) {
+    if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json({ 
-        error: "BFL API key not configured. Please add BFL_API_KEY to your .env.local file" 
+        error: "Gemini API key not configured. Please add GEMINI_API_KEY to your .env.local file" 
       }, { status: 500 });
     }
 
@@ -71,28 +71,25 @@ export async function POST(request: NextRequest) {
     
     const detailedPrompt = buildGptImagePrompt(profile.textToImagePrompts, params.contextPreset, config.uiSettings);
 
-    console.log(`Generating ${params.variations} ${params.contextPreset} images using FLUX Kontext Pro`);
+    console.log(`Generating ${params.variations} ${params.contextPreset} images using Gemini 2.5 Flash Image`);
     console.log(`Prompt length: ${detailedPrompt.length} characters`);
     console.log(`Product: ${config.productImages.productName}`);
 
-    // Note: Removed prompt length validation - using comprehensive prompts for better quality
+    // Note: Using comprehensive prompts for better quality with Gemini
     console.log(`Using comprehensive prompt with ${detailedPrompt.length} characters for superior image generation`);
 
-    const aspectRatio = getAspectRatio(params.contextPreset);
+    const aspectRatio = getGeminiAspectRatio(params.contextPreset);
     
     console.log(`Generating with comprehensive prompt derived from ${config.productImages.images?.length || 0} reference images`);
 
-    // Generate images using BFL FLUX Kontext Pro
-    const bflRequest = {
+    // Generate images using Gemini 2.5 Flash Image
+    const geminiRequest = {
       prompt: detailedPrompt,
-      aspect_ratio: aspectRatio,
-      prompt_upsampling: true,
-      safety_tolerance: 2,
-      output_format: 'jpeg' as const,
+      aspectRatio: aspectRatio,
     };
 
-    const variations = await generateMultipleImagesWithBFL(
-      bflRequest,
+    const variations = await generateMultipleImagesWithGemini(
+      geminiRequest,
       params.variations,
       params.contextPreset
     );
@@ -107,7 +104,7 @@ export async function POST(request: NextRequest) {
         profileSource: 'gpt-4o-multi-image-analysis',
         prompt: detailedPrompt,
         promptLength: detailedPrompt.length,
-        model: 'flux-kontext-pro',
+        model: 'gemini-2.5-flash-image-preview',
         generationMethod: 'text-to-image',
         referenceImagesAnalyzed: config.productImages.images?.length || 0
       }
@@ -120,15 +117,15 @@ export async function POST(request: NextRequest) {
         productName: config.productImages.productName,
         contextPreset: params.contextPreset,
         variationsGenerated: variations.length,
-        model: 'flux-kontext-pro',
+        model: 'gemini-2.5-flash-image-preview',
         timestamp: new Date().toISOString(),
       },
     });
 
   } catch (error) {
-    console.error("FLUX Kontext Pro generation error:", error);
+    console.error("Gemini generation error:", error);
     
-    // Enhanced error handling for BFL API issues
+    // Enhanced error handling for Gemini API issues
     let userError = "Unknown error occurred during generation";
     let statusCode = 500;
     let additionalInfo = {};
@@ -139,29 +136,15 @@ export async function POST(request: NextRequest) {
         message: error.message,
       });
       
-      // Check for BFL API response errors
-      if ('response' in error) {
-        const apiError = error as Error & { response?: { status?: number; data?: unknown } };
-        console.error('BFL API Response:', {
-          status: apiError.response?.status,
-          data: apiError.response?.data,
-        });
-        
-        if (apiError.response?.status === 400) {
-          statusCode = 400;
-          userError = "Invalid request to FLUX Kontext Pro";
-          additionalInfo = {
-            issue: "The prompt or parameters were not accepted by FLUX Kontext Pro",
-            solution: "Try simplifying the prompt or adjusting generation parameters"
-          };
-        } else if (apiError.response?.status === 429) {
-          statusCode = 429;
-          userError = "API rate limit exceeded";
-          additionalInfo = {
-            issue: "Too many requests to BFL API",
-            solution: "Please wait a moment before trying again"
-          };
-        }
+      // Check for Gemini API response errors
+      if (error.message.includes('Gemini API error:')) {
+        statusCode = 500;
+        userError = "Gemini API error occurred";
+        additionalInfo = {
+          issue: "The prompt or parameters were not accepted by Gemini API",
+          solution: "Try simplifying the prompt or adjusting generation parameters",
+          geminiError: error.message
+        };
       }
       
       if (userError === "Unknown error occurred during generation") {

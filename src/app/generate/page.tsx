@@ -2,21 +2,20 @@
 
 import { useState, useCallback } from "react";
 import { Stepper } from "@/components/image-generator/stepper";
-import { StepProductBlock } from "@/components/image-generator/step-upload";
-import { StepProductSpecs } from "@/components/image-generator/step-product-specs";
-import { StepGenerationSettings } from "@/components/image-generator/step-settings";
-import { StepGenerate } from "@/components/image-generator/step-generate";
+import { StepUnifiedInput } from "@/components/image-generator/step-unified-input";
+import { StepGenerateSimplified } from "@/components/image-generator/step-generate-simplified";
+import { StepEditImages } from "@/components/image-generator/step-edit-images";
 import { 
-  ProductImages,
-  ProductConfiguration, 
+  ProductInput,
   GeneratedImage, 
+  EditedImage,
+  AssetType,
   ImageGeneratorState,
   DEFAULT_UI_SETTINGS,
-  generateSlug,
   GenerationMethod
 } from "@/components/image-generator/types";
 import { 
-  validateBFLImageUrl, 
+  validateImageUrl, 
   generateSafeFilename, 
   getDownloadErrorMessage,
   downloadWithRetry 
@@ -26,32 +25,25 @@ export default function GeneratePage() {
   const [state, setState] = useState<ImageGeneratorState>({
     currentStep: 1,
     generatedImages: [],
+    editedImages: {},
     isGenerating: false,
+    isEditing: false,
     errors: {},
   });
-  const [generationApproach, setGenerationApproach] = useState<'reference' | 'text'>('reference');
 
   const updateState = (updates: Partial<ImageGeneratorState>) => {
     setState(prev => ({ ...prev, ...updates }));
   };
 
-  // Step 1: Product Block Handlers
-  const handleProductImagesChange = useCallback((productImages: ProductImages | null) => {
-    if (!productImages) {
-      updateState({ productConfiguration: undefined });
-      return;
-    }
-
+  // Step 1: Product Input Handlers
+  const handleProductInputChange = useCallback((productInput: ProductInput) => {
     let configuration = state.productConfiguration;
     
     if (!configuration) {
       // Create new configuration
-      const slug = generateSlug(productImages.productName);
       configuration = {
         id: crypto.randomUUID(),
-        name: productImages.productName,
-        slug,
-        productImages,
+        productInput,
         uiSettings: DEFAULT_UI_SETTINGS,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -60,9 +52,7 @@ export default function GeneratePage() {
       // Update existing configuration
       configuration = {
         ...configuration,
-        name: productImages.productName,
-        slug: generateSlug(productImages.productName),
-        productImages,
+        productInput,
         updatedAt: new Date().toISOString(),
       };
     }
@@ -70,53 +60,59 @@ export default function GeneratePage() {
     updateState({ productConfiguration: configuration });
   }, [state.productConfiguration]);
 
-  const handleProductBlockComplete = () => {
+  const handleProductInputComplete = () => {
     updateState({ currentStep: 2 });
   };
 
-  // Step 2: Product Specs Handlers
-  const handleProductSpecsComplete = () => {
+  const handleGenerationComplete = () => {
     updateState({ currentStep: 3 });
   };
 
-  // Step 3: Generation Settings Handlers
-  const handleConfigurationChange = (config: ProductConfiguration) => {
-    updateState({ productConfiguration: config });
+  // Removed handleConfigurationChange - no longer needed in simplified workflow
+
+  // Client-side file to base64 conversion
+  const convertFileToBase64 = (file: File): Promise<{ data: string; mimeType: string }> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (reader.result && typeof reader.result === 'string') {
+          // Remove data URL prefix (data:image/jpeg;base64,) to get just the base64 string
+          const base64Data = reader.result.split(',')[1];
+          resolve({
+            data: base64Data,
+            mimeType: file.type
+          });
+        } else {
+          reject(new Error('Failed to read file'));
+        }
+      };
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
   };
 
-  const handleGenerationSettingsComplete = () => {
-    updateState({ currentStep: 4 });
-  };
-
-  // Step 4: Generation Handlers
-  const generateImages = async (useReferenceApproach: boolean = true) => {
-    if (!state.productConfiguration?.productImages.fusedProfile) {
+  // Generation Handlers
+  const generateImages = async () => {
+    if (!state.productConfiguration?.productInput) {
       updateState({ 
-        errors: { ...state.errors, generation: 'Product profile not analyzed. Please complete product specs first.' }
+        errors: { ...state.errors, generation: 'No product input provided. Please complete the input form first.' }
       });
       return;
     }
 
-    // For reference-based approach, we need a primary image
-    if (useReferenceApproach && !state.productConfiguration.productImages.primaryImageId) {
+    const { productInput } = state.productConfiguration;
+    
+    // Validate we have images and basic specs
+    if (!productInput.images.length) {
       updateState({ 
-        errors: { ...state.errors, generation: 'No primary reference image selected. Please select a primary image in Step 2.' }
+        errors: { ...state.errors, generation: 'No images uploaded. Please upload product images.' }
       });
       return;
     }
 
-    // Validate that we have the enhanced textToImagePrompts from GPT-4o analysis
-    const profile = state.productConfiguration.productImages.fusedProfile;
-    if (!profile?.textToImagePrompts && !useReferenceApproach) {
+    if (!productInput.specs.productName || !productInput.specs.productType) {
       updateState({ 
-        errors: { ...state.errors, generation: 'Enhanced product analysis required. Please go back to Step 2 and re-analyze your product images with the updated system.' }
-      });
-      return;
-    }
-
-    if (!profile.textToImagePrompts?.baseDescription && !useReferenceApproach) {
-      updateState({ 
-        errors: { ...state.errors, generation: 'Incomplete analysis data. Please go back to Step 2 and re-analyze your product images.' }
+        errors: { ...state.errors, generation: 'Missing required specifications. Please provide product name and type.' }
       });
       return;
     }
@@ -126,161 +122,100 @@ export default function GeneratePage() {
       generationProgress: { 
         current: 0, 
         total: state.productConfiguration.uiSettings.variations,
-        stage: useReferenceApproach ? 'Preparing images.edits with reference image...' : 'Preparing GPT-image-1 generation...'
+        stage: 'Converting images to base64 format...'
       },
       errors: { ...state.errors, generation: undefined }
     });
 
     try {
+      // Convert all uploaded images to base64 for API transmission
       updateState({ 
         generationProgress: { 
           current: 1, 
           total: state.productConfiguration.uiSettings.variations,
-          stage: useReferenceApproach ? 'Using images.edits API with JSON profile...' : 'Calling GPT-image-1 for text-to-image generation...'
+          stage: 'Processing reference images...'
         }
       });
 
-      if (useReferenceApproach) {
-        // Use new reference-based approach with images.edits
-        const primaryImage = state.productConfiguration.productImages.images.find(
-          img => img.id === state.productConfiguration!.productImages.primaryImageId
-        );
-        
-        if (!primaryImage) {
-          throw new Error('Primary reference image not found');
+      const base64Images: Array<{ data: string; mimeType: string }> = [];
+      for (const image of productInput.images) {
+        try {
+          const base64Result = await convertFileToBase64(image);
+          base64Images.push(base64Result);
+        } catch (error) {
+          console.error(`Failed to convert image ${image.name} to base64:`, error);
+          // Continue with other images
         }
+      }
 
-        const formData = new FormData();
-        formData.append('configuration', JSON.stringify(state.productConfiguration));
-        formData.append('generationParams', JSON.stringify({
+      if (base64Images.length === 0) {
+        throw new Error('Failed to process any reference images. Please check your uploaded images.');
+      }
+
+      updateState({ 
+        generationProgress: { 
+          current: 2, 
+          total: state.productConfiguration.uiSettings.variations,
+          stage: 'Generating images using direct specification approach...'
+        }
+      });
+
+      // Create API payload with base64 images instead of File objects
+      const apiPayload = {
+        productSpecs: productInput.specs,
+        referenceImages: base64Images,
+        generationParams: {
           contextPreset: state.productConfiguration.uiSettings.contextPreset,
           variations: state.productConfiguration.uiSettings.variations,
           quality: state.productConfiguration.uiSettings.quality
-        }));
-        
-        // Convert the primary image to a File object for the API
-        const imageResponse = await fetch(primaryImage.preview);
-        const imageBlob = await imageResponse.blob();
-        const imageFile = new File([imageBlob], primaryImage.name, { type: imageBlob.type });
-        formData.append('primaryImage', imageFile);
-
-        const response = await fetch('/api/generate-images-edits', {
-          method: 'POST',
-          body: formData,
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to generate images using reference approach');
         }
+      };
 
-        const result = await response.json();
-        
-        const newGeneratedImages: GeneratedImage[] = result.result.variations.map((variation: { 
-          url: string; 
-          prompt: string; 
-          metadata: { model: string; timestamp: string; size: string; quality: string; variation: number; contextPreset: string; generationMethod?: string } 
-        }) => ({
-          id: `${state.productConfiguration!.id}_${Date.now()}_${variation.metadata.variation}`,
-          url: variation.url,
-          productConfigId: state.productConfiguration!.id,
-          settings: state.productConfiguration!.uiSettings,
-          profile: state.productConfiguration!.productImages.fusedProfile!,
-          prompt: variation.prompt,
-          generationSource: {
-            method: 'reference-based' as GenerationMethod,
-            model: variation.metadata.model,
-            confidence: 0.95,
-            referenceImageUsed: true
-          },
-          metadata: variation.metadata,
-        }));
+      // Use new direct generation approach
+      const response = await fetch('/api/generate-images-direct', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(apiPayload),
+      });
 
-        updateState({ 
-          generatedImages: [...state.generatedImages, ...newGeneratedImages],
-          isGenerating: false,
-          generationProgress: undefined
-        });
-        
-      } else {
-        // Use original text-to-image approach
-        const response = await fetch('/api/generate-images-gpt-4o', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            productConfiguration: state.productConfiguration,
-            generationParams: {
-              contextPreset: state.productConfiguration.uiSettings.contextPreset,
-              variations: state.productConfiguration.uiSettings.variations,
-              quality: state.productConfiguration.uiSettings.quality
-            }
-          }),
-        });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate images');
+      }
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          
-          // Handle image format errors specifically
-          if (errorData.error?.includes('Image format') || 
-              errorData.error?.includes('Unable to process the uploaded image') ||
-              errorData.supportedFormats) {
-            let imageError = `Image format issue: ${errorData.error}
+      const result = await response.json();
+      
+      const newGeneratedImages: GeneratedImage[] = result.result.variations.map((variation: { 
+        url: string; 
+        prompt: string; 
+        metadata: { model: string; timestamp: string; size: string; quality: string; variation: number; contextPreset: string; generationMethod?: string } 
+      }) => ({
+        id: `${state.productConfiguration!.id}_${Date.now()}_${variation.metadata.variation}`,
+        url: variation.url,
+        productConfigId: state.productConfiguration!.id,
+        settings: state.productConfiguration!.uiSettings,
+        specs: state.productConfiguration!.productInput.specs,
+        prompt: variation.prompt,
+        generationSource: {
+          method: 'direct-generation' as GenerationMethod,
+          model: variation.metadata.model,
+          confidence: 1.0,
+          referenceImageUsed: false
+        },
+        metadata: variation.metadata,
+      }));
 
-${errorData.details || 'The uploaded image could not be processed.'}`;
+      updateState({ 
+        generatedImages: [...state.generatedImages, ...newGeneratedImages],
+        isGenerating: false,
+        generationProgress: undefined
+      });
 
-            if (errorData.supportedFormats) {
-              imageError += `
-
-Supported formats: ${errorData.supportedFormats.join(', ')}`;
-            }
-
-            if (errorData.troubleshooting) {
-              imageError += `
-
-Troubleshooting: ${errorData.troubleshooting}`;
-            }
-
-            if (errorData.solution) {
-              imageError += `
-
-Solution: ${errorData.solution}`;
-            }
-            
-            throw new Error(imageError);
-          }
-          
-          throw new Error(errorData.error || 'Failed to generate images');
-        }
-
-        const result = await response.json();
-        
-        const newGeneratedImages: GeneratedImage[] = result.result.variations.map((variation: { 
-          url: string; 
-          prompt: string; 
-          metadata: { model: string; timestamp: string; size: string; quality: string; variation: number; contextPreset: string; generationMethod?: string } 
-        }) => ({
-          id: `${state.productConfiguration!.id}_${Date.now()}_${variation.metadata.variation}`,
-          url: variation.url,
-          productConfigId: state.productConfiguration!.id,
-          settings: state.productConfiguration!.uiSettings,
-          profile: state.productConfiguration!.productImages.fusedProfile!,
-          prompt: variation.prompt,
-          generationSource: {
-            method: (variation.metadata.generationMethod as GenerationMethod) || 'text-to-image',
-            model: variation.metadata.model,
-            confidence: 1.0,
-            referenceImageUsed: false
-          },
-          metadata: variation.metadata,
-        }));
-
-        updateState({ 
-          generatedImages: [...state.generatedImages, ...newGeneratedImages],
-          isGenerating: false,
-          generationProgress: undefined
-        });
+      // Auto-advance to editing step if we have generated images
+      if (newGeneratedImages.length > 0) {
+        setTimeout(() => handleGenerationComplete(), 500);
       }
 
     } catch (error) {
@@ -300,131 +235,215 @@ Solution: ${errorData.solution}`;
     const imageToRegenerate = state.generatedImages.find(img => img.id === imageId);
     if (!imageToRegenerate || !state.productConfiguration) return;
 
-    // Determine if the original image was generated with reference approach
-    const useReferenceApproach = imageToRegenerate.generationSource.referenceImageUsed;
-
-    if (useReferenceApproach && !state.productConfiguration.productImages.primaryImageId) {
-      console.error('No primary reference image selected for regeneration.');
-      return;
-    }
-
-    // Validate analysis data for text-to-image approach
-    const profile = state.productConfiguration.productImages.fusedProfile;
-    if (!useReferenceApproach && !profile?.textToImagePrompts?.baseDescription) {
-      console.error('Enhanced product analysis required for regeneration. Please re-analyze product images.');
-      return;
-    }
-
     try {
-      if (useReferenceApproach) {
-        // Use reference-based regeneration
-        const primaryImage = state.productConfiguration.productImages.images.find(
-          img => img.id === state.productConfiguration!.productImages.primaryImageId
-        );
-        
-        if (!primaryImage) {
-          throw new Error('Primary reference image not found for regeneration');
-        }
+      // Use direct generation for regeneration
+      const response = await fetch('/api/generate-images-direct', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          productConfiguration: state.productConfiguration,
+          generationParams: {
+            contextPreset: state.productConfiguration.uiSettings.contextPreset,
+            variations: 1, // Single regeneration
+            quality: state.productConfiguration.uiSettings.quality
+          }
+        }),
+      });
 
-        const formData = new FormData();
-        formData.append('configuration', JSON.stringify(state.productConfiguration));
-        formData.append('generationParams', JSON.stringify({
-          contextPreset: state.productConfiguration.uiSettings.contextPreset,
-          variations: 1, // Single regeneration
-          quality: state.productConfiguration.uiSettings.quality
-        }));
-        
-        // Convert the primary image to a File object for the API
-        const imageResponse = await fetch(primaryImage.preview);
-        const imageBlob = await imageResponse.blob();
-        const imageFile = new File([imageBlob], primaryImage.name, { type: imageBlob.type });
-        formData.append('primaryImage', imageFile);
+      if (!response.ok) {
+        throw new Error('Failed to regenerate image');
+      }
 
-        const response = await fetch('/api/generate-images-edits', {
-          method: 'POST',
-          body: formData,
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to regenerate image using reference approach');
-        }
-
-        const result = await response.json();
-        
-        if (result.result?.variations?.[0]) {
-          const variation = result.result.variations[0];
-          const newImage: GeneratedImage = {
-            id: `regenerated_${Date.now()}`,
-            url: variation.url,
-            productConfigId: state.productConfiguration.id,
-            settings: state.productConfiguration.uiSettings,
-            profile: state.productConfiguration.productImages.fusedProfile!,
-            prompt: variation.prompt,
-            generationSource: {
-              method: 'reference-based' as GenerationMethod,
-              model: variation.metadata.model,
-              confidence: 0.95,
-              referenceImageUsed: true
-            },
-            metadata: variation.metadata,
-          };
-
-          const updatedImages = state.generatedImages.map(img => 
-            img.id === imageId ? newImage : img
-          );
-
-          updateState({ generatedImages: updatedImages });
-        }
-      } else {
-        // Use text-to-image regeneration
-        const response = await fetch('/api/generate-images-gpt-4o', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
+      const result = await response.json();
+      
+      if (result.result?.variations?.[0]) {
+        const variation = result.result.variations[0];
+        const newImage: GeneratedImage = {
+          id: `regenerated_${Date.now()}`,
+          url: variation.url,
+          productConfigId: state.productConfiguration.id,
+          settings: state.productConfiguration.uiSettings,
+          specs: state.productConfiguration.productInput.specs,
+          prompt: variation.prompt,
+          generationSource: {
+            method: 'direct-generation' as GenerationMethod,
+            model: variation.metadata.model,
+            confidence: 1.0,
+            referenceImageUsed: false
           },
-          body: JSON.stringify({
-            productConfiguration: state.productConfiguration,
-            generationParams: {
-              contextPreset: state.productConfiguration.uiSettings.contextPreset,
-              variations: 1, // Single regeneration
-              quality: state.productConfiguration.uiSettings.quality
-            }
-          }),
-        });
+          metadata: variation.metadata,
+        };
 
-        if (!response.ok) {
-          throw new Error('Failed to regenerate image');
-        }
+        const updatedImages = state.generatedImages.map(img => 
+          img.id === imageId ? newImage : img
+        );
 
-        const result = await response.json();
-        
-        if (result.result?.variations?.[0]) {
-          const variation = result.result.variations[0];
-          const newImage: GeneratedImage = {
-            id: `regenerated_${Date.now()}`,
-            url: variation.url,
-            productConfigId: state.productConfiguration.id,
-            settings: state.productConfiguration.uiSettings,
-            profile: state.productConfiguration.productImages.fusedProfile!,
-            prompt: variation.prompt,
-            generationSource: {
-              method: (variation.metadata.generationMethod as GenerationMethod) || 'text-to-image',
-              model: variation.metadata.model,
-              confidence: 1.0,
-              referenceImageUsed: false
-            },
-            metadata: variation.metadata,
-          };
-
-          const updatedImages = state.generatedImages.map(img => 
-            img.id === imageId ? newImage : img
-          );
-
-          updateState({ generatedImages: updatedImages });
-        }
+        updateState({ generatedImages: updatedImages });
       }
     } catch (error) {
       console.error('Regeneration failed:', error);
+    }
+  };
+
+  // Image Editing Handlers
+  const editImage = async (
+    imageId: string, 
+    imageUrl: string, 
+    assetType: AssetType, 
+    variations: number = 1, 
+    customPrompt?: string
+  ) => {
+    if (!state.productConfiguration?.productInput?.specs?.productName) {
+      updateState({ 
+        errors: { ...state.errors, editing: 'Product name is required for editing' }
+      });
+      return;
+    }
+
+    updateState({ 
+      isEditing: true, 
+      editingProgress: { 
+        current: 0, 
+        total: variations,
+        stage: `Creating ${assetType} asset...`,
+        assetType
+      },
+      errors: { ...state.errors, editing: undefined }
+    });
+
+    try {
+      const response = await fetch('/api/edit-image', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          mode: 'single',
+          sourceImageUrl: imageUrl,
+          sourceImageId: imageId,
+          productName: state.productConfiguration.productInput.specs.productName,
+          assetType,
+          variations,
+          customPrompt,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to edit image');
+      }
+
+      const result = await response.json();
+      
+      if (result.result?.editedImages) {
+        const newEditedImages = { ...state.editedImages };
+        if (!newEditedImages[imageId]) {
+          newEditedImages[imageId] = [];
+        }
+        newEditedImages[imageId].push(...result.result.editedImages);
+
+        updateState({ 
+          editedImages: newEditedImages,
+          isEditing: false,
+          editingProgress: undefined
+        });
+      }
+    } catch (error) {
+      console.error('Image editing failed:', error);
+      updateState({ 
+        isEditing: false,
+        editingProgress: undefined,
+        errors: { 
+          ...state.errors, 
+          editing: error instanceof Error ? error.message : 'Unknown editing error' 
+        }
+      });
+    }
+  };
+
+  const batchEditImages = async (
+    imageId: string,
+    imageUrl: string, 
+    assetTypes: AssetType[],
+    customPrompts?: Record<AssetType, string>
+  ) => {
+    if (!state.productConfiguration?.productInput?.specs?.productName) {
+      updateState({ 
+        errors: { ...state.errors, editing: 'Product name is required for editing' }
+      });
+      return;
+    }
+
+    const requests = assetTypes.map(assetType => ({
+      assetType,
+      variations: 2, // Default to 2 variations for batch
+      customPrompt: customPrompts?.[assetType]
+    }));
+
+    const totalVariations = requests.reduce((sum, req) => sum + req.variations, 0);
+
+    updateState({ 
+      isEditing: true, 
+      editingProgress: { 
+        current: 0, 
+        total: totalVariations,
+        stage: 'Starting batch edit...'
+      },
+      errors: { ...state.errors, editing: undefined }
+    });
+
+    try {
+      const response = await fetch('/api/edit-image', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          mode: 'batch',
+          sourceImageUrl: imageUrl,
+          sourceImageId: imageId,
+          productName: state.productConfiguration.productInput.specs.productName,
+          requests,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to batch edit images');
+      }
+
+      const result = await response.json();
+      
+      if (result.result?.editedImagesByAssetType) {
+        const newEditedImages = { ...state.editedImages };
+        if (!newEditedImages[imageId]) {
+          newEditedImages[imageId] = [];
+        }
+
+        // Flatten all asset type results into a single array
+        Object.values(result.result.editedImagesByAssetType).forEach((images) => {
+          const typedImages = images as EditedImage[];
+          newEditedImages[imageId].push(...typedImages);
+        });
+
+        updateState({ 
+          editedImages: newEditedImages,
+          isEditing: false,
+          editingProgress: undefined
+        });
+      }
+    } catch (error) {
+      console.error('Batch editing failed:', error);
+      updateState({ 
+        isEditing: false,
+        editingProgress: undefined,
+        errors: { 
+          ...state.errors, 
+          editing: error instanceof Error ? error.message : 'Unknown batch editing error' 
+        }
+      });
     }
   };
 
@@ -434,8 +453,8 @@ Solution: ${errorData.solution}`;
   const downloadImage = async (imageUrl: string, filename: string, imageId?: string) => {
     const downloadId = imageId || imageUrl;
     
-    // Pre-validate the URL
-    const validation = validateBFLImageUrl(imageUrl);
+    // Pre-validate the URL - using validateImageUrl instead of validateBFLImageUrl for data URL support
+    const validation = validateImageUrl(imageUrl);
     if (!validation.isValid) {
       const errorMessage = `Invalid image URL: ${validation.issues.join(', ')}`;
       console.error('[Client] URL validation failed:', validation);
@@ -457,45 +476,53 @@ Solution: ${errorData.solution}`;
       });
 
       console.log(`[Client] Starting download for: ${filename}`);
-      console.log(`[Client] Image URL: ${imageUrl}`);
+      console.log(`[Client] Image URL type: ${imageUrl.startsWith('data:') ? 'data URL' : 'HTTP URL'}`);
       console.log(`[Client] Validation passed for domain: ${validation.domain}`);
       
-      // Use proxy API to download image (BFL delivery URLs don't support CORS)
-      const proxyUrl = `/api/download-image?url=${encodeURIComponent(imageUrl)}&filename=${encodeURIComponent(filename)}`;
-      const response = await fetch(proxyUrl);
+      let blob: Blob;
       
-      if (!response.ok) {
-        let errorMessage = `Download failed: HTTP ${response.status}`;
+      // Handle data URLs (from Gemini API) - can download directly
+      if (imageUrl.startsWith('data:')) {
+        console.log('[Client] Processing data URL for direct download');
         
         try {
-          const errorData = await response.json();
-          errorMessage = errorData.error || errorMessage;
+          // Convert data URL to blob
+          const response = await fetch(imageUrl);
+          blob = await response.blob();
+        } catch (error) {
+          console.error('[Client] Failed to convert data URL to blob:', error);
+          throw new Error('Failed to process image data for download');
+        }
+      } else {
+        // Handle HTTP URLs - use proxy API (for CORS and compatibility)
+        console.log('[Client] Using proxy API for HTTP URL download');
+        
+        const proxyUrl = `/api/download-image?url=${encodeURIComponent(imageUrl)}&filename=${encodeURIComponent(filename)}`;
+        const response = await fetch(proxyUrl);
+        
+        if (!response.ok) {
+          let errorMessage = `Download failed: HTTP ${response.status}`;
           
-          if (errorData.details) {
-            errorMessage += ` - ${errorData.details}`;
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.error || errorMessage;
+            
+            if (errorData.details) {
+              errorMessage += ` - ${errorData.details}`;
+            }
+            
+            console.error('[Client] Download API error:', errorData);
+            
+          } catch (jsonError) {
+            console.error('[Client] Could not parse error response:', jsonError);
+            errorMessage += ` (Status: ${response.status} ${response.statusText})`;
           }
           
-          console.error('[Client] Download API error:', errorData);
-          
-          // Log additional debugging info
-          if (errorData.imageUrl) {
-            console.error('[Client] Failed URL:', errorData.imageUrl);
-          }
-          if (errorData.allowedDomains) {
-            console.error('[Client] Allowed domains:', errorData.allowedDomains);
-          }
-          if (errorData.bflError) {
-            console.error('[Client] BFL API error:', errorData.bflError);
-          }
-        } catch (jsonError) {
-          console.error('[Client] Could not parse error response:', jsonError);
-          errorMessage += ` (Status: ${response.status} ${response.statusText})`;
+          throw new Error(errorMessage);
         }
         
-        throw new Error(errorMessage);
+        blob = await response.blob();
       }
-      
-      const blob = await response.blob();
       
       if (blob.size === 0) {
         throw new Error('Downloaded file is empty');
@@ -566,7 +593,7 @@ Solution: ${errorData.solution}`;
       for (let i = 0; i < state.generatedImages.length; i++) {
         const image = state.generatedImages[i];
         const filename = generateSafeFilename(
-          state.productConfiguration.productImages.productName,
+          state.productConfiguration.productInput.specs.productName,
           state.productConfiguration.uiSettings.contextPreset,
           i + 1,
           'jpg'
@@ -602,6 +629,62 @@ Solution: ${errorData.solution}`;
     }
   };
 
+  const downloadAllEdited = async (sourceImageIds: string[]) => {
+    if (sourceImageIds.length === 0 || Object.keys(state.editedImages).length === 0) {
+      alert('No edited images to download');
+      return;
+    }
+    
+    setDownloadingAll(true);
+    let successCount = 0;
+    let failureCount = 0;
+    
+    try {
+      console.log(`[Client] Starting bulk download of edited images`);
+      
+      for (const sourceImageId of sourceImageIds) {
+        const images = state.editedImages[sourceImageId] || [];
+        
+        for (let i = 0; i < images.length; i++) {
+          const image = images[i];
+          const filename = generateSafeFilename(
+            `${state.productConfiguration?.productInput.specs.productName}_${image.assetType}`,
+            'edited',
+            image.metadata.variation,
+            'jpg'
+          );
+          
+          try {
+            await downloadImage(image.url, filename, `bulk_edited_${image.id}`);
+            successCount++;
+            console.log(`[Client] Bulk download progress: ${successCount} completed`);
+          } catch (error) {
+            failureCount++;
+            console.error(`[Client] Failed to download edited image ${image.id}:`, error);
+          }
+          
+          // Add delay between downloads
+          if (i < images.length - 1 || sourceImageIds.indexOf(sourceImageId) < sourceImageIds.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+        }
+      }
+      
+      // Show completion status
+      if (failureCount === 0) {
+        alert(`Successfully downloaded all ${successCount} edited images!`);
+      } else {
+        alert(`Download completed: ${successCount} successful, ${failureCount} failed`);
+      }
+      
+    } catch (error) {
+      console.error('[Client] Bulk download error:', error);
+      alert(`Bulk download failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setDownloadingAll(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-sophisticated-gray-50 via-white to-ocean-blue-50/30 dark:from-sophisticated-gray-950 dark:via-sophisticated-gray-900 dark:to-sophisticated-gray-800">
       <div className="container mx-auto px-4 py-8 md:py-12 max-w-screen-2xl">
@@ -610,76 +693,66 @@ Solution: ${errorData.solution}`;
             <div className="mb-4">
               <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-ocean-blue-50 to-warm-gold-50 border border-ocean-blue-200 rounded-full text-sm font-medium text-ocean-blue-700 dark:from-ocean-blue-900/50 dark:to-warm-gold-900/50 dark:border-ocean-blue-700 dark:text-ocean-blue-300">
                 <span className="w-2 h-2 bg-gradient-ocean-gold rounded-full mr-2 animate-pulse"></span>
-                AI-Powered Image Studio
+                Complete Marketing Asset Creation Studio
               </div>
             </div>
             <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 bg-gradient-to-br from-sophisticated-gray-900 via-ocean-blue-700 to-sophisticated-gray-700 bg-clip-text text-transparent dark:from-sophisticated-gray-100 dark:via-ocean-blue-300 dark:to-sophisticated-gray-300">
-              Create Professional Product Images
+              Create & Transform Product Images
             </h1>
             <p className="text-lg text-sophisticated-gray-600 dark:text-sophisticated-gray-400 px-2 max-w-3xl mx-auto leading-relaxed">
-              Upload your furniture photos and let our advanced AI create stunning marketing visuals with professional lighting, staging, and context.
+              Upload your product photos, generate professional packshots, then transform them into lifestyle scenes, ad creatives, social media posts, and hero banners.
             </p>
           </div>
 
         <Stepper currentStep={state.currentStep} />
 
         <div className="space-y-4 md:space-y-8">
-          {/* Step 1: Product Block */}
-          <StepProductBlock
-            productImages={state.productConfiguration?.productImages || null}
-            onProductImagesChange={handleProductImagesChange}
-            onComplete={handleProductBlockComplete}
+          {/* Step 1: Product Input */}
+          <StepUnifiedInput
+            productInput={state.productConfiguration?.productInput || null}
+            onProductInputChange={handleProductInputChange}
+            onComplete={handleProductInputComplete}
             isActive={state.currentStep === 1}
           />
 
-          {/* Step 2: Product Specs */}
+          {/* Removed optional generation settings - simplified workflow */}
+
+          {/* Step 2: Generate */}
           {state.currentStep >= 2 && state.productConfiguration && (
-            <StepProductSpecs
-              productImages={state.productConfiguration.productImages}
-              onProductImagesChange={(productImages) => {
-                handleConfigurationChange({
-                  ...state.productConfiguration!,
-                  productImages,
-                  updatedAt: new Date().toISOString(),
-                });
-              }}
-              onComplete={handleProductSpecsComplete}
-              isActive={state.currentStep === 2}
-            />
-          )}
-
-          {/* Step 3: Generation Settings */}
-          {state.currentStep >= 3 && state.productConfiguration && (
-            <StepGenerationSettings
-              productConfiguration={state.productConfiguration}
-              onConfigurationChange={handleConfigurationChange}
-              onComplete={handleGenerationSettingsComplete}
-              isActive={state.currentStep === 3}
-            />
-          )}
-
-          {/* Step 4: Generate */}
-          {state.currentStep >= 4 && state.productConfiguration && (
-            <StepGenerate
+            <StepGenerateSimplified
               productConfiguration={state.productConfiguration}
               generatedImages={state.generatedImages}
               isGenerating={state.isGenerating}
               generationProgress={state.generationProgress}
               generationError={state.errors.generation}
-              generationApproach={generationApproach}
-              onGenerate={(useReferenceApproach) => {
-                 const shouldUseReference = useReferenceApproach ?? (generationApproach === 'reference');
-                 generateImages(shouldUseReference);
-                 // Toggle approach for next generation
-                 setGenerationApproach(prev => prev === 'reference' ? 'text' : 'reference');
-               }}
+              onGenerate={generateImages}
               onRegenerate={regenerateImage}
               onDownload={(imageUrl, filename, imageId) => downloadImage(imageUrl, filename, imageId)}
               onDownloadAll={downloadAll}
               downloadingImages={downloadingImages}
               downloadErrors={downloadErrors}
               downloadingAll={downloadingAll}
-              isActive={state.currentStep === 4}
+              isActive={state.currentStep === 2}
+            />
+          )}
+
+          {/* Step 3: Edit Assets */}
+          {state.currentStep >= 3 && (
+            <StepEditImages
+              generatedImages={state.generatedImages}
+              editedImages={state.editedImages}
+              isEditing={state.isEditing}
+              editingProgress={state.editingProgress}
+              editingError={state.errors.editing}
+              onEdit={editImage}
+              onBatchEdit={batchEditImages}
+              onDownload={(imageUrl, filename, imageId) => downloadImage(imageUrl, filename, imageId)}
+              onDownloadAll={downloadAllEdited}
+              downloadingImages={downloadingImages}
+              downloadErrors={downloadErrors}
+              downloadingAll={downloadingAll}
+              isActive={state.currentStep === 3}
+              productName={state.productConfiguration?.productInput.specs.productName}
             />
           )}
         </div>

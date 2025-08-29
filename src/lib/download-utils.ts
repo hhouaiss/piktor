@@ -12,9 +12,9 @@ export interface DownloadValidationResult {
 }
 
 /**
- * Validate a BFL image URL for download compatibility
+ * Validate an image URL for download compatibility (supports both HTTP URLs and data URLs)
  */
-export function validateBFLImageUrl(imageUrl: string): DownloadValidationResult {
+export function validateImageUrl(imageUrl: string): DownloadValidationResult {
   const result: DownloadValidationResult = {
     isValid: false,
     issues: [],
@@ -23,40 +23,65 @@ export function validateBFLImageUrl(imageUrl: string): DownloadValidationResult 
     domain: ''
   };
 
+  // Handle data URLs (from Gemini API)
+  if (imageUrl.startsWith('data:')) {
+    try {
+      const dataUrlRegex = /^data:([a-zA-Z0-9][a-zA-Z0-9\/+\-]*);base64,(.*)$/;
+      const match = imageUrl.match(dataUrlRegex);
+      
+      if (!match) {
+        result.issues.push('Invalid data URL format');
+        result.recommendations.push('Data URL should be in format: data:image/jpeg;base64,<base64data>');
+        return result;
+      }
+      
+      const [, mimeType, base64Data] = match;
+      result.domain = 'data-url';
+      
+      // Validate MIME type
+      if (!mimeType.startsWith('image/')) {
+        result.issues.push(`Invalid MIME type: ${mimeType}. Expected image/* type`);
+        result.recommendations.push('Ensure the data URL contains valid image data');
+      }
+      
+      // Validate base64 data
+      if (!base64Data || base64Data.length < 100) {
+        result.issues.push('Base64 data appears to be too short or missing');
+        result.recommendations.push('Ensure the data URL contains valid base64 encoded image data');
+      }
+      
+      // Try to validate base64 format
+      try {
+        atob(base64Data.substring(0, 100)); // Test first 100 chars
+      } catch {
+        result.issues.push('Invalid base64 encoding in data URL');
+        result.recommendations.push('Ensure the base64 data is properly encoded');
+      }
+      
+      result.isValid = result.issues.length === 0;
+      return result;
+    } catch {
+      result.issues.push('Error parsing data URL');
+      result.recommendations.push('Check that the data URL is properly formatted');
+      return result;
+    }
+  }
+
+  // Handle HTTP/HTTPS URLs (for backward compatibility)
   try {
     const urlObj = new URL(imageUrl);
     result.domain = urlObj.hostname;
 
-    // Check if it's a valid BFL domain
-    const allowedDomains = [
-      'delivery-eu1.bfl.ai',
-      'delivery-us1.bfl.ai', 
-      'delivery.bfl.ai',
-      'cdn.bfl.ai',
-      'static.bfl.ai',
-      'images.bfl.ai',
-      'assets.bfl.ai'
-    ];
-    
-    const isValidDomain = allowedDomains.some(domain => 
-      urlObj.hostname === domain || urlObj.hostname.endsWith(`.${domain}`)
-    );
-
-    if (!isValidDomain) {
-      result.issues.push(`Domain '${urlObj.hostname}' is not in the allowed BFL domains list`);
-      result.recommendations.push('Ensure the image URL is from a valid BFL delivery endpoint');
-    }
-
-    // Check URL structure
-    if (!urlObj.pathname.includes('/')) {
-      result.issues.push('URL path appears to be invalid');
-      result.recommendations.push('Verify the complete BFL delivery URL is being used');
-    }
-
     // Check for HTTPS
-    if (urlObj.protocol !== 'https:') {
-      result.issues.push('URL must use HTTPS protocol');
-      result.recommendations.push('Ensure the URL starts with https://');
+    if (urlObj.protocol !== 'https:' && urlObj.protocol !== 'http:') {
+      result.issues.push('URL must use HTTP or HTTPS protocol');
+      result.recommendations.push('Ensure the URL starts with https:// or http://');
+    }
+
+    // Basic URL structure validation
+    if (!urlObj.pathname || urlObj.pathname === '/') {
+      result.issues.push('URL path appears to be invalid');
+      result.recommendations.push('Ensure the URL points to a specific image file');
     }
 
     result.isValid = result.issues.length === 0;
@@ -67,6 +92,14 @@ export function validateBFLImageUrl(imageUrl: string): DownloadValidationResult 
   }
 
   return result;
+}
+
+/**
+ * Legacy function for BFL image URL validation - now redirects to validateImageUrl
+ * @deprecated Use validateImageUrl instead
+ */
+export function validateBFLImageUrl(imageUrl: string): DownloadValidationResult {
+  return validateImageUrl(imageUrl);
 }
 
 /**

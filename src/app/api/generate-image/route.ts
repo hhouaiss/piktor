@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateMultipleImagesWithBFL, getAspectRatio } from "@/lib/bfl-api";
+import { generateMultipleImagesWithGemini, getGeminiAspectRatio, base64ToDataUrl } from "@/lib/gemini-api";
 
 interface PromptData {
   product: {
@@ -57,9 +57,9 @@ interface PromptData {
 
 export async function POST(request: NextRequest) {
   try {
-    if (!process.env.BFL_API_KEY) {
+    if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json({ 
-        error: "BFL API key not configured. Please add BFL_API_KEY to your .env.local file" 
+        error: "Gemini API key not configured. Please add GEMINI_API_KEY to your .env.local file" 
       }, { status: 500 });
     }
 
@@ -116,26 +116,23 @@ export async function POST(request: NextRequest) {
     // Generate detailed prompt based on the configuration
     const detailedPrompt = generateDetailedPrompt(promptData);
     
-    // BFL API has more flexible prompt length limits
+    // Gemini API handles comprehensive prompts well
     console.log(`Prompt length: ${detailedPrompt.length} characters`);
 
-    // Generate image using FLUX Kontext Pro
-    console.log("Generating image with FLUX Kontext Pro:", detailedPrompt.substring(0, 200) + "...");
+    // Generate image using Gemini 2.5 Flash Image
+    console.log("Generating image with Gemini 2.5 Flash Image:", detailedPrompt.substring(0, 200) + "...");
     console.log("Prompt length:", detailedPrompt.length);
-    // Map aspectRatio to contextPreset for getAspectRatio function
+    // Map aspectRatio to contextPreset for getGeminiAspectRatio function
     const contextPreset = promptData.output.type === 'packshot' ? 'packshot' : 
                          promptData.output.type === 'lifestyle' ? 'lifestyle' : 'instagram';
-    console.log("Aspect ratio:", getAspectRatio(contextPreset));
+    console.log("Aspect ratio:", getGeminiAspectRatio(contextPreset));
     
-    const response = await generateMultipleImagesWithBFL({
+    const response = await generateMultipleImagesWithGemini({
       prompt: detailedPrompt,
-      aspect_ratio: getAspectRatio(contextPreset),
-      prompt_upsampling: false,
-      safety_tolerance: 2,
-      output_format: "jpeg"
+      aspectRatio: getGeminiAspectRatio(contextPreset),
     }, 1, contextPreset);
     
-    console.log("BFL API response received successfully");
+    console.log("Gemini API response received successfully");
     console.log("Response structure:", {
       hasResults: !!response,
       resultsLength: response?.length,
@@ -144,13 +141,13 @@ export async function POST(request: NextRequest) {
     
     const firstResult = response?.[0];
     
-    if (!firstResult?.url) {
-      console.error("No URL found in response:", response);
+    if (!firstResult?.imageData) {
+      console.error("No image data found in response:", response);
       console.error("First result details:", firstResult);
-      throw new Error("No image data returned from BFL API");
+      throw new Error("No image data returned from Gemini API");
     }
     
-    const generatedImageUrl = firstResult.url;
+    const generatedImageUrl = base64ToDataUrl(firstResult.imageData);
     console.log("Generated image URL:", generatedImageUrl);
 
     return NextResponse.json({
@@ -158,7 +155,7 @@ export async function POST(request: NextRequest) {
       imageUrl: generatedImageUrl,
       prompt: detailedPrompt,
       metadata: {
-        model: "flux-kontext-pro",
+        model: "gemini-2.5-flash-image-preview",
         timestamp: new Date().toISOString(),
         originalImageName: image.name,
         promptData: promptData,

@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ProductConfiguration, ContextPreset, UiSettings, ProductProfile, getFieldValue } from "@/lib/types";
 import { 
-  editMultipleImagesWithBFL,
-  getAspectRatio, 
-  fileToBase64
-} from "@/lib/bfl-api";
+  editMultipleImagesWithGemini,
+  fileToBase64Gemini
+} from "@/lib/gemini-api";
 
 interface GenerationParams {
   contextPreset: ContextPreset;
@@ -30,9 +29,9 @@ const getGptImageSize = (contextPreset: ContextPreset): "1024x1024" | "1024x1536
 
 export async function POST(request: NextRequest) {
   try {
-    if (!process.env.BFL_API_KEY) {
+    if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json({ 
-        error: "BFL API key not configured. Please add BFL_API_KEY to your .env.local file" 
+        error: "Gemini API key not configured. Please add GEMINI_API_KEY to your .env.local file" 
       }, { status: 500 });
     }
 
@@ -68,7 +67,7 @@ export async function POST(request: NextRequest) {
     const primaryImageFile = formData.get("primaryImage") as File;
     if (!primaryImageFile) {
       return NextResponse.json({ 
-        error: "No primary reference image provided. This endpoint requires a reference image for FLUX Kontext Pro image editing." 
+        error: "No primary reference image provided. This endpoint requires a reference image for Gemini image editing." 
       }, { status: 400 });
     }
 
@@ -82,7 +81,7 @@ export async function POST(request: NextRequest) {
     const profile = productConfig.productImages.fusedProfile;
     const settings = productConfig.uiSettings;
 
-    console.log(`Generating ${generationParams.variations} ${generationParams.contextPreset} images using FLUX Kontext Pro image editing`);
+    console.log(`Generating ${generationParams.variations} ${generationParams.contextPreset} images using Gemini image editing`);
     console.log(`Primary image: ${primaryImageFile.name}, size: ${primaryImageFile.size} bytes`);
     console.log(`Product: ${productConfig.productImages.productName}`);
 
@@ -111,24 +110,15 @@ export async function POST(request: NextRequest) {
 
     console.log(`Prompt length: ${prompt.length} characters`);
     console.log(`JSON profile keys: ${Object.keys(jsonProfile).join(', ')}`);
-
-    const aspectRatio = getAspectRatio(generationParams.contextPreset);
     
-    // Convert primary image to base64 for BFL API
-    const primaryImageBase64 = await fileToBase64(primaryImageFile);
+    // Convert primary image to base64 for Gemini API
+    const primaryImageBase64Data = await fileToBase64Gemini(primaryImageFile);
+    const primaryImageDataUrl = `data:${primaryImageBase64Data.mimeType};base64,${primaryImageBase64Data.data}`;
     
-    // Generate images using BFL FLUX Kontext Pro image editing
-    const bflRequest = {
-      prompt: prompt,
-      input_image: primaryImageBase64,
-      aspect_ratio: aspectRatio,
-      prompt_upsampling: true,
-      safety_tolerance: 2,
-      output_format: 'jpeg' as const,
-    };
-
-    const variations = await editMultipleImagesWithBFL(
-      bflRequest,
+    // Generate images using Gemini image editing
+    const variations = await editMultipleImagesWithGemini(
+      primaryImageDataUrl,
+      prompt,
       generationParams.variations,
       generationParams.contextPreset
     );
@@ -136,7 +126,7 @@ export async function POST(request: NextRequest) {
     if (variations.length === 0) {
       return NextResponse.json({
         error: "All image generations failed",
-        details: "No successful variations were generated using the images.edits approach"
+        details: "No successful variations were generated using Gemini image editing"
       }, { status: 500 });
     }
 
@@ -151,7 +141,7 @@ export async function POST(request: NextRequest) {
         prompt: prompt,
         promptLength: prompt.length,
         jsonProfile: jsonProfile,
-        model: 'flux-kontext-pro',
+        model: 'gemini-2.5-flash-image-preview',
         generationMethod: 'image-editing-with-json-profile',
         referenceImageUsed: true,
         primaryImageName: primaryImageFile.name,
@@ -168,17 +158,17 @@ export async function POST(request: NextRequest) {
         productName: productConfig.productImages.productName,
         contextPreset: generationParams.contextPreset,
         variationsGenerated: variations.length,
-        model: 'flux-kontext-pro',
+        model: 'gemini-2.5-flash-image-preview',
         approach: 'reference-based-with-json-profile',
         timestamp: new Date().toISOString(),
       },
     });
 
   } catch (error) {
-    console.error("Images.edits generation error:", error);
+    console.error("Images editing generation error:", error);
     console.error("Full error object:", JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
     
-    // Enhanced error handling for BFL API issues
+    // Enhanced error handling for Gemini API issues
     let userError = "Unknown error occurred during generation";
     let statusCode = 500;
     let additionalInfo = {};
@@ -190,47 +180,18 @@ export async function POST(request: NextRequest) {
         stack: error.stack,
       });
       
-      // Parse BFL API error from error message
-      if (error.message.includes('BFL API error:')) {
-        console.error('BFL API Error detected:', error.message);
+      // Parse Gemini API error from error message
+      if (error.message.includes('Gemini API error:')) {
+        console.error('Gemini API Error detected:', error.message);
         
-        // Extract status code from error message
-        const statusMatch = error.message.match(/BFL API error: (\d+)/);
-        if (statusMatch) {
-          const apiStatus = parseInt(statusMatch[1]);
-          console.error('BFL API Status Code:', apiStatus);
-          
-          if (apiStatus === 400) {
-            statusCode = 400;
-            userError = "Invalid request to BFL API";
-            additionalInfo = {
-              issue: "The image or prompt was not accepted by the BFL API",
-              solution: "Check that the reference image is valid and the prompt meets API requirements",
-              bflError: error.message
-            };
-          } else if (apiStatus === 401) {
-            statusCode = 401;
-            userError = "BFL API authentication failed";
-            additionalInfo = {
-              issue: "Invalid or missing BFL API key",
-              solution: "Check your BFL_API_KEY environment variable",
-              bflError: error.message
-            };
-          } else if (apiStatus === 429) {
-            statusCode = 429;
-            userError = "BFL API rate limit exceeded";
-            additionalInfo = {
-              issue: "Too many requests to BFL API",
-              solution: "Please wait a moment before trying again",
-              bflError: error.message
-            };
-          } else {
-            additionalInfo = {
-              bflError: error.message,
-              bflStatus: apiStatus
-            };
-          }
-        }
+        // Handle generic Gemini API errors
+        statusCode = 500;
+        userError = "Gemini API error occurred";
+        additionalInfo = {
+          issue: "The image or prompt was not accepted by the Gemini API",
+          solution: "Check that the reference image is valid and the prompt meets API requirements",
+          geminiError: error.message
+        };
       }
       
       if (userError === "Unknown error occurred during generation") {
@@ -241,7 +202,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       error: userError,
       details: error instanceof Error ? error.stack : undefined,
-      approach: "images.edits with reference image and JSON profile",
+      approach: "gemini image editing with reference image and JSON profile",
       ...additionalInfo
     }, { status: statusCode });
   }

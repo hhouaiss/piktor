@@ -6,10 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-// Removed Dialog imports - no longer needed without prompt preview
-import { Sparkles, Download, RefreshCw, Loader2, AlertCircle, CheckCircle, Eye, Camera, ImageIcon } from "lucide-react";
-import { ProductConfiguration, GeneratedImage, getFieldValue } from "./types";
-// Removed buildOptimizedPrompt import - using comprehensive prompts without optimization
+import { Sparkles, Download, RefreshCw, Loader2, AlertCircle, CheckCircle, Eye } from "lucide-react";
+import { ProductConfiguration, GeneratedImage } from "./types";
 import { cn } from "@/lib/utils";
 import { generateSafeFilename } from "@/lib/download-utils";
 
@@ -23,8 +21,7 @@ interface StepGenerateProps {
     stage: string;
   };
   generationError?: string;
-  generationApproach: 'reference' | 'text';
-  onGenerate: (useReferenceApproach?: boolean) => void;
+  onGenerate: () => void;
   onRegenerate: (imageId: string) => void;
   onDownload: (imageUrl: string, filename: string, imageId?: string) => void;
   onDownloadAll: () => void;
@@ -34,13 +31,12 @@ interface StepGenerateProps {
   isActive: boolean;
 }
 
-export function StepGenerate({
+export function StepGenerateSimplified({
   productConfiguration,
   generatedImages,
   isGenerating,
   generationProgress,
   generationError,
-  generationApproach,
   onGenerate,
   onRegenerate,
   onDownload,
@@ -55,9 +51,9 @@ export function StepGenerate({
   if (!productConfiguration) return null;
 
   const settings = productConfiguration.uiSettings;
-  const productImages = productConfiguration.productImages;
-  const profile = productImages.fusedProfile;
-  const primaryImage = productImages.images.find(img => img.id === productImages.primaryImageId);
+  const productInput = productConfiguration.productInput;
+  const specs = productInput.specs;
+  const images = productInput.images;
   
   const totalExpectedImages = settings.variations;
   const hasGeneratedImages = generatedImages.length > 0;
@@ -72,7 +68,7 @@ export function StepGenerate({
 
   const getImageFilename = (variation?: number) => {
     return generateSafeFilename(
-      productImages.productName,
+      specs.productName,
       settings.contextPreset,
       variation,
       'jpg'
@@ -87,12 +83,12 @@ export function StepGenerate({
             "w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium",
             isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
           )}>
-            4
+            2
           </span>
           Generate
         </CardTitle>
         <CardDescription>
-          Generate professional product images using your fused product profile and primary reference image.
+          Generate professional product images using your specifications and uploaded images.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -100,68 +96,56 @@ export function StepGenerate({
         {/* Product Summary */}
         <div className="bg-muted/20 rounded-lg p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="font-medium">Product: {productImages.productName}</h3>
+            <h3 className="font-medium">Product: {specs.productName}</h3>
             <Badge variant="outline">{settings.contextPreset.toUpperCase()}</Badge>
           </div>
           
-          {/* Primary Reference Image */}
+          {/* Uploaded Images Preview */}
           <div className="flex items-center gap-3">
-            <div className="relative w-16 h-16 bg-muted/50 rounded-lg overflow-hidden flex-shrink-0">
-              {primaryImage && (
-                <Image
-                  src={primaryImage.preview}
-                  alt="Primary reference"
-                  fill
-                  className="object-cover"
-                  unoptimized
-                />
+            <div className="flex -space-x-2">
+              {images.slice(0, 3).map((image, idx) => (
+                <div key={image.id} className="relative w-12 h-12 bg-muted/50 rounded-lg overflow-hidden border-2 border-background">
+                  <Image
+                    src={image.preview}
+                    alt={`Reference ${idx + 1}`}
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
+                </div>
+              ))}
+              {images.length > 3 && (
+                <div className="w-12 h-12 bg-muted/50 rounded-lg flex items-center justify-center border-2 border-background">
+                  <span className="text-xs font-medium">+{images.length - 3}</span>
+                </div>
               )}
-              <div className="absolute top-1 right-1">
-                <Camera className="w-3 h-3 text-white bg-black/50 rounded-full p-0.5" />
-              </div>
             </div>
             <div className="flex-1">
-              <p className="text-sm font-medium">Primary Reference Image</p>
-              <p className="text-xs text-muted-foreground">Using: {primaryImage?.name}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-sm">{productImages.images.length} images</p>
-              <p className="text-xs text-muted-foreground">uploaded</p>
+              <p className="text-sm font-medium">Reference Images</p>
+              <p className="text-xs text-muted-foreground">{images.length} images uploaded</p>
             </div>
           </div>
 
           {/* Product Specs Summary */}
-          {profile && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-2 border-t">
-              <div className="text-xs">
-                <p className="text-muted-foreground">Type</p>
-                <p className="font-medium">{getFieldValue(profile.type)}</p>
-              </div>
-              <div className="text-xs">
-                <p className="text-muted-foreground">Style</p>
-                <p className="font-medium">{getFieldValue(profile.style)}</p>
-              </div>
-              <div className="text-xs">
-                <p className="text-muted-foreground">Color</p>
-                <div className="flex items-center gap-1">
-                  <div 
-                    className="w-3 h-3 rounded border"
-                    style={{ backgroundColor: profile.colorOverride || getFieldValue(profile.detectedColor) }}
-                  />
-                  <span className="font-medium text-xs">
-                    {profile.colorOverride ? 'Override' : 'Detected'}
-                  </span>
-                </div>
-              </div>
-              <div className="text-xs">
-                <p className="text-muted-foreground">Materials</p>
-                <p className="font-medium">{getFieldValue(profile.materials)}</p>
-              </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 pt-2 border-t">
+            <div className="text-xs">
+              <p className="text-muted-foreground">Type</p>
+              <p className="font-medium">{specs.productType || 'Not specified'}</p>
             </div>
-          )}
+            <div className="text-xs">
+              <p className="text-muted-foreground">Materials</p>
+              <p className="font-medium">{specs.materials || 'Not specified'}</p>
+            </div>
+            {specs.dimensions && (
+              <div className="text-xs">
+                <p className="text-muted-foreground">Dimensions</p>
+                <p className="font-medium">
+                  {specs.dimensions.width}×{specs.dimensions.height}×{specs.dimensions.depth} cm
+                </p>
+              </div>
+            )}
+          </div>
         </div>
-
-        {/* AI Prompt Preview removed as requested - using comprehensive prompts without preview */}
 
         {/* Generation Status */}
         {!hasGeneratedImages && !isGenerating && (
@@ -169,9 +153,9 @@ export function StepGenerate({
             <Sparkles className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-medium mb-2">Ready to Generate</h3>
             <p className="text-muted-foreground mb-4">
-              Generate {totalExpectedImages} {settings.contextPreset} image{totalExpectedImages !== 1 ? 's' : ''} using your product profile
+              Generate {totalExpectedImages} {settings.contextPreset} image{totalExpectedImages !== 1 ? 's' : ''} using your product specifications
             </p>
-            <Button onClick={() => onGenerate()} size="lg" className="px-8">
+            <Button onClick={onGenerate} size="lg" className="px-8">
               <Sparkles className="h-4 w-4 mr-2" />
               Generate Images
             </Button>
@@ -213,7 +197,7 @@ export function StepGenerate({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => onGenerate()}
+              onClick={onGenerate}
               className="mt-3"
             >
               <RefreshCw className="h-3 w-3 mr-2" />
@@ -253,7 +237,7 @@ export function StepGenerate({
                     <div className="relative bg-muted/50" style={{ aspectRatio: settings.contextPreset === 'story' ? '2/3' : settings.contextPreset === 'hero' ? '3/2' : '1/1' }}>
                       <Image
                         src={image.url}
-                        alt={`Generated ${settings.contextPreset} for ${productImages.productName}`}
+                        alt={`Generated ${settings.contextPreset} for ${specs.productName}`}
                         fill
                         className="object-cover"
                         unoptimized
@@ -349,17 +333,12 @@ export function StepGenerate({
             {!isGenerating && (
               <div className="text-center pt-4 border-t">
                 <Button 
-                  onClick={() => onGenerate(generationApproach === 'reference')} 
+                  onClick={onGenerate} 
                   variant="outline" 
                   size="lg"
-                  disabled={generationApproach === 'reference' && !primaryImage}
                 >
-                  {generationApproach === 'reference' ? (
-                    <ImageIcon className="h-4 w-4 mr-2" />
-                  ) : (
-                    <Sparkles className="h-4 w-4 mr-2" />
-                  )}
-                  Generate More with {generationApproach === 'reference' ? 'Reference' : 'Text'}
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Generate More Images
                 </Button>
               </div>
             )}
@@ -428,5 +407,3 @@ export function StepGenerate({
     </Card>
   );
 }
-
-// Removed PromptPreview components - using comprehensive prompts without UI preview as requested

@@ -1,64 +1,5 @@
-// DetectedField pattern for AI analysis with override capability
-export interface DetectedField<T> {
-  value: T;
-  source: 'detected' | 'override';
-}
-
-// Enhanced Product Feature interface
-export interface ProductFeature {
-  name: string;
-  description: string;
-  importance: 'high' | 'medium' | 'low';
-}
-
-// Color analysis interface
-export interface ColorAnalysis {
-  hex: string;
-  name: string;
-  confidence: number; // 0-1
-}
-
-// Dimension estimation interface
-export interface DimensionEstimate {
-  width: number;
-  height: number;
-  depth: number;
-  unit: 'cm' | 'inches';
-  confidence: 'high' | 'medium' | 'low';
-}
-
-// Context recommendations interface
-export interface ContextRecommendations {
-  bestContexts: ContextPreset[];
-  backgroundSuggestions: string[];
-  lightingRecommendations: string[];
-}
-
-// Enhanced text-to-image prompts interface for GPT-image-1 generation
-export interface TextToImagePrompts {
-  baseDescription: string; // Extremely detailed base description capturing all visual characteristics
-  packshot: string; // Complete prompt for clean product packshots
-  lifestyle: string; // Detailed prompt for lifestyle scenes
-  hero: string; // Comprehensive prompt for hero/banner images
-  story: string; // Optimized prompt for vertical story format
-  instagram: string; // Instagram post format prompt
-  detail: string; // Detail shot format prompt
-  photographySpecs: {
-    cameraAngle: string; // Optimal camera angles and perspectives
-    lightingSetup: string; // Detailed lighting specifications
-    depthOfField: string; // Recommended depth of field characteristics
-    composition: string; // Composition guidelines
-  };
-  visualDetails: {
-    materialTextures: string; // Detailed description of all material textures
-    colorPalette: string; // Complete color palette with undertones
-    hardwareDetails: string; // Specific hardware, joints, connections details
-    proportionalRelationships: string; // Key proportional relationships between parts
-  };
-}
-
 // Generation method enum
-export type GenerationMethod = 'text-to-image' | 'reference-based' | 'hybrid';
+export type GenerationMethod = 'direct-generation' | 'reference-based' | 'image-editing';
 
 // Generation source interface
 export interface GenerationSource {
@@ -68,58 +9,36 @@ export interface GenerationSource {
   referenceImageUsed?: boolean;
 }
 
-// Enhanced v4 Product Profile with comprehensive analysis
-export interface ProductProfile {
-  // Core fields (maintaining compatibility)
-  type: DetectedField<string>;
-  materials: DetectedField<string>;
-  detectedColor: DetectedField<string>; // hex color from AI
-  style: DetectedField<string>;
-  features: DetectedField<string[]>;
-  placementType?: DetectedField<string>;
-  
-  // Enhanced analysis data from GPT-4o
-  colorAnalysis?: ColorAnalysis;
-  detailedFeatures?: ProductFeature[];
-  estimatedDimensions?: DimensionEstimate;
-  contextRecommendations?: ContextRecommendations;
-  textToImagePrompts?: TextToImagePrompts;
-  
-  // Override fields
-  realDimensions?: {
-    width: number; // cm
-    height: number; // cm 
-    depth: number; // cm
+// Simplified Product Profile - user-defined specifications only
+export interface ProductSpecs {
+  productName: string;
+  productType: string; // User-defined product type
+  materials: string; // User-defined materials
+  dimensions?: {
+    width?: number; // cm
+    height?: number; // cm 
+    depth?: number; // cm
   };
-  colorOverride?: string; // hex color override
-  notes?: string;
-  
-  // Analysis metadata
-  analysisVersion?: string;
-  analysisModel?: string;
-  analysisTimestamp?: string;
-  sourceImageCount?: number;
+  additionalSpecs?: string; // Any additional specifications
 }
 
 // Individual uploaded image (part of product)
 export interface UploadedImage extends File {
   id: string;
   preview: string;
-  isPrimary?: boolean; // for primary reference selection
 }
 
-// Multi-image product represents THE SAME product from multiple angles
-export interface ProductImages {
-  productName: string;
+// Multi-image product input - simplified without analysis
+export interface ProductInput {
   images: UploadedImage[];
-  primaryImageId?: string; // ID of primary reference image for OpenAI
-  fusedProfile?: ProductProfile; // Generated from all images
-  isAnalyzing?: boolean;
-  analysisError?: string;
+  specs: ProductSpecs;
 }
 
 // Context presets for different image types - expanded for e-commerce
 export type ContextPreset = 'packshot' | 'instagram' | 'story' | 'hero' | 'lifestyle' | 'detail';
+
+// Asset types for image editing transformations
+export type AssetType = 'lifestyle' | 'ad' | 'social' | 'hero' | 'variation';
 
 export interface UiSettings {
   contextPreset: ContextPreset;
@@ -133,24 +52,22 @@ export interface UiSettings {
   variations: 1 | 2 | 3 | 4;
 }
 
-// Configuration that can be saved/loaded from localStorage
+// Simplified configuration without analysis dependencies
 export interface ProductConfiguration {
   id: string;
-  name: string;
-  slug: string; // for localStorage key
-  productImages: ProductImages;
+  productInput: ProductInput;
   uiSettings: UiSettings;
   createdAt: string;
   updatedAt: string;
 }
 
-// Enhanced Generated Image interface for hybrid generation
+// Simplified Generated Image interface
 export interface GeneratedImage {
   id: string;
   url: string;
   productConfigId: string;
   settings: UiSettings;
-  profile: ProductProfile;
+  specs: ProductSpecs;
   prompt: string;
   generationSource: GenerationSource;
   metadata: {
@@ -166,22 +83,58 @@ export interface GeneratedImage {
   thumbnail?: string;
 }
 
-// Main app state for v3
+// Asset editing request interface
+export interface EditingRequest {
+  sourceImageId: string;
+  sourceImageUrl: string;
+  assetType: AssetType;
+  customPrompt?: string;
+  variations?: number;
+}
+
+// Edited image result interface
+export interface EditedImage {
+  id: string;
+  sourceImageId: string;
+  url: string;
+  assetType: AssetType;
+  prompt: string;
+  metadata: {
+    model: string;
+    timestamp: string;
+    size: string;
+    variation: number;
+    editingMethod: 'image-to-image';
+    processingTime?: number;
+  };
+}
+
+// Editing progress interface
+export interface EditingProgress {
+  current: number;
+  total: number;
+  stage: string;
+  assetType?: AssetType;
+}
+
+// Extended app state for 3-step flow
 export interface ImageGeneratorState {
-  currentStep: 1 | 2 | 3 | 4; // 4-step flow
+  currentStep: 1 | 2 | 3; // 3-step flow: Input -> Generate -> Edit
   productConfiguration?: ProductConfiguration;
   generatedImages: GeneratedImage[];
+  editedImages: Record<string, EditedImage[]>; // Keyed by source image ID
   isGenerating: boolean;
+  isEditing: boolean;
   generationProgress?: {
     current: number;
     total: number;
     stage: string;
   };
+  editingProgress?: EditingProgress;
   errors: {
-    upload?: string;
-    analysis?: string;
+    input?: string;
     generation?: string;
-    configuration?: string;
+    editing?: string;
   };
 }
 
@@ -214,17 +167,21 @@ export const DEFAULT_UI_SETTINGS: UiSettings = {
   variations: 2,
 };
 
-// Helper functions for DetectedField
-export function createDetectedField<T>(value: T): DetectedField<T> {
-  return { value, source: 'detected' };
-}
-
-export function createOverrideField<T>(value: T): DetectedField<T> {
-  return { value, source: 'override' };
-}
-
-export function getFieldValue<T>(field: DetectedField<T>): T {
-  return field.value;
+// Helper function to create product specifications
+export function createProductSpecs(
+  productName: string,
+  productType: string = '',
+  materials: string = '',
+  dimensions?: { width: number; height: number; depth: number },
+  additionalSpecs?: string
+): ProductSpecs {
+  return {
+    productName,
+    productType,
+    materials,
+    dimensions,
+    additionalSpecs
+  };
 }
 
 // LocalStorage utilities
@@ -239,4 +196,70 @@ export function generateSlug(name: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
+}
+
+// Helper to create product input
+export function createProductInput(images: UploadedImage[], specs: ProductSpecs): ProductInput {
+  return { images, specs };
+}
+
+// Asset type configuration
+export const ASSET_TYPE_CONFIG = {
+  lifestyle: {
+    name: 'Lifestyle',
+    description: 'Transform into real-world contextual scenes',
+    prompt: 'create a lifestyle scene with the product naturally placed in a real-world environment like a modern living room, bedroom, or office space, with complementary furniture, good lighting, and an inviting atmosphere',
+    contextPreset: 'lifestyle' as ContextPreset,
+    variations: 2,
+  },
+  ad: {
+    name: 'Ad Creative',
+    description: 'Create commercial advertising visuals',
+    prompt: 'transform into a professional advertising image with commercial photography style, dramatic lighting, perfect composition for marketing campaigns and promotional materials',
+    contextPreset: 'hero' as ContextPreset,
+    variations: 2,
+  },
+  social: {
+    name: 'Social Media',
+    description: 'Optimize for social media platforms',
+    prompt: 'create an engaging social media post image with trendy aesthetic, perfect for Instagram, Facebook, or Pinterest, with eye-catching composition and modern styling',
+    contextPreset: 'instagram' as ContextPreset,
+    variations: 3,
+  },
+  hero: {
+    name: 'Hero Banner',
+    description: 'Create website hero images',
+    prompt: 'transform into a stunning hero banner image perfect for website headers, with professional composition, clean background space for text overlay, and premium brand presentation',
+    contextPreset: 'hero' as ContextPreset,
+    variations: 2,
+  },
+  variation: {
+    name: 'Product Variations',
+    description: 'Generate color and material variations',
+    prompt: 'create variations of the product with different colors, materials, or finishes while maintaining the same style and composition, showing alternative versions customers might prefer',
+    contextPreset: 'packshot' as ContextPreset,
+    variations: 3,
+  },
+} as const;
+
+// Helper to get asset type configuration
+export function getAssetTypeConfig(assetType: AssetType) {
+  return ASSET_TYPE_CONFIG[assetType];
+}
+
+// Helper to create editing request
+export function createEditingRequest(
+  sourceImageId: string,
+  sourceImageUrl: string,
+  assetType: AssetType,
+  customPrompt?: string,
+  variations?: number
+): EditingRequest {
+  return {
+    sourceImageId,
+    sourceImageUrl,
+    assetType,
+    customPrompt,
+    variations: variations || ASSET_TYPE_CONFIG[assetType].variations,
+  };
 }

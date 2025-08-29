@@ -1,36 +1,30 @@
 "use client";
 
-import { CheckCircle, Package, Cog, Settings, Sparkles } from "lucide-react";
+import { CheckCircle, Package, Sparkles, Wand2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface StepperProps {
-  currentStep: 1 | 2 | 3 | 4;
+  currentStep: 1 | 2 | 3;
 }
 
 const steps = [
   {
     step: 1,
-    title: "Upload Your Product",
-    description: "Add your furniture photos",
+    title: "Product Input",
+    description: "Upload images & specifications",
     icon: Package,
   },
   {
     step: 2,
-    title: "AI Analysis",
-    description: "We understand your style",
-    icon: Cog,
+    title: "Generate Images",
+    description: "Create professional visuals",
+    icon: Sparkles,
   },
   {
     step: 3,
-    title: "Choose Your Style",
-    description: "Select scene & context",
-    icon: Settings,
-  },
-  {
-    step: 4,
-    title: "Generate Images",
-    description: "Get marketing-ready visuals",
-    icon: Sparkles,
+    title: "Edit Assets",
+    description: "Transform into marketing materials",
+    icon: Wand2,
   },
 ];
 
