@@ -5,7 +5,7 @@ export interface ABTestVariant {
   id: string;
   name: string;
   weight: number; // 0-100, percentage of users who see this variant
-  config: Record<string, any>;
+  config: Record<string, unknown>;
   isControl?: boolean;
 }
 
@@ -33,7 +33,7 @@ export interface ABTestResult {
   sessionId: string;
   timestamp: string;
   conversions: string[];
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 class ABTestingService {
@@ -91,7 +91,7 @@ class ABTestingService {
     testId: string, 
     userId: string, 
     conversionType: string,
-    metadata?: Record<string, any>
+    metadata?: Record<string, unknown>
   ) {
     const test = this.tests.get(testId);
     const userTests = this.userAssignments.get(userId);
@@ -142,7 +142,7 @@ class ABTestingService {
         };
         
         return stats;
-      }, {} as Record<string, any>);
+      }, {} as Record<string, { conversions: number; conversionRate: number; uniqueUsers: number }>);
 
       return {
         variantId: variant.id,
@@ -252,7 +252,7 @@ export function useABTest(testId: string, userId: string) {
     setIsLoading(false);
   }, [testId, userId]);
 
-  const trackConversion = (conversionType: string, metadata?: Record<string, any>) => {
+  const trackConversion = (conversionType: string, metadata?: Record<string, unknown>) => {
     abTestingService.trackConversion(testId, userId, conversionType, metadata);
   };
 

@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { MessageSquare, Star, ThumbsUp, ThumbsDown, AlertTriangle, Lightbulb, X, Send } from "lucide-react";
+import { MessageSquare, Star, ThumbsUp, ThumbsDown, AlertTriangle, Lightbulb, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -16,9 +16,9 @@ interface FeedbackData {
   message: string;
   context?: {
     page: string;
-    action: string;
+    action?: string;
     imageId?: string;
-    generationSettings?: any;
+    generationSettings?: Record<string, unknown>;
   };
   userEmail?: string;
   priority: 'low' | 'medium' | 'high';
@@ -222,7 +222,7 @@ export function QuickFeedback({ context, onSubmit, className = "" }: QuickFeedba
                 className="w-full px-3 py-2 border rounded-md text-sm"
               />
               <p className="text-xs text-muted-foreground">
-                We'll only use this to follow up on your feedback
+                We&apos;ll only use this to follow up on your feedback
               </p>
             </div>
 
@@ -318,7 +318,7 @@ export function FeedbackDashboard({ feedback, onStatusChange, className = "" }: 
         <div className="flex gap-4">
           <select
             value={filter}
-            onChange={(e) => setFilter(e.target.value as any)}
+            onChange={(e) => setFilter(e.target.value as typeof filter)}
             className="border rounded px-3 py-1 text-sm"
           >
             <option value="all">All Feedback</option>
@@ -338,7 +338,7 @@ export function FeedbackDashboard({ feedback, onStatusChange, className = "" }: 
           
           <select
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as any)}
+            onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
             className="border rounded px-3 py-1 text-sm"
           >
             <option value="date">Sort by Date</option>

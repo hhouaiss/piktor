@@ -113,7 +113,7 @@ export default function Home() {
           </CardHeader>
           <CardContent>
             <p className="text-sophisticated-gray-600 dark:text-sophisticated-gray-400 leading-relaxed">
-              Our advanced AI analyzes your furniture's style, materials, and dimensions to create the perfect marketing context automatically.
+              Our advanced AI analyzes your furniture&apos;s style, materials, and dimensions to create the perfect marketing context automatically.
             </p>
           </CardContent>
         </Card>

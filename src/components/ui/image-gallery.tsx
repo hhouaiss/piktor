@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Download, RotateCcw, Star, ZoomIn, Share2, Heart, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -136,10 +137,12 @@ export function ImageGallery({
                   </div>
                 ) : (
                   <>
-                    <img
+                    <Image
                       src={image.url}
                       alt={`Generated image - ${image.style}`}
                       className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                      fill
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     />
                     
                     {/* Overlay Controls */}
@@ -172,7 +175,14 @@ export function ImageGallery({
                             </Button>
                           </DialogTrigger>
                           <DialogContent className="max-w-4xl">
-                            <img src={image.url} alt="Full size image" className="w-full rounded-lg" />
+                            <Image 
+                              src={image.url} 
+                              alt="Full size image" 
+                              className="w-full rounded-lg"
+                              width={1200}
+                              height={800}
+                              style={{ height: 'auto' }}
+                            />
                           </DialogContent>
                         </Dialog>
                       </div>
