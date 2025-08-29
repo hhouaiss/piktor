@@ -75,8 +75,8 @@ export interface ProductProfile {
   materials: DetectedField<string>;
   detectedColor: DetectedField<string>; // hex color from AI
   style: DetectedField<string>;
-  wallMounted: DetectedField<boolean>;
   features: DetectedField<string[]>;
+  placementType?: DetectedField<string>;
   
   // Enhanced analysis data from GPT-4o
   colorAnalysis?: ColorAnalysis;

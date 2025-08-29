@@ -34,7 +34,7 @@ export const FURNITURE_ANALYSIS_TEMPLATES = {
 - Specify construction methods (mortise-and-tenon, welded frame, etc.)
 - Include commercial-grade specifications
 - Reference industry-standard materials and finishes
-- Identify mounting systems for wall-mounted pieces
+- Identify support and mounting systems for proper placement
 - Note ergonomic and functional features
 
 🔍 MATERIAL ANALYSIS FRAMEWORK:
@@ -57,7 +57,7 @@ export const FURNITURE_ANALYSIS_TEMPLATES = {
    - Manufacturing precision and tolerances
 
 🏗️ TECHNICAL SPECIFICATIONS:
-- Wall-mounting systems (if applicable): bracket types, load ratings
+- Support systems: floor legs, wall mounts, table bases, mounting hardware
 - Dimensional proportions with furniture industry standards
 - Functional mechanisms: adjustability, mobility, storage
 - Commercial durability indicators
@@ -245,11 +245,11 @@ export const CONTEXT_PROMPT_TEMPLATES: Record<ContextPreset, PromptTemplate> = {
 
 // Constraint Enforcement Templates
 export const CONSTRAINT_TEMPLATES = {
-  WALL_MOUNTED_ENFORCEMENT: `🚨 CRITICAL WALL-MOUNTED SAFETY REQUIREMENT: This furniture piece MUST remain securely attached to the wall using {MOUNTING_SYSTEM} with {HARDWARE_SPEC} grade commercial installation hardware. NEVER show floor contact, legs touching ground, free-standing placement, or detached positioning. Maintain proper wall-mounted positioning with minimum 2-inch clearance from floor surface. Wall mounting hardware must be visible and appropriate for commercial installations, showing proper attachment points and structural integrity. This is a SAFETY-CRITICAL requirement for commercial furniture specifications.`,
+  INTELLIGENT_PLACEMENT: `🏠 INTELLIGENT FURNITURE PLACEMENT: Position this furniture according to its intended placement type and design characteristics. Wall-mounted pieces should show appropriate mounting hardware and no floor contact. Floor-standing pieces should show proper floor contact and realistic room placement. Follow professional interior design principles for the specific furniture category.`,
 
-  WALL_MOUNTED_DESK_SPECIFIC: `🏢 CRITICAL WALL-MOUNTED DESK POSITIONING SPECIFICATION: This wall-mounted desk MUST be positioned at exactly 75cm (29.5 inches) from the floor to the desktop surface, which is the standard height for wall-mounted workspace furniture. The desk MUST appear suspended from the wall with NO legs, supports, or contact with the floor. Show visible heavy-duty wall mounting brackets or French cleat system appropriate for supporting desk loads (50-100kg capacity). The desk should appear to "float" above the floor with clear space underneath. Position as if installed in a commercial office environment at ergonomic standing desk height. This is CRITICAL for wall-mounted desk functionality and user safety.`,
+  ERGONOMIC_POSITIONING: `💻 ERGONOMIC FURNITURE POSITIONING: Position furniture at appropriate heights and orientations for intended use. Desks at standard working heights, seating at proper ergonomic positions, storage at accessible levels. Show realistic clearances for functionality and access.`,
 
-  WALL_MOUNTED_HEIGHT_ENFORCEMENT: `📐 MANDATORY HEIGHT POSITIONING: Wall-mounted furniture must be positioned at industry-standard installation heights: Wall-mounted desks at 75cm from floor to surface, wall shelves at appropriate intervals based on function, wall cabinets with proper clearance above counter surfaces. Height positioning must reflect realistic commercial installation practices and ergonomic requirements. Show appropriate wall clearance and mounting hardware suitable for the specified installation height and furniture load requirements.`,
+  REALISTIC_SUPPORT_SYSTEMS: `🔧 AUTHENTIC SUPPORT DISPLAY: Show appropriate support systems for each furniture type. Wall-mounted items display mounting hardware, floor-standing items show base or leg contact, table-top items positioned on suitable surfaces. Hardware and supports should match the furniture's weight and intended use.`,
 
   MATERIAL_FIDELITY: `🔍 ENTERPRISE MATERIAL ACCURACY REQUIREMENT: Maintain EXACT material specifications - {MATERIAL_LIST} with authentic surface textures, grain patterns, finish characteristics, and reflectance properties. Color fidelity must match {COLOR_SPECIFICATION} with precise undertones, highlighting, and shadow characteristics. Material authenticity is critical for enterprise furniture catalog accuracy. Surface properties must reflect realistic material behavior including wear patterns, natural variations, and aging characteristics appropriate for commercial furniture grade materials.`,
 
@@ -281,14 +281,19 @@ export function buildEnhancedPrompt(
   );
   const style = getStyleDescription(String(getFieldValue(profile.style) || 'modern'));
   
-  // Build base description
-  let enhancedPrompt = template.baseStructure
+  // Build base description with enhanced product type context
+  let enhancedPrompt = `🏢 PRODUCT IDENTIFICATION & CONTEXT:
+- PRIMARY PRODUCT TYPE: ${productType} (this is the exact furniture type being generated)
+- PLACEMENT TYPE: ${profile.placementType ? getFieldValue(profile.placementType).replace('_', ' ') : 'floor standing'}
+- SUPPORT SYSTEM: ${profile.placementType ? getPlacementDescription(getFieldValue(profile.placementType)) : 'Standard floor-based support'}
+
+${template.baseStructure}`
     .replace('{PRODUCT_TYPE}', productType)
     .replace('{MATERIAL_SPECS}', materials)
     .replace('{STYLE_DESCRIPTION}', style)
     .replace('{ENVIRONMENT_TYPE}', determineEnvironmentType(contextPreset, settings))
     .replace('{CONSTRUCTION_DETAILS}', buildConstructionDetails(profile))
-    .replace('{MOUNTING_SYSTEM}', determineMountingSystem(profile))
+    .replace('{PLACEMENT_SYSTEM}', profile.placementType ? getPlacementDescription(getFieldValue(profile.placementType)) : 'standard')
     .replace('{HARDWARE_SPEC}', 'commercial-grade')
     .replace('{MATERIAL_LIST}', materials)
     .replace('{COLOR_SPECIFICATION}', getColorSpecification(profile));
@@ -302,20 +307,17 @@ export function buildEnhancedPrompt(
     enhancedPrompt += `\n- ${constraint}`;
   });
 
-  // Add wall-mounted enforcement if applicable
-  if (getFieldValue(profile.wallMounted)) {
-    enhancedPrompt += `\n\n${CONSTRAINT_TEMPLATES.WALL_MOUNTED_ENFORCEMENT
-      .replace('{MOUNTING_SYSTEM}', determineMountingSystem(profile))
-      .replace('{HARDWARE_SPEC}', 'commercial-grade')}`;
-    
-    // Add desk-specific wall mounting if it's a desk
-    const wallMountedProductType = String(getFieldValue(profile.type) || '').toLowerCase();
-    if (wallMountedProductType.includes('desk') || wallMountedProductType.includes('workstation')) {
-      enhancedPrompt += `\n\n${CONSTRAINT_TEMPLATES.WALL_MOUNTED_DESK_SPECIFIC}`;
-    }
-    
-    enhancedPrompt += `\n\n${CONSTRAINT_TEMPLATES.WALL_MOUNTED_HEIGHT_ENFORCEMENT}`;
+  // Add intelligent placement guidance
+  enhancedPrompt += `\n\n${CONSTRAINT_TEMPLATES.INTELLIGENT_PLACEMENT}`;
+  
+  // Add ergonomic positioning for desks and seating
+  const productTypeForErgonomics = String(getFieldValue(profile.type) || '').toLowerCase();
+  if (productTypeForErgonomics.includes('desk') || productTypeForErgonomics.includes('chair') || productTypeForErgonomics.includes('workstation')) {
+    enhancedPrompt += `\n\n${CONSTRAINT_TEMPLATES.ERGONOMIC_POSITIONING}`;
   }
+  
+  // Add realistic support system display
+  enhancedPrompt += `\n\n${CONSTRAINT_TEMPLATES.REALISTIC_SUPPORT_SYSTEMS}`;
 
   // Add material fidelity requirements
   enhancedPrompt += `\n\n${CONSTRAINT_TEMPLATES.MATERIAL_FIDELITY
@@ -376,23 +378,23 @@ function buildConstructionDetails(profile: ProductProfile): string {
   return buildFeatureSpecification(Array.isArray(features) ? features : [String(features)]);
 }
 
-function determineMountingSystem(profile: ProductProfile): string {
-  if (!getFieldValue(profile.wallMounted)) return '';
-  
-  // Determine mounting system based on product type
-  const productType = String(getFieldValue(profile.type) || '').toLowerCase();
-  
-  if (productType.includes('shelf') || productType.includes('cabinet')) {
-    return 'heavy-duty bracket mounting system';
+function getPlacementDescription(placementType: string): string {
+  switch (placementType) {
+    case 'wall_mounted':
+      return 'Wall-mounted with appropriate mounting hardware';
+    case 'floor_standing':
+      return 'Floor-standing with base or leg support system';
+    case 'table_top':
+      return 'Designed for table or surface placement';
+    case 'ceiling_mounted':
+      return 'Ceiling-mounted with appropriate suspension system';
+    case 'built_in':
+      return 'Built-in installation system';
+    case 'modular':
+      return 'Modular connection system';
+    default:
+      return 'Standard support system as designed';
   }
-  if (productType.includes('desk') || productType.includes('table')) {
-    return 'fold-down wall mounting mechanism';
-  }
-  if (productType.includes('light') || productType.includes('lamp')) {
-    return 'adjustable wall mounting arm';
-  }
-  
-  return 'commercial-grade wall mounting system';
 }
 
 function getColorSpecification(profile: ProductProfile): string {

@@ -424,7 +424,7 @@ Mood: ${promptData.branding.moodKeywords.join(", ")}
 
 Constraints:
 - Strict Mode: ${promptData.constraints.strict_mode ? 'Enabled' : 'Disabled'}
-- Wall Mounted Only: ${promptData.constraints.must_be_wall_mounted ? 'Required' : 'Optional'}
+- Intelligent Placement: ${promptData.constraints.must_be_wall_mounted ? 'Enabled' : 'Disabled'}
 - No Floor Furniture: ${promptData.constraints.no_furniture_on_floor ? 'Enforced' : 'Allowed'}
 - No Extra Objects: ${promptData.constraints.no_extra_objects ? 'Prohibited' : 'Allowed'}
 - Respect Dimensions: ${promptData.constraints.respect_all_dimensions ? 'Strict' : 'Flexible'}
@@ -890,7 +890,7 @@ Please create a high-quality, professional image that emphasizes the furniture's
                           className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
                         />
                         <Label htmlFor="must_be_wall_mounted" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                          Must Be Wall Mounted
+                          Intelligent Furniture Placement
                         </Label>
                       </div>
                       <div className="flex items-center space-x-2">

@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
             properties: {
               type: {
                 type: "string",
-                description: "Specific product type (e.g. 'ergonomic_office_chair', 'modern_desk_lamp')"
+                description: "CRITICAL: Specific, detailed product type that clearly identifies the furniture category (e.g. 'ergonomic_office_chair', 'wall_mounted_floating_desk', 'modern_table_lamp', 'sectional_sofa'). This field is essential for proper AI generation and placement rules."
               },
               materials: {
                 type: "array",
@@ -109,21 +109,22 @@ export async function POST(request: NextRequest) {
                 type: "string",
                 description: "Design style (e.g. 'modern', 'industrial', 'scandinavian')"
               },
-              wallMounted: {
-                type: "boolean",
-                description: "CRITICAL DETERMINATION: Whether the product is specifically designed to be wall-mounted (look for mounting hardware, brackets, cleats, absence of floor-touching supports, cantilever design, fold-down mechanisms, or floating mounting systems)"
+              placementType: {
+                type: "string",
+                enum: ["floor_standing", "wall_mounted", "ceiling_mounted", "table_top", "built_in", "modular"],
+                description: "How this furniture is typically placed or mounted based on its design and construction"
               },
-              wallMountingDetails: {
+              mountingDetails: {
                 type: "object",
                 properties: {
-                  mountingSystemType: { type: "string", description: "Type of wall mounting system (cantilever_bracket, french_cleat, hidden_bracket, fold_down_mechanism, floating_system, etc.)" },
-                  standardHeight: { type: "string", description: "If desk/workstation: specify if designed for 75cm wall-mounting height" },
-                  hardwareVisible: { type: "boolean", description: "Whether mounting hardware or brackets are visible in the images" },
-                  loadCapacity: { type: "string", description: "Estimated load capacity category (light_duty, medium_duty, heavy_duty, commercial_grade)" }
+                  systemType: { type: "string", description: "Type of mounting or support system visible" },
+                  supportStructure: { type: "string", description: "How the piece is supported (legs, brackets, base, wall-mounted, etc.)" },
+                  hardwareVisible: { type: "boolean", description: "Whether mounting hardware or support mechanisms are visible" },
+                  loadCapacity: { type: "string", description: "Estimated load capacity category based on construction" }
                 },
-                required: ["mountingSystemType", "standardHeight", "hardwareVisible", "loadCapacity"],
+                required: ["systemType", "supportStructure", "hardwareVisible", "loadCapacity"],
                 additionalProperties: false,
-                description: "Detailed wall-mounting system analysis (only if wallMounted is true)"
+                description: "Detailed mounting and support system analysis"
               },
               features: {
                 type: "array",
@@ -194,7 +195,7 @@ export async function POST(request: NextRequest) {
                 properties: {
                   baseDescription: {
                     type: "string",
-                    description: "Extremely detailed base description capturing all visual characteristics, materials, textures, colors, and construction details"
+                    description: "Extremely detailed base description that STARTS with the specific product type and mounting configuration, then captures all visual characteristics, materials, textures, colors, and construction details. Must explicitly state whether wall-mounted or free-standing."
                   },
                   packshot: {
                     type: "string",
@@ -271,7 +272,7 @@ export async function POST(request: NextRequest) {
                 additionalProperties: false
               }
             },
-            required: ["type", "materials", "primaryColor", "style", "wallMounted", "wallMountingDetails", "features", "dimensions", "contextRecommendations", "confidence", "notes", "textToImagePrompts"],
+            required: ["type", "materials", "primaryColor", "style", "placementType", "mountingDetails", "features", "dimensions", "contextRecommendations", "confidence", "notes", "textToImagePrompts"],
             additionalProperties: false
           }
         }
@@ -301,7 +302,8 @@ export async function POST(request: NextRequest) {
       colorName: analysis.primaryColor?.name || 'unknown',
       colorConfidence: analysis.primaryColor?.confidence || 0.5,
       style: analysis.style || 'modern',
-      wallMounted: analysis.wallMounted || false,
+      placementType: analysis.placementType || 'floor_standing',
+      mountingDetails: analysis.mountingDetails || null,
       features: analysis.features?.map((f: { name: string }) => f.name) || [],
       confidence: analysis.confidence || 'medium',
       notes: analysis.notes || '',
@@ -360,20 +362,24 @@ function buildAnalysisPrompt(imageCount: number): string {
 
 🎯 CRITICAL MISSION: This analysis will be used to generate NEW AI images using GPT-image-1 text-to-image model. Since GPT-image-1 cannot see reference images, your textToImagePrompts must be SO DETAILED and COMPREHENSIVE that they can accurately recreate the product from text descriptions alone.
 
+📋 PRODUCT TYPE IDENTIFICATION (MANDATORY):
+- You MUST identify the SPECIFIC furniture type with precision (e.g., "wall_mounted_floating_desk" not just "desk")
+- The product type determines critical placement rules for AI generation
+- Wall-mounted items require special handling and will be placed against walls
+- Free-standing items will be positioned using interior design principles
+
 📸 ANALYSIS METHODOLOGY:
 - Examine ALL ${imageCount} images thoroughly
 - Note variations in lighting, angles, and visible details across images
 - Combine information from ALL perspectives to create the most complete description possible
 - Pay special attention to details that are only visible in certain angles/lighting
 
-🚨 CRITICAL WALL-MOUNTING DETECTION PROTOCOL:
-- MANDATORY: Scan every image for mounting hardware (brackets, cleats, rails, hinges)
-- MANDATORY: Look for structural evidence of wall-mounting design (no floor supports, cantilever structure)
-- MANDATORY: Identify wall-attachment points, mounting plates, or bracket systems
-- MANDATORY: For desks/workstations: Determine if designed for standard 75cm wall-mounting height
-- CRITICAL: Distinguish between free-standing and wall-mounted based on structural design, not current positioning
-- CRITICAL: Note fold-down mechanisms, floating designs, or suspension systems
-- CRITICAL: If wall-mounted, analyze and document the mounting system type and hardware specifications
+🏠 FURNITURE PLACEMENT & SUPPORT ANALYSIS:
+- Analyze the product's intended placement and support system
+- Identify whether it's designed to be floor-standing, wall-mounted, table-top, built-in, etc.
+- Note any visible support structures: legs, brackets, bases, mounting hardware
+- For wall-mounted items: document the mounting system and hardware
+- For floor-standing items: identify the support structure (legs, base, pedestal, etc.)
 
 🔍 ULTRA-DETAILED VISUAL ANALYSIS REQUIREMENTS:
 
@@ -420,15 +426,21 @@ function buildAnalysisPrompt(imageCount: number): string {
 
 🎨 TEXT-TO-IMAGE PROMPT CREATION (MAXIMUM DETAIL REQUIRED):
 
+CRITICAL REQUIREMENTS for all prompts:
+- START every prompt with the specific product type and mounting configuration
+- For wall-mounted items: Explicitly state "wall-mounted [product type] attached to wall"  
+- For free-standing items: Explicitly state "free-standing [product type] positioned on floor"
+
 For each context type (packshot, lifestyle, hero, story), create prompts that are:
 - MINIMUM 200+ words each for main contexts
+- BEGIN with clear product type identification and placement context
 - Include specific technical photography terms
 - Reference exact materials, colors, and construction details
 - Specify lighting setups, camera angles, and composition rules
 - Describe how shadows and highlights should fall
 - Include atmospheric and environmental details
 
-The baseDescription should be 300+ words capturing EVERY visual aspect visible across all uploaded images.
+The baseDescription should be 300+ words starting with product type and mounting status, then capturing EVERY visual aspect visible across all uploaded images.
 
 Photography specifications must include:
 - Specific lens recommendations (wide angle, macro, etc.)

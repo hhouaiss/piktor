@@ -20,7 +20,7 @@ export interface ProductProfile {
   detectedColor: string | string[];
   style: string | string[];
   features: string | string[];
-  wallMounted: boolean | string[];
+  placementType?: string;
   realDimensions?: {
     width?: number;
     height?: number;

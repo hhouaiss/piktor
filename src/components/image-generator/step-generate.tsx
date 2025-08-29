@@ -154,8 +154,8 @@ export function StepGenerate({
                 </div>
               </div>
               <div className="text-xs">
-                <p className="text-muted-foreground">Wall Mount</p>
-                <p className="font-medium">{getFieldValue(profile.wallMounted) ? 'Yes' : 'No'}</p>
+                <p className="text-muted-foreground">Materials</p>
+                <p className="font-medium">{getFieldValue(profile.materials)}</p>
               </div>
             </div>
           )}

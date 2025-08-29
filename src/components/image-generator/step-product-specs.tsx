@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, CheckCircle, Edit3, Sparkles } from "lucide-react";
 import { ProductImages, ProductProfile, DetectedField, createDetectedField, getFieldValue } from "./types";
@@ -70,8 +69,8 @@ export function StepProductSpecs({ productImages, onProductImagesChange, onCompl
         materials: createDetectedField(result.materials || 'unknown'),
         detectedColor: createDetectedField(result.colorHex || '#ffffff'),
         style: createDetectedField(result.style || 'modern'),
-        wallMounted: createDetectedField(result.wallMounted || false),
         features: createDetectedField(result.features || []),
+        placementType: createDetectedField(result.placementType || 'floor_standing'),
         
         // Enhanced analysis data from GPT-4o (CRITICAL for generation)
         colorAnalysis: result.colorAnalysis,
@@ -265,24 +264,6 @@ export function StepProductSpecs({ productImages, onProductImagesChange, onCompl
                   />
                 )}
 
-                {/* Wall Mounted */}
-                {productImages.fusedProfile?.wallMounted && (
-                  <div>
-                    <Label className="text-sm font-medium">Wall Mounted</Label>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Switch
-                        checked={getFieldValue(productImages.fusedProfile.wallMounted)}
-                        onCheckedChange={(checked) => updateDetectedField('wallMounted', checked, 'override')}
-                      />
-                      <span className="text-sm">
-                        {getFieldValue(productImages.fusedProfile.wallMounted) ? 'Yes' : 'No'}
-                      </span>
-                      <Badge variant={productImages.fusedProfile.wallMounted.source === 'detected' ? 'secondary' : 'outline'}>
-                        {productImages.fusedProfile.wallMounted.source === 'detected' ? 'AI' : 'Override'}
-                      </Badge>
-                    </div>
-                  </div>
-                )}
 
                 {/* Features */}
                 {productImages.fusedProfile?.features && (

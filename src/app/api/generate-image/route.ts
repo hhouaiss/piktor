@@ -192,7 +192,7 @@ function generateDetailedPrompt(data: PromptData): string {
   // Build constraints string
   const constraintsStr = [];
   if (constraints.strict_mode) constraintsStr.push("strict adherence to specifications");
-  if (constraints.must_be_wall_mounted) constraintsStr.push("wall-mounted design only");
+  if (constraints.must_be_wall_mounted) constraintsStr.push("intelligent placement according to furniture type");
   if (constraints.no_furniture_on_floor) constraintsStr.push("no floor-based furniture");
   if (constraints.no_extra_objects) constraintsStr.push("no additional decorative objects");
   if (constraints.respect_all_dimensions) constraintsStr.push("exact dimensional accuracy");
@@ -219,6 +219,10 @@ function generateDetailedPrompt(data: PromptData): string {
 
   const prompt = `${basePrompt}.
 
+🏢 PRIMARY PRODUCT IDENTIFICATION:
+- PRODUCT TYPE: ${product.category} - ${product.name} (THIS IS THE SPECIFIC FURNITURE BEING GENERATED)
+- PLACEMENT CONTEXT: ${constraints.must_be_wall_mounted ? 'WALL-MOUNTED - Must be attached to wall with no floor contact' : 'FREE-STANDING - Should be positioned on floor using interior design principles'}
+
 PRODUCT SPECIFICATIONS:
 - Name: ${product.name}
 - Category: ${product.category}
@@ -240,6 +244,10 @@ BRAND AESTHETIC:
 
 TECHNICAL CONSTRAINTS:
 ${constraintsStr.length > 0 ? `- ${constraintsStr.join(", ")}` : ""}
+
+${constraints.must_be_wall_mounted ? 
+  '🚨 WALL-MOUNTED FURNITURE: This furniture MUST be shown mounted to the wall with no floor contact. Show mounting hardware and clear space underneath.' :
+  '🏠 FREE-STANDING FURNITURE: Position this furniture naturally using professional interior design principles. Allow proper clearance from walls unless specifically designed for wall placement.'}
 
 Create a high-quality, photorealistic image that emphasizes the furniture's craftsmanship, materials, and design. The image should be professionally lit with attention to detail, texture, and form. Ensure the furniture is the primary focus and matches all specified dimensions and features exactly.`;
 

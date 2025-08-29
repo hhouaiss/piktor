@@ -158,52 +158,53 @@ ${baseDescription}
       break;
   }
 
-  // Add ultra-strict wall-mounting requirements BEFORE general constraints if applicable
-  if (profile && getFieldValue(profile.wallMounted)) {
+  // Add intelligent furniture placement guidance based on AI-detected placement type
+  if (profile) {
+    const placementType = profile.placementType ? getFieldValue(profile.placementType) : 'floor_standing';
     const productType = String(getFieldValue(profile.type) || '').toLowerCase();
-    if (productType.includes('desk') || productType.includes('workstation')) {
-      prompt += `\n\n🚨🚨🚨 ULTRA-CRITICAL WALL-MOUNTED DESK ENFORCEMENT - MISSION CRITICAL:
-      
-⚠️ PRIMARY DIRECTIVE: This wall-mounted desk MUST be positioned at exactly 75cm (29.5 inches) from floor to desktop surface.
-
-🚫 ABSOLUTE PROHIBITIONS (ZERO TOLERANCE):
-• NO legs touching the floor
-• NO supports touching the floor  
-• NO pedestals or bases on the floor
-• NO free-standing placement
-• NO floor contact of any kind
-• NO desk feet on ground
-• NO floor-based stability whatsoever
-
-✅ MANDATORY REQUIREMENTS:
-• Desk must appear to "float" suspended from wall mounting system
-• Heavy-duty mounting brackets must be clearly visible
-• Minimum 5cm visible clearance space underneath desk
-• Clear open space from floor up to 75cm height
-• Wall attachment points must be apparent
-• Cantilever or floating mounting system clearly shown
-
-⚡ GENERATION SUCCESS CRITERIA:
-The desk MUST appear suspended at 75cm height with NO floor contact. Any violation constitutes COMPLETE FAILURE.`;
+    
+    if (placementType === 'wall_mounted') {
+      // Provide specific guidance for wall-mounted furniture
+      if (productType.includes('desk') || productType.includes('workstation')) {
+        prompt += `\n\n🚨 CRITICAL WALL-MOUNTED DESK PLACEMENT:
+        
+⚠️ This desk is designed for wall mounting and must be shown properly mounted:
+• Position at standard working height (typically 72-76cm from floor to surface)
+• Show appropriate wall mounting hardware (brackets, cleats, or cantilever system)
+• Ensure no floor contact - desk should appear to "float"
+• Display minimum 5cm clearance beneath the desk
+• Show the mounting system that supports the desk weight
+• Position as if professionally installed in a commercial or home office setting`;
+      } else {
+        prompt += `\n\n🚨 WALL-MOUNTED FURNITURE PLACEMENT:
+        
+⚠️ This furniture is designed for wall mounting:
+• Show proper wall attachment with appropriate mounting hardware
+• No floor contact - furniture should appear suspended from wall
+• Display appropriate clearance beneath the piece
+• Show mounting system suitable for the furniture type and weight
+• Position as if professionally installed`;
+      }
     } else {
-      prompt += `\n\n🚨🚨🚨 ULTRA-CRITICAL WALL-MOUNTED FURNITURE ENFORCEMENT:
+      // Intelligent placement for floor-standing and other furniture types
+      prompt += `\n\n🏠 INTELLIGENT FURNITURE PLACEMENT:
       
-🚫 ABSOLUTE PROHIBITIONS (ZERO TOLERANCE):
-• NO floor contact whatsoever
-• NO legs touching ground
-• NO supports on floor
-• NO bases touching floor
-• NO free-standing placement
-• NO floor-based stability
+📐 PROFESSIONAL PLACEMENT PRINCIPLES:
+This ${productType} is designed as ${String(placementType).replace('_', ' ')} furniture and should be positioned accordingly:
 
-✅ MANDATORY REQUIREMENTS:
-• Furniture must appear suspended from wall mounting system
-• Visible wall attachment hardware
-• Clear space beneath furniture
-• Floating appearance from wall mounting
-• Minimum 5cm clearance from floor
+✅ PLACEMENT GUIDELINES:
+• Position naturally based on furniture type and intended use
+• Maintain appropriate clearance from walls for access and airflow
+• Follow professional interior design standards for the furniture category
+• Ensure proper support contact with floor/surface as designed
+• Consider ergonomic access and functionality
+• Create balanced composition within the space
 
-⚡ Any floor contact results in COMPLETE GENERATION FAILURE.`;
+🎯 CONTEXT-APPROPRIATE POSITIONING:
+• Allow proper traffic flow around the piece
+• Position to show the furniture's best features and proportions
+• Maintain realistic spatial relationships
+• Consider lighting and shadow patterns that enhance the furniture's form`;
     }
   }
 
@@ -314,8 +315,8 @@ function buildProductDescription(profile: ProductProfile): string {
   // Use color override if available, otherwise use detected color
   const effectiveColor = profile.colorOverride || getFieldValue(profile.detectedColor);
   
-  const wallMountedNote = getFieldValue(profile.wallMounted)
-    ? buildWallMountedNote(profile)
+  const placementNote = profile.placementType && getFieldValue(profile.placementType) === 'wall_mounted'
+    ? buildPlacementNote(profile)
     : '';
 
   const dimensionsNote = profile.realDimensions && 
@@ -332,7 +333,7 @@ function buildProductDescription(profile: ProductProfile): string {
 - Design Style: ${getFieldValue(profile.style)} commercial aesthetic
 ${furnitureFeatures}
 ${dimensionsNote}
-${wallMountedNote}
+${placementNote}
 ${additionalNotes}`.trim();
 }
 
@@ -518,7 +519,7 @@ function buildOptimizedProductDescription(profile: ProductProfile): string {
   const featuresValue = getFieldValue(profile.features);
   const topFeatures = Array.isArray(featuresValue) ? featuresValue.slice(0, 3).map(f => truncateText(String(f), 30)) : [];
   
-  const wallMounted = getFieldValue(profile.wallMounted) ? 'Wall-mounted.' : '';
+  const placementInfo = profile.placementType ? `Placement: ${String(getFieldValue(profile.placementType)).replace('_', ' ')}.` : '';
   
   const parts = [
     `Type: ${type}`,
@@ -526,7 +527,7 @@ function buildOptimizedProductDescription(profile: ProductProfile): string {
     `Color: ${color}`,
     style ? `Style: ${style}` : '',
     topFeatures.length > 0 ? `Features: ${topFeatures.join(', ')}` : '',
-    wallMounted
+    placementInfo
   ].filter(Boolean);
 
   return parts.join('. ');
@@ -549,8 +550,8 @@ function getOptimizedConstraints(settings: UiSettings, profile: ProductProfile):
   
   if (settings.strictMode) {
     constraints.push('No text/labels');
-    if (getFieldValue(profile.wallMounted)) {
-      constraints.push('Wall-mounted only');
+    if (profile.placementType && getFieldValue(profile.placementType) === 'wall_mounted') {
+      constraints.push('Proper wall mounting');
     }
   }
 
@@ -623,12 +624,16 @@ function truncateText(text: string, maxLength: number): string {
   return text.substring(0, maxLength - 3) + '...';
 }
 
-function buildWallMountedNote(profile: ProductProfile): string {
+function buildPlacementNote(profile: ProductProfile): string {
   const productType = String(getFieldValue(profile.type) || '').toLowerCase();
+  const placementType = profile.placementType ? getFieldValue(profile.placementType) : 'floor_standing';
   
-  if (productType.includes('desk') || productType.includes('workstation')) {
-    return '🚨🚨🚨 CRITICAL WALL-MOUNTED DESK REQUIREMENT - ZERO TOLERANCE FOR VIOLATIONS: This desk MUST be wall-mounted at exactly 75cm (29.5 inches) from floor to desktop surface. ABSOLUTE PROHIBITION: Never show floor contact, legs, pedestals, supports, or free-standing placement of any kind. MANDATORY REQUIREMENTS: Show heavy-duty mounting brackets clearly visible, demonstrate 5cm minimum clearance space underneath extending from floor to desk, desk must appear to "float" suspended from wall mounting system at standard ergonomic working height. ANY DEVIATION FROM THESE SPECIFICATIONS CONSTITUTES COMPLETE FAILURE.';
+  if (placementType === 'wall_mounted') {
+    if (productType.includes('desk') || productType.includes('workstation')) {
+      return 'Wall-Mounted Desk: Position at standard working height (72-76cm) with proper mounting hardware visible. Show floating appearance with no floor contact.';
+    }
+    return 'Wall-Mounted Furniture: Show proper wall attachment with appropriate mounting hardware and no floor contact.';
   }
   
-  return '🚨🚨🚨 CRITICAL WALL-MOUNTED REQUIREMENT - ABSOLUTE MANDATE: This furniture piece MUST remain securely wall-mounted at all times. ZERO TOLERANCE: Never show floor contact, legs, supports, bases, or free-standing placement. MANDATORY: Maintain proper commercial wall-mounting system visibility with clear suspension from wall. ANY FLOOR CONTACT RESULTS IN GENERATION FAILURE.';
+  return `${String(placementType).replace('_', ' ')} placement as designed for this furniture type.`;
 }

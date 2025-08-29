@@ -89,23 +89,25 @@ export async function POST(request: NextRequest) {
     // Generate JSON profile for direct inclusion in prompt
     const jsonProfile = generateStructuredJsonProfile(profile, settings, generationParams.contextPreset);
     
-    // Check for wall-mounted furniture and add critical constraints
-    const isWallMounted = profile.wallMounted;
+    // Check for placement type and add intelligent placement guidance
+    const placementType = getFieldValue(profile.placementType) || 'floor_standing';
     const productType = String(profile.type || '').toLowerCase();
     
-    // Build critical wall-mounting prefix if needed
-    let wallMountingPrefix = '';
-    if (isWallMounted) {
+    // Build placement guidance prefix
+    let placementPrefix = '';
+    if (placementType === 'wall_mounted') {
       if (productType.includes('desk') || productType.includes('workstation')) {
-        wallMountingPrefix = `🚨 CRITICAL: Wall-mounted desk at exactly 75cm height with NO floor contact. `;
+        placementPrefix = `📐 PLACEMENT: Wall-mounted desk at ergonomic height (72-76cm) with proper mounting hardware visible. `;
       } else {
-        wallMountingPrefix = `🚨 CRITICAL: Wall-mounted furniture with NO floor contact whatsoever. `;
+        placementPrefix = `📐 PLACEMENT: Wall-mounted furniture with appropriate mounting system and realistic clearances. `;
       }
+    } else if (placementType === 'floor_standing') {
+      placementPrefix = `📐 PLACEMENT: Floor-standing furniture positioned naturally with proper floor contact and room placement. `;
     }
     
     // Build the exact prompt structure from your working example
     const contextDescription = getContextDescription(generationParams.contextPreset);
-    const prompt = `${wallMountingPrefix}Create a ${contextDescription} image for our ecommerce website of our main product in the images and follow strictly the instructions included in the json profile below: ${JSON.stringify(jsonProfile)}`;
+    const prompt = `${placementPrefix}Create a ${contextDescription} image for our ecommerce website of our main product in the images and follow strictly the instructions included in the json profile below: ${JSON.stringify(jsonProfile)}`;
 
     console.log(`Prompt length: ${prompt.length} characters`);
     console.log(`JSON profile keys: ${Object.keys(jsonProfile).join(', ')}`);
@@ -352,13 +354,12 @@ function generateStructuredJsonProfile(profile: ProductProfile, settings: UiSett
       maintain_product_fidelity: true,
       respect_aspect_ratio: true,
       commercial_use: true,
-      // Wall-mounting specific constraints
-      wall_mounted_furniture_must_not_touch_floor: !!profile.wallMounted,
-      wall_mounted_desk_height_75cm_mandatory: !!profile.wallMounted && String(profile.type || '').toLowerCase().includes('desk'),
-      no_legs_or_supports_on_floor: !!profile.wallMounted,
-      visible_wall_mounting_hardware_required: !!profile.wallMounted,
-      floating_suspension_appearance_required: !!profile.wallMounted,
-      minimum_5cm_floor_clearance: !!profile.wallMounted
+      // Placement-specific constraints
+      placement_type_adherence: true,
+      realistic_mounting_system_display: getFieldValue(profile.placementType) === 'wall_mounted',
+      proper_floor_contact_for_standing: getFieldValue(profile.placementType) === 'floor_standing',
+      appropriate_clearances_and_spacing: true,
+      professional_interior_design_placement: true
     }
   };
 
@@ -401,7 +402,7 @@ function getContextSpecificJsonRequirements(contextPreset: ContextPreset, settin
         composition_requirement: "Product centered, fills appropriate portion of frame",
         focus_requirement: "Product in sharp focus throughout",
         context: "E-commerce catalog presentation",
-        wall_mounting_requirement: "If wall-mounted: MUST show floating/suspended at correct height with visible mounting hardware and NO floor contact"
+        placement_requirement: "Position furniture according to its intended placement type with appropriate support systems visible"
       };
       
     case 'lifestyle':
