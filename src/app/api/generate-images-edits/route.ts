@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
     const jsonProfile = generateStructuredJsonProfile(profile, settings, generationParams.contextPreset);
     
     // Check for placement type and add intelligent placement guidance
-    const placementType = getFieldValue(profile.placementType) || 'floor_standing';
+    const placementType = profile.placementType ? getFieldValue(profile.placementType) : 'floor_standing';
     const productType = String(profile.type || '').toLowerCase();
     
     // Build placement guidance prefix
@@ -356,8 +356,8 @@ function generateStructuredJsonProfile(profile: ProductProfile, settings: UiSett
       commercial_use: true,
       // Placement-specific constraints
       placement_type_adherence: true,
-      realistic_mounting_system_display: getFieldValue(profile.placementType) === 'wall_mounted',
-      proper_floor_contact_for_standing: getFieldValue(profile.placementType) === 'floor_standing',
+      realistic_mounting_system_display: profile.placementType ? getFieldValue(profile.placementType) === 'wall_mounted' : false,
+      proper_floor_contact_for_standing: profile.placementType ? getFieldValue(profile.placementType) === 'floor_standing' : true,
       appropriate_clearances_and_spacing: true,
       professional_interior_design_placement: true
     }

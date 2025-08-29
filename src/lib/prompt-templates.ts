@@ -284,8 +284,8 @@ export function buildEnhancedPrompt(
   // Build base description with enhanced product type context
   let enhancedPrompt = `🏢 PRODUCT IDENTIFICATION & CONTEXT:
 - PRIMARY PRODUCT TYPE: ${productType} (this is the exact furniture type being generated)
-- PLACEMENT TYPE: ${profile.placementType ? getFieldValue(profile.placementType).replace('_', ' ') : 'floor standing'}
-- SUPPORT SYSTEM: ${profile.placementType ? getPlacementDescription(getFieldValue(profile.placementType)) : 'Standard floor-based support'}
+- PLACEMENT TYPE: ${profile.placementType ? String(getFieldValue(profile.placementType)).replace('_', ' ') : 'floor standing'}
+- SUPPORT SYSTEM: ${profile.placementType ? getPlacementDescription(String(getFieldValue(profile.placementType))) : 'Standard floor-based support'}
 
 ${template.baseStructure}`
     .replace('{PRODUCT_TYPE}', productType)
@@ -293,7 +293,7 @@ ${template.baseStructure}`
     .replace('{STYLE_DESCRIPTION}', style)
     .replace('{ENVIRONMENT_TYPE}', determineEnvironmentType(contextPreset, settings))
     .replace('{CONSTRUCTION_DETAILS}', buildConstructionDetails(profile))
-    .replace('{PLACEMENT_SYSTEM}', profile.placementType ? getPlacementDescription(getFieldValue(profile.placementType)) : 'standard')
+    .replace('{PLACEMENT_SYSTEM}', profile.placementType ? getPlacementDescription(String(getFieldValue(profile.placementType))) : 'standard')
     .replace('{HARDWARE_SPEC}', 'commercial-grade')
     .replace('{MATERIAL_LIST}', materials)
     .replace('{COLOR_SPECIFICATION}', getColorSpecification(profile));

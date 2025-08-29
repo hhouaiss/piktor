@@ -44,7 +44,7 @@ export const PLACEMENT_CONSTRAINTS: ConstraintRule[] = [
     description: 'Wall-mounted desks should be positioned at ergonomic working height',
     severity: ConstraintSeverity.HIGH,
     enforcement: '💻 ERGONOMIC DESK POSITIONING: For wall-mounted desks, position at standard working height (72-76cm from floor to surface) with proper mounting hardware visible. Show floating appearance with appropriate clearance beneath.',
-    validation: (profile) => profile.placementType && getFieldValue(profile.placementType) === 'wall_mounted' && String(getFieldValue(profile.type) || '').toLowerCase().includes('desk')
+    validation: (profile) => !!(profile.placementType && getFieldValue(profile.placementType) === 'wall_mounted' && String(getFieldValue(profile.type) || '').toLowerCase().includes('desk'))
   },
   {
     id: 'mounting_system_authenticity',
@@ -52,7 +52,7 @@ export const PLACEMENT_CONSTRAINTS: ConstraintRule[] = [
     description: 'Wall-mounted furniture should show appropriate mounting systems',
     severity: ConstraintSeverity.MEDIUM,
     enforcement: '🔧 MOUNTING SYSTEM DISPLAY: For wall-mounted furniture, show appropriate mounting hardware that matches the furniture type and weight requirements. Display realistic attachment points and support systems.',
-    validation: (profile) => profile.placementType && getFieldValue(profile.placementType) === 'wall_mounted'
+    validation: (profile) => !!(profile.placementType && getFieldValue(profile.placementType) === 'wall_mounted')
   },
   {
     id: 'spatial_clearance_realism',

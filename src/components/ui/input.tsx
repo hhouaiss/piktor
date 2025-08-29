@@ -38,7 +38,7 @@ const inputVariants = cva(
 )
 
 interface InputProps 
-  extends React.ComponentProps<"input">,
+  extends Omit<React.ComponentProps<"input">, "size">,
     VariantProps<typeof inputVariants> {
   variant?: "default" | "filled" | "outline" | "ghost"
   size?: "sm" | "default" | "lg"  
