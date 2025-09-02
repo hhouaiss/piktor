@@ -250,6 +250,28 @@
     @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
   }
   
+  /* Line clamp utilities */
+  .line-clamp-1 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+  }
+  
+  .line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+  
+  .line-clamp-3 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+  
   /* Premium Animations */
   @keyframes fade-in {
     from {
@@ -294,6 +316,16 @@
   
   .animate-scale-in {
     animation: scale-in 0.2s ease-out;
+  }
+  
+  @keyframes shimmer {
+    0% { transform: translateX(-100%) skewX(-12deg); }
+    100% { transform: translateX(200%) skewX(-12deg); }
+  }
+  
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); opacity: 0; }
+    50% { transform: translateY(-10px); opacity: 1; }
   }
   
   /* Premium Gradients Utilities */

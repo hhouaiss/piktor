@@ -8,20 +8,24 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, CheckCircle, Upload, X, Image as ImageIcon } from "lucide-react";
-import { ProductInput, ProductSpecs, UploadedImage, createProductInput } from "./types";
+import { Loader2, CheckCircle, Upload, X, Image as ImageIcon, Instagram, Facebook, Camera, Home, Package, Smartphone } from "lucide-react";
+import { ProductInput, ProductSpecs, UploadedImage, createProductInput, ContextSelection, ContextType, SocialMediaFormat, CONTEXT_TYPE_CONFIG, createContextSelection } from "./types";
 import { cn } from "@/lib/utils";
 
 interface StepUnifiedInputProps {
   productInput: ProductInput | null;
+  contextSelection: ContextSelection | null;
   onProductInputChange: (productInput: ProductInput) => void;
+  onContextSelectionChange: (selection: ContextSelection) => void;
   onComplete: () => void;
   isActive: boolean;
 }
 
 export function StepUnifiedInput({ 
   productInput, 
+  contextSelection,
   onProductInputChange, 
+  onContextSelectionChange,
   onComplete, 
   isActive 
 }: StepUnifiedInputProps) {
@@ -39,6 +43,17 @@ export function StepUnifiedInput({
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  
+  // Context selection state
+  const [selectedContextType, setSelectedContextType] = useState<ContextType | null>(
+    contextSelection?.contextType || null
+  );
+  const [selectedSocialFormat, setSelectedSocialFormat] = useState<SocialMediaFormat | null>(
+    contextSelection?.socialMediaFormat || null
+  );
+  const [showSocialFormats, setShowSocialFormats] = useState(
+    contextSelection?.contextType === 'social-media'
+  );
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -137,28 +152,74 @@ export function StepUnifiedInput({
     handleFileSelect(e.dataTransfer.files);
   };
 
+  // Context selection handlers
+  const handleContextTypeSelect = (contextType: ContextType) => {
+    setSelectedContextType(contextType);
+    
+    if (contextType === 'social-media') {
+      setShowSocialFormats(true);
+      setSelectedSocialFormat(null);
+    } else {
+      setShowSocialFormats(false);
+      setSelectedSocialFormat(null);
+      
+      // Immediately create and emit selection for non-social-media types
+      const selection = createContextSelection(contextType);
+      onContextSelectionChange(selection);
+    }
+  };
+
+  const handleSocialFormatSelect = (format: SocialMediaFormat) => {
+    setSelectedSocialFormat(format);
+    
+    // Create and emit selection for social media with format
+    const selection = createContextSelection('social-media', format);
+    onContextSelectionChange(selection);
+  };
+
+  const isContextSelectionComplete = () => {
+    return contextSelection && (
+      contextSelection.contextType !== 'social-media' || 
+      (contextSelection.contextType === 'social-media' && contextSelection.socialMediaFormat)
+    );
+  };
+
+  const getContextIcon = (contextType: ContextType) => {
+    switch (contextType) {
+      case 'packshot':
+        return Package;
+      case 'social-media':
+        return Smartphone;
+      case 'lifestyle':
+        return Home;
+      default:
+        return Camera;
+    }
+  };
+
   // Validation
   const isValid = uploadedImages.length > 0 && 
                   specs.productName.trim() !== '' && 
-                  specs.productType.trim() !== '';
+                  specs.productType.trim() !== '' &&
+                  isContextSelectionComplete();
 
   return (
     <Card className={cn(isActive && "ring-2 ring-primary")}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <span className={cn(
-            "w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium",
-            isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+            "w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold",
+            isActive ? "bg-gradient-ocean-gold text-white" : "bg-muted text-muted-foreground"
           )}>
-            2
+            1
           </span>
-          Product Input
+          Generate Product Images
         </CardTitle>
         <CardDescription>
-          Upload your product images and provide specifications for AI generation
+          Choose your image context, upload product images, and provide specifications
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-8">
         
         {/* Image Upload Section */}
         <div>
@@ -339,22 +400,154 @@ export function StepUnifiedInput({
           </div>
         </div>
 
+        {/* Context Selection Section */}
+        <div>
+          <Label className="text-base font-semibold mb-3 block">Choose Image Context</Label>
+          <p className="text-sm text-muted-foreground mb-4">
+            Select the type of images you want to create for your product
+          </p>
+          
+          {/* Main Context Type Selection */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            {(Object.keys(CONTEXT_TYPE_CONFIG) as ContextType[]).map((contextType) => {
+              const config = CONTEXT_TYPE_CONFIG[contextType];
+              const IconComponent = getContextIcon(contextType);
+              const isSelected = selectedContextType === contextType;
+              
+              return (
+                <Card
+                  key={contextType}
+                  variant={isSelected ? "premium" : "outlined"}
+                  className={cn(
+                    "cursor-pointer transition-all duration-200 hover:scale-105",
+                    isSelected && "ring-2 ring-ocean-blue-500 shadow-lg"
+                  )}
+                  onClick={() => handleContextTypeSelect(contextType)}
+                >
+                  <CardContent className="p-4 text-center">
+                    <div className="mb-3">
+                      <div className={cn(
+                        "w-12 h-12 mx-auto rounded-full flex items-center justify-center transition-colors",
+                        isSelected 
+                          ? "bg-gradient-ocean-gold text-white" 
+                          : "bg-sophisticated-gray-100 text-sophisticated-gray-600 dark:bg-sophisticated-gray-800 dark:text-sophisticated-gray-400"
+                      )}>
+                        <IconComponent className="w-6 h-6" />
+                      </div>
+                    </div>
+                    
+                    <h3 className="font-semibold text-base mb-2">{config.name}</h3>
+                    <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
+                      {config.description}
+                    </p>
+                    
+                    <div className="space-y-2">
+                      <Badge variant="secondary" className="text-xs">
+                        {config.size}
+                      </Badge>
+                      <div className="flex flex-wrap gap-1 justify-center">
+                        {config.examples.slice(0, 2).map((example, index) => (
+                          <Badge 
+                            key={index}
+                            variant="outline" 
+                            className="text-xs"
+                          >
+                            {example}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    {isSelected && (
+                      <div className="mt-3">
+                        <CheckCircle className="w-5 h-5 mx-auto text-ocean-blue-600" />
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Social Media Format Selection */}
+          {showSocialFormats && selectedContextType === 'social-media' && (
+            <div className="space-y-4 animate-fade-in">
+              <div className="text-center">
+                <h4 className="text-base font-semibold mb-2">Choose Social Media Format</h4>
+                <p className="text-sm text-muted-foreground">
+                  Select the format that best fits your social media strategy
+                </p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
+                {(Object.keys(CONTEXT_TYPE_CONFIG['social-media'].formats) as SocialMediaFormat[]).map((format) => {
+                  const formatConfig = CONTEXT_TYPE_CONFIG['social-media'].formats[format];
+                  const isSelected = selectedSocialFormat === format;
+                  const IconComponent = format === 'square' ? Instagram : Facebook;
+                  
+                  return (
+                    <Card
+                      key={format}
+                      variant={isSelected ? "premium" : "outlined"}
+                      className={cn(
+                        "cursor-pointer transition-all duration-200 hover:scale-105",
+                        isSelected && "ring-2 ring-ocean-blue-500 shadow-lg"
+                      )}
+                      onClick={() => handleSocialFormatSelect(format)}
+                    >
+                      <CardContent className="p-4 text-center">
+                        <div className="mb-3">
+                          <div className={cn(
+                            "w-10 h-10 mx-auto rounded-full flex items-center justify-center transition-colors",
+                            isSelected 
+                              ? "bg-gradient-ocean-gold text-white" 
+                              : "bg-sophisticated-gray-100 text-sophisticated-gray-600 dark:bg-sophisticated-gray-800 dark:text-sophisticated-gray-400"
+                          )}>
+                            <IconComponent className="w-5 h-5" />
+                          </div>
+                        </div>
+                        
+                        <h4 className="font-semibold mb-2">{formatConfig.name}</h4>
+                        <p className="text-sm text-muted-foreground mb-3">
+                          {formatConfig.description}
+                        </p>
+                        
+                        <Badge variant="secondary" className="text-xs">
+                          {formatConfig.size}
+                        </Badge>
+                        
+                        {isSelected && (
+                          <div className="mt-3">
+                            <CheckCircle className="w-4 h-4 mx-auto text-ocean-blue-600" />
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Continue Button */}
         <div className="flex justify-between items-center pt-4 border-t">
           {isValid ? (
             <div className="flex items-center gap-2">
               <CheckCircle className="h-5 w-5 text-green-600" />
               <span className="text-sm text-green-600 font-medium">
-                Ready for generation - {uploadedImages.length} images uploaded
+                Ready for generation - {uploadedImages.length} images, context selected
               </span>
             </div>
           ) : (
             <div className="flex items-center gap-2">
               <ImageIcon className="h-5 w-5 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">
-                {uploadedImages.length === 0 
-                  ? "Upload images and fill required fields"
-                  : "Complete required fields (Product Name & Type)"
+                {!isContextSelectionComplete()
+                  ? "Select image context first"
+                  : uploadedImages.length === 0 
+                    ? "Upload images and fill required fields"
+                    : "Complete required fields (Product Name & Type)"
                 }
               </span>
             </div>
@@ -365,7 +558,7 @@ export function StepUnifiedInput({
             disabled={!isValid}
             size="lg"
           >
-            Continue to Generation
+            Generate
           </Button>
         </div>
       </CardContent>

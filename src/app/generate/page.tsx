@@ -2,15 +2,11 @@
 
 import { useState, useCallback } from "react";
 import { Stepper } from "@/components/image-generator/stepper";
-import { StepContextSelection } from "@/components/image-generator/step-context-selection";
 import { StepUnifiedInput } from "@/components/image-generator/step-unified-input";
-import { StepGenerateSimplified } from "@/components/image-generator/step-generate-simplified";
 import { StepEditImages } from "@/components/image-generator/step-edit-images";
 import { 
   ProductInput,
   GeneratedImage, 
-  EditedImage,
-  AssetType,
   ImageGeneratorState,
   DEFAULT_UI_SETTINGS,
   GenerationMethod,
@@ -39,16 +35,12 @@ export default function GeneratePage() {
     setState(prev => ({ ...prev, ...updates }));
   };
 
-  // Step 1: Context Selection Handlers
+  // Step 1: Context Selection Handlers (now integrated into product input)
   const handleContextSelectionChange = useCallback((contextSelection: ContextSelection) => {
     updateState({ contextSelection });
   }, []);
 
-  const handleContextSelectionComplete = () => {
-    updateState({ currentStep: 2 });
-  };
-
-  // Step 2: Product Input Handlers
+  // Step 1: Product Input Handlers
   const handleProductInputChange = useCallback((productInput: ProductInput) => {
     let configuration = state.productConfiguration;
     
@@ -79,11 +71,9 @@ export default function GeneratePage() {
   }, [state.productConfiguration, state.contextSelection]);
 
   const handleProductInputComplete = () => {
-    updateState({ currentStep: 3 });
-  };
-
-  const handleGenerationComplete = () => {
-    updateState({ currentStep: 4 });
+    // Directly start generation and move to step 2
+    updateState({ currentStep: 2, isGenerating: true });
+    generateImages();
   };
 
   // Removed handleConfigurationChange - no longer needed in simplified workflow
@@ -231,11 +221,6 @@ export default function GeneratePage() {
         generationProgress: undefined
       });
 
-      // Auto-advance to editing step if we have generated images
-      if (newGeneratedImages.length > 0) {
-        setTimeout(() => handleGenerationComplete(), 500);
-      }
-
     } catch (error) {
       console.error('Image generation failed:', error);
       updateState({ 
@@ -249,6 +234,7 @@ export default function GeneratePage() {
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const regenerateImage = async (imageId: string) => {
     const imageToRegenerate = state.generatedImages.find(img => img.id === imageId);
     if (!imageToRegenerate || !state.productConfiguration) return;
@@ -305,168 +291,9 @@ export default function GeneratePage() {
     }
   };
 
-  // Image Editing Handlers
-  const editImage = async (
-    imageId: string, 
-    imageUrl: string, 
-    assetType: AssetType, 
-    variations: number = 1, 
-    customPrompt?: string
-  ) => {
-    if (!state.productConfiguration?.productInput?.specs?.productName) {
-      updateState({ 
-        errors: { ...state.errors, editing: 'Product name is required for editing' }
-      });
-      return;
-    }
-
-    updateState({ 
-      isEditing: true, 
-      editingProgress: { 
-        current: 0, 
-        total: variations,
-        stage: `Creating ${assetType} asset...`,
-        assetType
-      },
-      errors: { ...state.errors, editing: undefined }
-    });
-
-    try {
-      const response = await fetch('/api/edit-image', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          mode: 'single',
-          sourceImageUrl: imageUrl,
-          sourceImageId: imageId,
-          productName: state.productConfiguration.productInput.specs.productName,
-          assetType,
-          variations,
-          customPrompt,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to edit image');
-      }
-
-      const result = await response.json();
-      
-      if (result.result?.editedImages) {
-        const newEditedImages = { ...state.editedImages };
-        if (!newEditedImages[imageId]) {
-          newEditedImages[imageId] = [];
-        }
-        newEditedImages[imageId].push(...result.result.editedImages);
-
-        updateState({ 
-          editedImages: newEditedImages,
-          isEditing: false,
-          editingProgress: undefined
-        });
-      }
-    } catch (error) {
-      console.error('Image editing failed:', error);
-      updateState({ 
-        isEditing: false,
-        editingProgress: undefined,
-        errors: { 
-          ...state.errors, 
-          editing: error instanceof Error ? error.message : 'Unknown editing error' 
-        }
-      });
-    }
-  };
-
-  const batchEditImages = async (
-    imageId: string,
-    imageUrl: string, 
-    assetTypes: AssetType[],
-    customPrompts?: Record<AssetType, string>
-  ) => {
-    if (!state.productConfiguration?.productInput?.specs?.productName) {
-      updateState({ 
-        errors: { ...state.errors, editing: 'Product name is required for editing' }
-      });
-      return;
-    }
-
-    const requests = assetTypes.map(assetType => ({
-      assetType,
-      variations: 2, // Default to 2 variations for batch
-      customPrompt: customPrompts?.[assetType]
-    }));
-
-    const totalVariations = requests.reduce((sum, req) => sum + req.variations, 0);
-
-    updateState({ 
-      isEditing: true, 
-      editingProgress: { 
-        current: 0, 
-        total: totalVariations,
-        stage: 'Starting batch edit...'
-      },
-      errors: { ...state.errors, editing: undefined }
-    });
-
-    try {
-      const response = await fetch('/api/edit-image', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          mode: 'batch',
-          sourceImageUrl: imageUrl,
-          sourceImageId: imageId,
-          productName: state.productConfiguration.productInput.specs.productName,
-          requests,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to batch edit images');
-      }
-
-      const result = await response.json();
-      
-      if (result.result?.editedImagesByAssetType) {
-        const newEditedImages = { ...state.editedImages };
-        if (!newEditedImages[imageId]) {
-          newEditedImages[imageId] = [];
-        }
-
-        // Flatten all asset type results into a single array
-        Object.values(result.result.editedImagesByAssetType).forEach((images) => {
-          const typedImages = images as EditedImage[];
-          newEditedImages[imageId].push(...typedImages);
-        });
-
-        updateState({ 
-          editedImages: newEditedImages,
-          isEditing: false,
-          editingProgress: undefined
-        });
-      }
-    } catch (error) {
-      console.error('Batch editing failed:', error);
-      updateState({ 
-        isEditing: false,
-        editingProgress: undefined,
-        errors: { 
-          ...state.errors, 
-          editing: error instanceof Error ? error.message : 'Unknown batch editing error' 
-        }
-      });
-    }
-  };
+  // Download Handlers
 
   const [downloadingImages, setDownloadingImages] = useState<Set<string>>(new Set());
-  const [downloadErrors, setDownloadErrors] = useState<Record<string, string>>({});
 
   const downloadImage = async (imageUrl: string, filename: string, imageId?: string) => {
     const downloadId = imageId || imageUrl;
@@ -476,10 +303,6 @@ export default function GeneratePage() {
     if (!validation.isValid) {
       const errorMessage = `Invalid image URL: ${validation.issues.join(', ')}`;
       console.error('[Client] URL validation failed:', validation);
-      setDownloadErrors(prev => ({
-        ...prev,
-        [downloadId]: errorMessage
-      }));
       alert(`Download failed: ${errorMessage}`);
       return;
     }
@@ -487,11 +310,6 @@ export default function GeneratePage() {
     const downloadFn = async () => {
       // Set downloading state
       setDownloadingImages(prev => new Set([...prev, downloadId]));
-      setDownloadErrors(prev => {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { [downloadId]: _, ...rest } = prev;
-        return rest;
-      });
 
       console.log(`[Client] Starting download for: ${filename}`);
       console.log(`[Client] Image URL type: ${imageUrl.startsWith('data:') ? 'data URL' : 'HTTP URL'}`);
@@ -575,11 +393,6 @@ export default function GeneratePage() {
         validation
       });
       
-      setDownloadErrors(prev => ({
-        ...prev,
-        [downloadId]: errorMessage
-      }));
-      
       // Show user-friendly error notification
       alert(`Download failed: ${errorMessage}`);
       
@@ -595,6 +408,7 @@ export default function GeneratePage() {
 
   const [downloadingAll, setDownloadingAll] = useState(false);
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const downloadAll = async () => {
     if (!state.productConfiguration || state.generatedImages.length === 0) {
       alert('No images to download');
@@ -725,59 +539,30 @@ export default function GeneratePage() {
         <Stepper currentStep={state.currentStep} />
 
         <div className="space-y-4 md:space-y-8">
-          {/* Step 1: Context Selection */}
-          <StepContextSelection
-            contextSelection={state.contextSelection || null}
-            onContextSelectionChange={handleContextSelectionChange}
-            onComplete={handleContextSelectionComplete}
-            isActive={state.currentStep === 1}
-          />
-
-          {/* Step 2: Product Input */}
-          {state.currentStep >= 2 && (
+          {/* Step 1: Unified Input (Product + Context + Generate) */}
+          {state.currentStep === 1 && (
             <StepUnifiedInput
               productInput={state.productConfiguration?.productInput || null}
+              contextSelection={state.contextSelection || null}
               onProductInputChange={handleProductInputChange}
+              onContextSelectionChange={handleContextSelectionChange}
               onComplete={handleProductInputComplete}
-              isActive={state.currentStep === 2}
+              isActive={state.currentStep === 1}
             />
           )}
 
-          {/* Step 3: Generate */}
-          {state.currentStep >= 3 && state.productConfiguration && (
-            <StepGenerateSimplified
-              productConfiguration={state.productConfiguration}
-              generatedImages={state.generatedImages}
-              isGenerating={state.isGenerating}
-              generationProgress={state.generationProgress}
-              generationError={state.errors.generation}
-              onGenerate={generateImages}
-              onRegenerate={regenerateImage}
-              onDownload={(imageUrl, filename, imageId) => downloadImage(imageUrl, filename, imageId)}
-              onDownloadAll={downloadAll}
-              downloadingImages={downloadingImages}
-              downloadErrors={downloadErrors}
-              downloadingAll={downloadingAll}
-              isActive={state.currentStep === 3}
-            />
-          )}
-
-          {/* Step 4: Edit Assets */}
-          {state.currentStep >= 4 && (
+          {/* Step 2: Image Gallery with Loading State */}
+          {state.currentStep === 2 && (
             <StepEditImages
               generatedImages={state.generatedImages}
               editedImages={state.editedImages}
               isEditing={state.isEditing}
-              editingProgress={state.editingProgress}
-              editingError={state.errors.editing}
-              onEdit={editImage}
-              onBatchEdit={batchEditImages}
+              isGenerating={state.isGenerating}
               onDownload={(imageUrl, filename, imageId) => downloadImage(imageUrl, filename, imageId)}
               onDownloadAll={downloadAllEdited}
               downloadingImages={downloadingImages}
-              downloadErrors={downloadErrors}
               downloadingAll={downloadingAll}
-              isActive={state.currentStep === 4}
+              isActive={state.currentStep === 2}
               productName={state.productConfiguration?.productInput.specs.productName}
             />
           )}

@@ -4,179 +4,172 @@ import { useState } from "react";
 import Image from "next/image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
+import { ImageModal } from "@/components/ui/image-modal";
 import { 
-  Wand2, Download, Loader2, AlertCircle, CheckCircle, Eye, Palette, 
-  Image as ImageIcon, Share2, Monitor, Sparkles, Plus
+  Download, Loader2, Edit3, Images, Eye
 } from "lucide-react";
 import { 
   GeneratedImage, 
-  EditedImage, 
-  AssetType, 
-  EditingProgress,
-  ASSET_TYPE_CONFIG,
-  getAssetTypeConfig
+  EditedImage
 } from "./types";
 import { cn } from "@/lib/utils";
 import { generateSafeFilename } from "@/lib/download-utils";
+import { LoadingCards } from "./loading-cards";
 
 interface StepEditImagesProps {
   generatedImages: GeneratedImage[];
   editedImages: Record<string, EditedImage[]>;
   isEditing: boolean;
-  editingProgress?: EditingProgress;
-  editingError?: string;
-  onEdit: (imageId: string, imageUrl: string, assetType: AssetType, variations?: number, customPrompt?: string) => void;
-  onBatchEdit: (imageId: string, imageUrl: string, assetTypes: AssetType[], customPrompts?: Record<AssetType, string>) => void;
+  isGenerating?: boolean;
   onDownload: (imageUrl: string, filename: string, imageId?: string) => void;
   onDownloadAll: (imageIds: string[]) => void;
   downloadingImages?: Set<string>;
-  downloadErrors?: Record<string, string>;
   downloadingAll?: boolean;
   isActive: boolean;
   productName?: string;
 }
 
-interface AssetTypeSelection {
-  assetType: AssetType;
-  selected: boolean;
-  variations: number;
-  customPrompt: string;
+interface ImageCardProps {
+  image: GeneratedImage | EditedImage;
+  filename: string;
+  onDownload: (imageUrl: string, filename: string, imageId?: string) => void;
+  onViewModal: (image: GeneratedImage | EditedImage) => void;
+  isDownloading: boolean;
 }
 
-const assetTypeIcons: Record<AssetType, React.ComponentType<{ className?: string }>> = {
-  lifestyle: ImageIcon,
-  ad: Sparkles,
-  social: Share2,
-  hero: Monitor,
-  variation: Palette,
-};
+function ImageCard({ image, filename, onDownload, onViewModal, isDownloading }: ImageCardProps) {
+  const handleEdit = () => {
+    // Placeholder for future implementation
+    alert('Edit functionality will be available in a future update!');
+  };
+
+  const handleDownload = () => {
+    onDownload(image.url, filename, image.id);
+  };
+
+  const handleView = () => {
+    onViewModal(image);
+  };
+
+  return (
+    <div className="group">
+      {/* Clean image card with no text/badges/metadata */}
+      <Card className="overflow-hidden border-0 shadow-sm hover:shadow-md transition-shadow">
+        <div className="relative aspect-square bg-muted/20 overflow-hidden">
+          <Image
+            src={image.url}
+            alt="Generated image"
+            fill
+            className="object-cover transition-transform group-hover:scale-105 duration-200"
+            unoptimized
+          />
+        </div>
+      </Card>
+      
+      {/* Three small buttons below the card */}
+      <div className="flex items-center justify-center gap-2 mt-3">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleView}
+          className="flex-1 text-xs h-8"
+        >
+          <Eye className="h-3 w-3 mr-1" />
+          View
+        </Button>
+        
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleEdit}
+          className="flex-1 text-xs h-8"
+        >
+          <Edit3 className="h-3 w-3 mr-1" />
+          Edit
+        </Button>
+        
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleDownload}
+          disabled={isDownloading}
+          className="flex-1 text-xs h-8"
+        >
+          {isDownloading ? (
+            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+          ) : (
+            <Download className="h-3 w-3 mr-1" />
+          )}
+          {isDownloading ? "..." : "Download"}
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 export function StepEditImages({
   generatedImages,
   editedImages,
-  isEditing,
-  editingProgress,
-  editingError,
-  onEdit,
-  onBatchEdit,
+  isGenerating = false,
   onDownload,
   onDownloadAll,
   downloadingImages = new Set(),
-  downloadErrors = {},
   downloadingAll = false,
   isActive,
   productName = "Product",
 }: StepEditImagesProps) {
-  const [selectedSourceImage, setSelectedSourceImage] = useState<GeneratedImage | null>(null);
-  const [selectedAssetTypes, setSelectedAssetTypes] = useState<AssetTypeSelection[]>(
-    Object.keys(ASSET_TYPE_CONFIG).map(assetType => ({
-      assetType: assetType as AssetType,
-      selected: false,
-      variations: ASSET_TYPE_CONFIG[assetType as AssetType].variations,
-      customPrompt: '',
-    }))
-  );
-  const [previewImage, setPreviewImage] = useState<EditedImage | null>(null);
-  const [showBatchEdit, setShowBatchEdit] = useState(false);
-
+  const [selectedImage, setSelectedImage] = useState<GeneratedImage | EditedImage | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  
   const hasGeneratedImages = generatedImages.length > 0;
   const hasEditedImages = editedImages ? Object.keys(editedImages).length > 0 : false;
-  const totalEditedImages = editedImages ? Object.values(editedImages).reduce((sum, imgs) => sum + imgs.length, 0) : 0;
-
-  const handleAssetTypeToggle = (assetType: AssetType) => {
-    setSelectedAssetTypes(prev => 
-      prev.map(item => 
-        item.assetType === assetType 
-          ? { ...item, selected: !item.selected }
-          : item
-      )
-    );
+  const totalImages = generatedImages.length + (editedImages ? Object.values(editedImages).reduce((sum, imgs) => sum + imgs.length, 0) : 0);
+  
+  const handleViewModal = (image: GeneratedImage | EditedImage) => {
+    setSelectedImage(image);
+    setIsModalOpen(true);
   };
-
-  const handleVariationsChange = (assetType: AssetType, variations: number) => {
-    const clampedVariations = Math.min(Math.max(variations, 1), 4);
-    setSelectedAssetTypes(prev => 
-      prev.map(item => 
-        item.assetType === assetType 
-          ? { ...item, variations: clampedVariations }
-          : item
-      )
-    );
+  
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedImage(null);
   };
-
-  const handleCustomPromptChange = (assetType: AssetType, prompt: string) => {
-    setSelectedAssetTypes(prev => 
-      prev.map(item => 
-        item.assetType === assetType 
-          ? { ...item, customPrompt: prompt }
-          : item
-      )
-    );
-  };
-
-  const handleSingleEdit = (image: GeneratedImage, assetType: AssetType) => {
-    const config = selectedAssetTypes.find(item => item.assetType === assetType);
-    onEdit(
-      image.id,
-      image.url,
-      assetType,
-      config?.variations || 1,
-      config?.customPrompt || undefined
-    );
-  };
-
-  const handleBatchEdit = () => {
-    if (!selectedSourceImage) return;
-
-    const selectedTypes = selectedAssetTypes.filter(item => item.selected);
-    if (selectedTypes.length === 0) {
-      alert('Please select at least one asset type for batch editing.');
-      return;
+  
+  const handleModalDownload = () => {
+    if (selectedImage) {
+      const filename = getImageFilename(selectedImage);
+      onDownload(selectedImage.url, filename, selectedImage.id);
     }
-
-    const assetTypes = selectedTypes.map(item => item.assetType);
-    const customPrompts: Partial<Record<AssetType, string>> = {};
-    
-    selectedTypes.forEach(item => {
-      if (item.customPrompt.trim()) {
-        customPrompts[item.assetType] = item.customPrompt;
-      }
-    });
-
-    onBatchEdit(
-      selectedSourceImage.id,
-      selectedSourceImage.url,
-      assetTypes,
-      Object.keys(customPrompts).length > 0 ? customPrompts as Record<AssetType, string> : undefined
-    );
-
-    setShowBatchEdit(false);
-    setSelectedSourceImage(null);
+  };
+  
+  const handleModalEdit = () => {
+    alert('Edit functionality will be available in a future update!');
   };
 
-  const getImageFilename = (assetType: AssetType, variation?: number) => {
-    return generateSafeFilename(
-      `${productName}_${assetType}`,
-      'edited',
-      variation,
-      'jpg'
-    );
+  // Helper function to get appropriate filename for image
+  const getImageFilename = (image: GeneratedImage | EditedImage, index?: number) => {
+    if ('assetType' in image) {
+      // EditedImage
+      return generateSafeFilename(
+        `${productName}_${image.assetType}`,
+        'edited',
+        image.metadata.variation,
+        'jpg'
+      );
+    } else {
+      // GeneratedImage  
+      return generateSafeFilename(
+        productName,
+        'generated',
+        index || image.metadata.variation || 1,
+        'jpg'
+      );
+    }
   };
 
-  const downloadEditedImages = (sourceImageId: string) => {
-    const images = editedImages[sourceImageId] || [];
-    if (images.length === 0) return;
-
-    images.forEach((image) => {
-      const filename = getImageFilename(image.assetType, image.metadata.variation);
-      onDownload(image.url, filename, image.id);
-    });
-  };
-
-  if (!hasGeneratedImages) {
+  // If generating and no existing images, show loading cards instead of "no images" message
+  if (!hasGeneratedImages && !hasEditedImages && !isGenerating) {
     return (
       <Card className={cn(isActive && "ring-2 ring-primary")}>
         <CardHeader>
@@ -185,20 +178,20 @@ export function StepEditImages({
               "w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium",
               isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
             )}>
-              4
+              2
             </span>
-            Edit Images
+            Image Gallery
           </CardTitle>
           <CardDescription>
-            Transform your generated images into marketing assets.
+            View, download, and manage your generated images.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="text-center py-8 bg-muted/20 rounded-lg">
-            <Wand2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-medium mb-2">No Images to Edit</h3>
+            <Images className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-medium mb-2">No Images Generated Yet</h3>
             <p className="text-muted-foreground">
-              Complete the previous steps to generate images first, then you can transform them into professional marketing assets.
+              Complete the previous step to generate images first, then you can view and download them here.
             </p>
           </div>
         </CardContent>
@@ -214,476 +207,150 @@ export function StepEditImages({
             "w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium",
             isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
           )}>
-            4
+            2
           </span>
-          Edit Images
+          Image Gallery
         </CardTitle>
         <CardDescription>
-          Transform your generated images into professional marketing assets like lifestyle scenes, ad creatives, social media posts, and more.
+          View, download, and manage your generated images. Click the three-dot menu on each image for more options.
         </CardDescription>
       </CardHeader>
       
       <CardContent className="space-y-6">
-        
-        {/* Asset Type Selection Panel */}
-        <div className="bg-muted/20 rounded-lg p-4">
-          <h3 className="font-medium mb-3">Available Asset Types</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {Object.entries(ASSET_TYPE_CONFIG).map(([assetType, config]) => {
-              const Icon = assetTypeIcons[assetType as AssetType];
-              return (
-                <div key={assetType} className="flex items-center gap-3 p-3 border rounded-lg bg-background">
-                  <Icon className="h-5 w-5 text-primary" />
-                  <div className="flex-1">
-                    <p className="font-medium text-sm">{config.name}</p>
-                    <p className="text-xs text-muted-foreground">{config.description}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Editing Progress */}
-        {isEditing && editingProgress && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                <span className="font-medium">Creating Marketing Assets...</span>
+        {/* Gallery Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <h3 className="text-lg font-medium">Your Images ({totalImages})</h3>
+            {hasGeneratedImages && hasEditedImages && (
+              <div className="flex gap-2">
+                <Badge variant="secondary">{generatedImages.length} Generated</Badge>
+                <Badge variant="secondary">{Object.values(editedImages).reduce((sum, imgs) => sum + imgs.length, 0)} Edited</Badge>
               </div>
-              <span className="text-sm text-muted-foreground">
-                {editingProgress.current} / {editingProgress.total}
-              </span>
-            </div>
-            
-            <Progress 
-              value={(editingProgress.current / editingProgress.total) * 100} 
-              className="h-2"
-            />
-            
-            <p className="text-sm text-muted-foreground">
-              {editingProgress.stage}
-              {editingProgress.assetType && ` - ${getAssetTypeConfig(editingProgress.assetType).name}`}
-            </p>
+            )}
           </div>
-        )}
-
-        {/* Editing Error */}
-        {editingError && (
-          <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
-            <div className="flex items-center gap-2 text-destructive mb-2">
-              <AlertCircle className="h-4 w-4" />
-              <p className="font-medium">Editing Error</p>
-            </div>
-            <p className="text-sm text-destructive/80">{editingError}</p>
-          </div>
-        )}
-
-        {/* Generated Images - Ready for Editing */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-medium">Source Images ({generatedImages.length})</h3>
-            <Button
-              variant="outline"
-              onClick={() => setShowBatchEdit(true)}
-              disabled={isEditing}
+          {totalImages > 1 && (
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                const allImageIds = [
+                  ...generatedImages.map(img => img.id),
+                  ...Object.keys(editedImages)
+                ];
+                onDownloadAll(allImageIds);
+              }}
+              disabled={downloadingAll}
             >
-              <Plus className="h-4 w-4 mr-2" />
-              Batch Edit
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {generatedImages.map((image) => {
-              const imageEditedCount = editedImages[image.id]?.length || 0;
-              
-              return (
-                <div key={image.id} className="group border rounded-lg overflow-hidden">
-                  <div className="relative bg-muted/50" style={{ aspectRatio: '1/1' }}>
-                    <Image
-                      src={image.url}
-                      alt={`Generated image for editing`}
-                      fill
-                      className="object-cover"
-                      unoptimized
-                    />
-                    
-                    {/* Quick Edit Overlay */}
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <div className="flex gap-2 flex-wrap justify-center p-2">
-                        {Object.keys(ASSET_TYPE_CONFIG).slice(0, 3).map((assetType) => {
-                          const config = ASSET_TYPE_CONFIG[assetType as AssetType];
-                          const Icon = assetTypeIcons[assetType as AssetType];
-                          return (
-                            <Button
-                              key={assetType}
-                              size="sm"
-                              variant="secondary"
-                              onClick={() => handleSingleEdit(image, assetType as AssetType)}
-                              disabled={isEditing}
-                              className="flex items-center gap-1 text-xs"
-                            >
-                              <Icon className="h-3 w-3" />
-                              {config.name}
-                            </Button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="p-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Badge variant="outline" className="text-xs">
-                        Original
-                      </Badge>
-                      {imageEditedCount > 0 && (
-                        <Badge variant="default" className="text-xs">
-                          {imageEditedCount} edited
-                        </Badge>
-                      )}
-                    </div>
-                    
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex-1"
-                        onClick={() => {
-                          setSelectedSourceImage(image);
-                          setShowBatchEdit(true);
-                        }}
-                        disabled={isEditing}
-                      >
-                        <Wand2 className="h-3 w-3 mr-1" />
-                        Edit
-                      </Button>
-                      {imageEditedCount > 0 && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => downloadEditedImages(image.id)}
-                          disabled={downloadingImages.has(image.id)}
-                        >
-                          {downloadingImages.has(image.id) ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : (
-                            <Download className="h-3 w-3" />
-                          )}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Edited Images Gallery */}
-        {hasEditedImages && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-medium flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-green-600" />
-                Edited Marketing Assets ({totalEditedImages})
-              </h3>
-              {totalEditedImages > 1 && (
-                <Button 
-                  variant="outline" 
-                  onClick={() => onDownloadAll(Object.keys(editedImages))}
-                  disabled={downloadingAll}
-                >
-                  {downloadingAll ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Download className="h-4 w-4 mr-2" />
-                  )}
-                  {downloadingAll ? 'Downloading...' : 'Download All'}
-                </Button>
+              {downloadingAll ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4 mr-2" />
               )}
-            </div>
+              {downloadingAll ? 'Downloading...' : `Download All (${totalImages})`}
+            </Button>
+          )}
+        </div>
 
-            {Object.entries(editedImages).map(([sourceImageId, images]) => (
-              <div key={sourceImageId} className="space-y-3">
-                <h4 className="font-medium text-sm text-muted-foreground">
-                  Edited from source image
-                </h4>
+        {/* Show loading cards if generating, otherwise show images */}
+        {isGenerating ? (
+          <div className="space-y-6">
+            {(hasGeneratedImages || hasEditedImages) && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {/* Show existing images while generating new ones */}
+                {generatedImages.map((image, index) => {
+                  const filename = getImageFilename(image, index + 1);
+                  
+                  return (
+                    <ImageCard
+                      key={image.id}
+                      image={image}
+                      filename={filename}
+                      onDownload={onDownload}
+                      onViewModal={handleViewModal}
+                      isDownloading={downloadingImages.has(image.id)}
+                    />
+                  );
+                })}
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {images.map((image) => (
-                    <div key={image.id} className="group border rounded-lg overflow-hidden">
-                      <div className="relative bg-muted/50" style={{ aspectRatio: '1/1' }}>
-                        <Image
-                          src={image.url}
-                          alt={`${image.assetType} asset`}
-                          fill
-                          className="object-cover"
-                          unoptimized
-                        />
-                        
-                        {/* Preview Overlay */}
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => setPreviewImage(image)}
-                          >
-                            <Eye className="h-3 w-3 mr-1" />
-                            View
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => onDownload(
-                              image.url, 
-                              getImageFilename(image.assetType, image.metadata.variation),
-                              image.id
-                            )}
-                            disabled={downloadingImages.has(image.id)}
-                          >
-                            {downloadingImages.has(image.id) ? (
-                              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                            ) : (
-                              <Download className="h-3 w-3 mr-1" />
-                            )}
-                            Download
-                          </Button>
-                        </div>
-                      </div>
-                      
-                      <div className="p-3 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Badge variant="outline" className="text-xs">
-                            {getAssetTypeConfig(image.assetType).name}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">
-                            Var. {image.metadata.variation}
-                          </span>
-                        </div>
-                        
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="w-full"
-                          onClick={() => onDownload(
-                            image.url,
-                            getImageFilename(image.assetType, image.metadata.variation),
-                            image.id
-                          )}
-                          disabled={downloadingImages.has(image.id)}
-                        >
-                          {downloadingImages.has(image.id) ? (
-                            <>
-                              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                              Downloading...
-                            </>
-                          ) : (
-                            <>
-                              <Download className="h-3 w-3 mr-1" />
-                              Download
-                            </>
-                          )}
-                        </Button>
-
-                        {downloadErrors[image.id] && (
-                          <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-red-700">
-                            <div className="flex items-start gap-1">
-                              <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                              <span className="text-xs">{downloadErrors[image.id]}</span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Batch Edit Modal */}
-        {showBatchEdit && (
-          <div 
-            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-            onClick={() => setShowBatchEdit(false)}
-          >
-            <div 
-              className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="p-6 border-b">
-                <h3 className="text-lg font-semibold mb-2">Batch Edit to Marketing Assets</h3>
-                <p className="text-sm text-muted-foreground">
-                  Select the asset types you want to create and customize the generation for each.
-                </p>
-              </div>
-              
-              <div className="p-6 space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {selectedAssetTypes.map((selection) => {
-                    const config = ASSET_TYPE_CONFIG[selection.assetType];
-                    const Icon = assetTypeIcons[selection.assetType];
+                {/* Show edited images if any */}
+                {Object.entries(editedImages).map(([, images]) => 
+                  images.map((image) => {
+                    const filename = getImageFilename(image);
                     
                     return (
-                      <div
-                        key={selection.assetType}
-                        className={cn(
-                          "p-4 border rounded-lg cursor-pointer transition-colors",
-                          selection.selected ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
-                        )}
-                        onClick={() => handleAssetTypeToggle(selection.assetType)}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 mt-1">
-                            <input
-                              type="checkbox"
-                              checked={selection.selected}
-                              onChange={() => handleAssetTypeToggle(selection.assetType)}
-                              className="w-4 h-4"
-                            />
-                          </div>
-                          <Icon className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
-                          <div className="flex-1 space-y-3">
-                            <div>
-                              <h4 className="font-medium">{config.name}</h4>
-                              <p className="text-sm text-muted-foreground">{config.description}</p>
-                            </div>
-                            
-                            {selection.selected && (
-                              <div className="space-y-3" onClick={(e) => e.stopPropagation()}>
-                                <div>
-                                  <label className="text-xs font-medium text-muted-foreground">
-                                    Variations (1-4):
-                                  </label>
-                                  <input
-                                    type="number"
-                                    min="1"
-                                    max="4"
-                                    value={selection.variations}
-                                    onChange={(e) => handleVariationsChange(
-                                      selection.assetType,
-                                      parseInt(e.target.value) || 1
-                                    )}
-                                    className="w-full mt-1 px-2 py-1 text-sm border rounded"
-                                  />
-                                </div>
-                                
-                                <div>
-                                  <label className="text-xs font-medium text-muted-foreground">
-                                    Custom Prompt (optional):
-                                  </label>
-                                  <Textarea
-                                    value={selection.customPrompt}
-                                    onChange={(e) => handleCustomPromptChange(
-                                      selection.assetType,
-                                      e.target.value
-                                    )}
-                                    placeholder="Add specific instructions for this asset type..."
-                                    className="mt-1 text-sm"
-                                    rows={2}
-                                  />
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
+                      <ImageCard
+                        key={image.id}
+                        image={image}
+                        filename={filename}
+                        onDownload={onDownload}
+                        onViewModal={handleViewModal}
+                        isDownloading={downloadingImages.has(image.id)}
+                      />
                     );
-                  })}
-                </div>
+                  })
+                )}
               </div>
+            )}
+            <LoadingCards count={4} />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {/* Generated Images */}
+            {generatedImages.map((image, index) => {
+              const filename = getImageFilename(image, index + 1);
               
-              <div className="p-6 border-t flex justify-between">
-                <Button variant="outline" onClick={() => setShowBatchEdit(false)}>
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handleBatchEdit}
-                  disabled={selectedAssetTypes.filter(s => s.selected).length === 0 || isEditing}
-                >
-                  {isEditing ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Creating...
-                    </>
-                  ) : (
-                    <>
-                      <Wand2 className="h-4 w-4 mr-2" />
-                      Create Assets ({selectedAssetTypes.filter(s => s.selected).length})
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
+              return (
+                <ImageCard
+                  key={image.id}
+                  image={image}
+                  filename={filename}
+                  onDownload={onDownload}
+                  onViewModal={handleViewModal}
+                  isDownloading={downloadingImages.has(image.id)}
+                />
+              );
+            })}
+            
+            {/* Edited Images */}
+            {Object.entries(editedImages).map(([, images]) => 
+              images.map((image) => {
+                const filename = getImageFilename(image);
+                
+                return (
+                  <ImageCard
+                    key={image.id}
+                    image={image}
+                    filename={filename}
+                    onDownload={onDownload}
+                    onViewModal={handleViewModal}
+                    isDownloading={downloadingImages.has(image.id)}
+                  />
+                );
+              })
+            )}
           </div>
         )}
+        
+        {/* Image Modal */}
+        {selectedImage && (
+          <ImageModal
+            isOpen={isModalOpen}
+            onClose={handleCloseModal}
+            imageUrl={selectedImage.url}
+            imageAlt="Generated image full view"
+            onDownload={handleModalDownload}
+            onEdit={handleModalEdit}
+            isDownloading={selectedImage ? downloadingImages.has(selectedImage.id) : false}
+          />
+        )}
 
-        {/* Image Preview Modal */}
-        {previewImage && (
-          <div 
-            className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
-            onClick={() => setPreviewImage(null)}
-          >
-            <div 
-              className="max-w-4xl max-h-full bg-white rounded-lg overflow-hidden"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="relative">
-                <Image
-                  src={previewImage.url}
-                  alt="Asset preview"
-                  width={800}
-                  height={800}
-                  className="max-h-[80vh] w-auto"
-                  unoptimized
-                />
-                <Button
-                  className="absolute top-4 right-4"
-                  variant="secondary"
-                  onClick={() => setPreviewImage(null)}
-                >
-                  Close
-                </Button>
-              </div>
-              <div className="p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Badge>{getAssetTypeConfig(previewImage.assetType).name}</Badge>
-                  <span className="text-sm text-muted-foreground">
-                    Variation {previewImage.metadata.variation}
-                  </span>
-                </div>
-                <p className="text-sm text-muted-foreground mb-4">
-                  {previewImage.prompt}
-                </p>
-                <Button
-                  size="sm"
-                  onClick={() => onDownload(
-                    previewImage.url,
-                    getImageFilename(
-                      previewImage.assetType, 
-                      previewImage.metadata.variation
-                    ),
-                    previewImage.id
-                  )}
-                  disabled={downloadingImages.has(previewImage.id)}
-                >
-                  {downloadingImages.has(previewImage.id) ? (
-                    <>
-                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                      Downloading...
-                    </>
-                  ) : (
-                    <>
-                      <Download className="h-3 w-3 mr-1" />
-                      Download
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
+        {/* Empty State */}
+        {totalImages === 0 && (
+          <div className="text-center py-12">
+            <Images className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No images yet</h3>
+            <p className="text-gray-500">
+              Your generated images will appear here once you complete the previous step.
+            </p>
           </div>
         )}
       </CardContent>

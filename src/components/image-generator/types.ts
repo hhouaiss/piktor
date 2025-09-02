@@ -131,7 +131,7 @@ export interface EditingProgress {
 
 // Extended app state for 4-step flow with context selection
 export interface ImageGeneratorState {
-  currentStep: 1 | 2 | 3 | 4; // 4-step flow: Context -> Input -> Generate -> Edit
+  currentStep: 1 | 2; // 2-step flow: Generate (Input + Context + Generate) -> Edit
   contextSelection?: ContextSelection;
   productConfiguration?: ProductConfiguration;
   generatedImages: GeneratedImage[];
