@@ -185,7 +185,7 @@ export function StepEditImages({
               "w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium",
               isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
             )}>
-              3
+              4
             </span>
             Edit Images
           </CardTitle>
@@ -214,7 +214,7 @@ export function StepEditImages({
             "w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium",
             isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
           )}>
-            3
+            4
           </span>
           Edit Images
         </CardTitle>

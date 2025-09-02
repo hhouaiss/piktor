@@ -83,7 +83,7 @@ export function StepGenerateSimplified({
             "w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium",
             isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
           )}>
-            2
+            3
           </span>
           Generate
         </CardTitle>

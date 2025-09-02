@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { Stepper } from "@/components/image-generator/stepper";
+import { StepContextSelection } from "@/components/image-generator/step-context-selection";
 import { StepUnifiedInput } from "@/components/image-generator/step-unified-input";
 import { StepGenerateSimplified } from "@/components/image-generator/step-generate-simplified";
 import { StepEditImages } from "@/components/image-generator/step-edit-images";
@@ -12,7 +13,9 @@ import {
   AssetType,
   ImageGeneratorState,
   DEFAULT_UI_SETTINGS,
-  GenerationMethod
+  GenerationMethod,
+  ContextSelection,
+  getContextPresetFromSelection
 } from "@/components/image-generator/types";
 import { 
   validateImageUrl, 
@@ -24,6 +27,7 @@ import {
 export default function GeneratePage() {
   const [state, setState] = useState<ImageGeneratorState>({
     currentStep: 1,
+    contextSelection: undefined,
     generatedImages: [],
     editedImages: {},
     isGenerating: false,
@@ -35,16 +39,30 @@ export default function GeneratePage() {
     setState(prev => ({ ...prev, ...updates }));
   };
 
-  // Step 1: Product Input Handlers
+  // Step 1: Context Selection Handlers
+  const handleContextSelectionChange = useCallback((contextSelection: ContextSelection) => {
+    updateState({ contextSelection });
+  }, []);
+
+  const handleContextSelectionComplete = () => {
+    updateState({ currentStep: 2 });
+  };
+
+  // Step 2: Product Input Handlers
   const handleProductInputChange = useCallback((productInput: ProductInput) => {
     let configuration = state.productConfiguration;
     
     if (!configuration) {
-      // Create new configuration
+      // Create new configuration with context-aware settings
+      const contextAwareSettings = state.contextSelection ? {
+        ...DEFAULT_UI_SETTINGS,
+        contextPreset: getContextPresetFromSelection(state.contextSelection),
+      } : DEFAULT_UI_SETTINGS;
+
       configuration = {
         id: crypto.randomUUID(),
         productInput,
-        uiSettings: DEFAULT_UI_SETTINGS,
+        uiSettings: contextAwareSettings,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -58,14 +76,14 @@ export default function GeneratePage() {
     }
 
     updateState({ productConfiguration: configuration });
-  }, [state.productConfiguration]);
+  }, [state.productConfiguration, state.contextSelection]);
 
   const handleProductInputComplete = () => {
-    updateState({ currentStep: 2 });
+    updateState({ currentStep: 3 });
   };
 
   const handleGenerationComplete = () => {
-    updateState({ currentStep: 3 });
+    updateState({ currentStep: 4 });
   };
 
   // Removed handleConfigurationChange - no longer needed in simplified workflow
@@ -707,18 +725,26 @@ export default function GeneratePage() {
         <Stepper currentStep={state.currentStep} />
 
         <div className="space-y-4 md:space-y-8">
-          {/* Step 1: Product Input */}
-          <StepUnifiedInput
-            productInput={state.productConfiguration?.productInput || null}
-            onProductInputChange={handleProductInputChange}
-            onComplete={handleProductInputComplete}
+          {/* Step 1: Context Selection */}
+          <StepContextSelection
+            contextSelection={state.contextSelection || null}
+            onContextSelectionChange={handleContextSelectionChange}
+            onComplete={handleContextSelectionComplete}
             isActive={state.currentStep === 1}
           />
 
-          {/* Removed optional generation settings - simplified workflow */}
+          {/* Step 2: Product Input */}
+          {state.currentStep >= 2 && (
+            <StepUnifiedInput
+              productInput={state.productConfiguration?.productInput || null}
+              onProductInputChange={handleProductInputChange}
+              onComplete={handleProductInputComplete}
+              isActive={state.currentStep === 2}
+            />
+          )}
 
-          {/* Step 2: Generate */}
-          {state.currentStep >= 2 && state.productConfiguration && (
+          {/* Step 3: Generate */}
+          {state.currentStep >= 3 && state.productConfiguration && (
             <StepGenerateSimplified
               productConfiguration={state.productConfiguration}
               generatedImages={state.generatedImages}
@@ -732,12 +758,12 @@ export default function GeneratePage() {
               downloadingImages={downloadingImages}
               downloadErrors={downloadErrors}
               downloadingAll={downloadingAll}
-              isActive={state.currentStep === 2}
+              isActive={state.currentStep === 3}
             />
           )}
 
-          {/* Step 3: Edit Assets */}
-          {state.currentStep >= 3 && (
+          {/* Step 4: Edit Assets */}
+          {state.currentStep >= 4 && (
             <StepEditImages
               generatedImages={state.generatedImages}
               editedImages={state.editedImages}
@@ -751,7 +777,7 @@ export default function GeneratePage() {
               downloadingImages={downloadingImages}
               downloadErrors={downloadErrors}
               downloadingAll={downloadingAll}
-              isActive={state.currentStep === 3}
+              isActive={state.currentStep === 4}
               productName={state.productConfiguration?.productInput.specs.productName}
             />
           )}

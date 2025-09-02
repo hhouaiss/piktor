@@ -150,7 +150,7 @@ export function StepUnifiedInput({
             "w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium",
             isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
           )}>
-            1
+            2
           </span>
           Product Input
         </CardTitle>

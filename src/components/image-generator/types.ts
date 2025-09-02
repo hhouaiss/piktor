@@ -37,6 +37,18 @@ export interface ProductInput {
 // Context presets for different image types - expanded for e-commerce
 export type ContextPreset = 'packshot' | 'instagram' | 'story' | 'hero' | 'lifestyle' | 'detail';
 
+// Context types for the new two-step flow
+export type ContextType = 'packshot' | 'social-media' | 'lifestyle';
+
+// Social media format options
+export type SocialMediaFormat = 'square' | 'story';
+
+// Context selection interface for the new two-step flow
+export interface ContextSelection {
+  contextType: ContextType;
+  socialMediaFormat?: SocialMediaFormat; // Only used when contextType is 'social-media'
+}
+
 // Asset types for image editing transformations
 export type AssetType = 'lifestyle' | 'ad' | 'social' | 'hero' | 'variation';
 
@@ -117,9 +129,10 @@ export interface EditingProgress {
   assetType?: AssetType;
 }
 
-// Extended app state for 3-step flow
+// Extended app state for 4-step flow with context selection
 export interface ImageGeneratorState {
-  currentStep: 1 | 2 | 3; // 3-step flow: Input -> Generate -> Edit
+  currentStep: 1 | 2 | 3 | 4; // 4-step flow: Context -> Input -> Generate -> Edit
+  contextSelection?: ContextSelection;
   productConfiguration?: ProductConfiguration;
   generatedImages: GeneratedImage[];
   editedImages: Record<string, EditedImage[]>; // Keyed by source image ID
@@ -132,6 +145,7 @@ export interface ImageGeneratorState {
   };
   editingProgress?: EditingProgress;
   errors: {
+    context?: string;
     input?: string;
     generation?: string;
     editing?: string;
@@ -261,5 +275,74 @@ export function createEditingRequest(
     assetType,
     customPrompt,
     variations: variations || ASSET_TYPE_CONFIG[assetType].variations,
+  };
+}
+
+// Context type configurations for the new two-step flow
+export const CONTEXT_TYPE_CONFIG = {
+  packshot: {
+    name: 'Packshot',
+    description: 'Clean product photos with minimal backgrounds',
+    icon: '📦',
+    contextPreset: 'packshot' as ContextPreset,
+    size: '1024x1024',
+    examples: ['Studio lighting', 'White background', 'Product focus']
+  },
+  'social-media': {
+    name: 'Social Media',
+    description: 'Engaging posts for Instagram, Facebook, and more',
+    icon: '📱',
+    contextPreset: 'instagram' as ContextPreset, // Default, can be overridden
+    size: '1024x1024', // Default, can be overridden
+    examples: ['Trendy layouts', 'Eye-catching design', 'Platform optimized'],
+    formats: {
+      square: {
+        name: 'Square Post',
+        description: 'Perfect for Instagram posts and Facebook',
+        contextPreset: 'instagram' as ContextPreset,
+        size: '1024x1024'
+      },
+      story: {
+        name: 'Story Format',
+        description: 'Vertical format for Instagram and Facebook Stories',
+        contextPreset: 'story' as ContextPreset,
+        size: '1024x1536'
+      }
+    }
+  },
+  lifestyle: {
+    name: 'Lifestyle',
+    description: 'Products in real-world settings and contexts',
+    icon: '🏠',
+    contextPreset: 'lifestyle' as ContextPreset,
+    size: '1536x1024',
+    examples: ['Home settings', 'Natural environments', 'Contextual scenes']
+  }
+} as const;
+
+// Helper function to get context preset from context selection
+export function getContextPresetFromSelection(contextSelection: ContextSelection): ContextPreset {
+  if (contextSelection.contextType === 'social-media' && contextSelection.socialMediaFormat) {
+    return CONTEXT_TYPE_CONFIG['social-media'].formats[contextSelection.socialMediaFormat].contextPreset;
+  }
+  return CONTEXT_TYPE_CONFIG[contextSelection.contextType].contextPreset;
+}
+
+// Helper function to get size from context selection
+export function getSizeFromSelection(contextSelection: ContextSelection): string {
+  if (contextSelection.contextType === 'social-media' && contextSelection.socialMediaFormat) {
+    return CONTEXT_TYPE_CONFIG['social-media'].formats[contextSelection.socialMediaFormat].size;
+  }
+  return CONTEXT_TYPE_CONFIG[contextSelection.contextType].size;
+}
+
+// Helper function to create context selection
+export function createContextSelection(
+  contextType: ContextType,
+  socialMediaFormat?: SocialMediaFormat
+): ContextSelection {
+  return {
+    contextType,
+    socialMediaFormat: contextType === 'social-media' ? socialMediaFormat : undefined
   };
 }
