@@ -5,7 +5,7 @@ import {
   generateMultipleImagesWithReferences,
   getGeminiAspectRatio
 } from "@/lib/gemini-api";
-import { generateGeminiPromptWithMetadata } from "@/lib/gemini-prompt-engine";
+import { generateProductionPrompt } from "@/lib/production-prompt-engine";
 
 interface GenerationParams {
   contextPreset: ContextPreset;
@@ -22,6 +22,10 @@ export async function POST(request: NextRequest) {
     }
 
     const { productSpecs, referenceImages, generationParams } = await request.json();
+    
+    // DEBUG: Log what the API receives
+    console.log(`[API] Received context preset: ${generationParams?.contextPreset}`);
+    console.log(`[API] Full generationParams:`, generationParams);
     
     if (!productSpecs) {
       return NextResponse.json({ error: "No product specifications provided" }, { status: 400 });
@@ -52,17 +56,32 @@ export async function POST(request: NextRequest) {
       props: []
     };
 
-    // Generate world-class prompt using the new Gemini Prompt Engine
-    const promptResult = generateGeminiPromptWithMetadata(
+    // Generate production-optimized prompt using the enhanced Production Prompt Engine
+    const promptResult = generateProductionPrompt(
       productSpecs, 
       params.contextPreset, 
       defaultUISettings
     );
 
-    console.log(`Generating ${params.variations} ${params.contextPreset} images using Gemini 2.5 Flash Image`);
+    console.log(`Generating ${params.variations} ${params.contextPreset} images using Google Nano Banana (Production Optimized)`);
     console.log(`Product: ${productSpecs.productName}`);
     console.log(`Reference Images: ${referenceImages.length} base64 images provided`);
     console.log(`Prompt Length: ${promptResult.metadata.promptLength} characters`);
+    console.log(`Production Ready: ${promptResult.metadata.productionReady}`);
+    console.log(`Optimizations Applied: ${promptResult.metadata.optimizationsApplied.join(', ')}`);
+    
+    // DEBUG: Log first 500 characters of the actual prompt
+    console.log('=== PROMPT PREVIEW (First 500 chars) ===');
+    console.log(promptResult.prompt.substring(0, 500) + '...');
+    console.log('=== END PROMPT PREVIEW ===');
+    
+    // Log warnings and recommendations
+    if (promptResult.warnings.length > 0) {
+      console.warn('Prompt Warnings:', promptResult.warnings);
+    }
+    if (promptResult.recommendations.length > 0) {
+      console.log('Prompt Recommendations:', promptResult.recommendations);
+    }
 
     let variations;
     let referenceImagesUsed = false;
@@ -101,7 +120,9 @@ export async function POST(request: NextRequest) {
       // Fallback to text-only generation
       const aspectRatio = getGeminiAspectRatio(params.contextPreset);
       const geminiRequest = {
-        prompt: `${promptResult.prompt} (Note: Reference images could not be processed, generating from description only)`,
+        prompt: `${promptResult.prompt}
+
+🚨 FALLBACK MODE: Reference images could not be processed. Generating from description only with enhanced constraints for quality assurance.`,
         aspectRatio: aspectRatio,
       };
 
@@ -122,14 +143,21 @@ export async function POST(request: NextRequest) {
       variations,
       generationDetails: {
         sourceImageCount: referenceImages.length,
-        profileSource: 'intelligent-prompt-engine',
+        profileSource: 'production-prompt-engine-v2',
         prompt: promptResult.prompt,
         promptLength: promptResult.metadata.promptLength,
-        model: 'gemini-2.5-flash-image-preview',
-        generationMethod: referenceImagesUsed ? 'multimodal-image-to-image' : 'intelligent-text-to-image',
+        model: 'google-nano-banana-optimized',
+        engineVersion: promptResult.metadata.engineVersion,
+        generationMethod: referenceImagesUsed ? 'multimodal-image-to-image' : 'production-text-to-image',
         productIntelligence: promptResult.metadata.productIntelligence,
         qualityLevel: promptResult.metadata.qualityLevel,
-        constraintsApplied: promptResult.metadata.constraintsApplied,
+        productionReady: promptResult.metadata.productionReady,
+        optimizationsApplied: promptResult.metadata.optimizationsApplied,
+        constraintStats: promptResult.metadata.constraintStats,
+        placementAnalysis: promptResult.metadata.placementAnalysis,
+        validationResults: promptResult.metadata.validationResults,
+        warnings: promptResult.warnings,
+        recommendations: promptResult.recommendations,
         referenceImagesUsed,
         referenceImageProcessingError,
         userSpecifications: {
@@ -140,10 +168,16 @@ export async function POST(request: NextRequest) {
         },
         enhancedFeatures: {
           smartPlacement: true,
+          intelligentPlacementDetection: true,
+          enhancedConstraintSystem: true,
+          humanElementPrevention: true,
+          irrelevantObjectElimination: true,
+          artifactPrevention: true,
           materialIntelligence: true,
           contextualLighting: true,
           professionalComposition: true,
-          brandQualityAssurance: true
+          productionQualityAssurance: true,
+          zeroToleranceConstraints: true
         }
       }
     };
@@ -162,7 +196,9 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({
       error: userError,
-      approach: "intelligent-prompt-engine-based generation"
+      approach: "production-optimized-prompt-engine-generation",
+      engineVersion: "2.0.0-production",
+      model: "google-nano-banana"
     }, { status: statusCode });
   }
 }

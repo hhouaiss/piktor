@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Stepper } from "@/components/image-generator/stepper";
 import { StepUnifiedInput } from "@/components/image-generator/step-unified-input";
 import { StepEditImages } from "@/components/image-generator/step-edit-images";
@@ -40,17 +40,41 @@ export default function GeneratePage() {
     updateState({ contextSelection });
   }, []);
 
+  // Effect to update configuration when context selection changes
+  useEffect(() => {
+    if (state.contextSelection && state.productConfiguration) {
+      const contextAwareSettings = {
+        ...state.productConfiguration.uiSettings,
+        contextPreset: getContextPresetFromSelection(state.contextSelection),
+      };
+      
+      const updatedConfiguration = {
+        ...state.productConfiguration,
+        uiSettings: contextAwareSettings,
+        updatedAt: new Date().toISOString(),
+      };
+      
+      console.log('[Frontend] Context selection changed, updating configuration:', {
+        contextSelection: state.contextSelection,
+        newContextPreset: contextAwareSettings.contextPreset
+      });
+      
+      updateState({ productConfiguration: updatedConfiguration });
+    }
+  }, [state.contextSelection]);
+
   // Step 1: Product Input Handlers
   const handleProductInputChange = useCallback((productInput: ProductInput) => {
     let configuration = state.productConfiguration;
     
+    // Always update contextPreset based on current context selection
+    const contextAwareSettings = state.contextSelection ? {
+      ...DEFAULT_UI_SETTINGS,
+      contextPreset: getContextPresetFromSelection(state.contextSelection),
+    } : DEFAULT_UI_SETTINGS;
+    
     if (!configuration) {
       // Create new configuration with context-aware settings
-      const contextAwareSettings = state.contextSelection ? {
-        ...DEFAULT_UI_SETTINGS,
-        contextPreset: getContextPresetFromSelection(state.contextSelection),
-      } : DEFAULT_UI_SETTINGS;
-
       configuration = {
         id: crypto.randomUUID(),
         productInput,
@@ -59,10 +83,14 @@ export default function GeneratePage() {
         updatedAt: new Date().toISOString(),
       };
     } else {
-      // Update existing configuration
+      // Update existing configuration with new context-aware settings
       configuration = {
         ...configuration,
         productInput,
+        uiSettings: {
+          ...configuration.uiSettings,
+          ...contextAwareSettings
+        },
         updatedAt: new Date().toISOString(),
       };
     }
@@ -71,6 +99,10 @@ export default function GeneratePage() {
   }, [state.productConfiguration, state.contextSelection]);
 
   const handleProductInputComplete = () => {
+    // DEBUG: Log context selection state
+    console.log('[Frontend] Context selection:', state.contextSelection);
+    console.log('[Frontend] Product configuration contextPreset:', state.productConfiguration?.uiSettings.contextPreset);
+    
     // Directly start generation and move to step 2
     updateState({ currentStep: 2, isGenerating: true });
     generateImages();

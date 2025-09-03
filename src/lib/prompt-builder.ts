@@ -1,4 +1,5 @@
-import { ProductProfile, UiSettings, ContextPreset, TextToImagePrompts, getFieldValue } from '@/lib/types';
+import { ContextPreset } from '@/components/image-generator/types';
+import { ProductProfile, UiSettings, TextToImagePrompts, getFieldValue } from '@/lib/types';
 import { buildFurniturePrompt } from './prompt-templates';
 import { buildConstraintEnforcement } from './constraint-enforcement';
 import { getFurnitureTypeDescription, buildMaterialSpecification } from './furniture-vocabulary';

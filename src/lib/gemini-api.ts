@@ -4,7 +4,7 @@
  */
 
 import { GoogleGenAI } from "@google/genai";
-import { ContextPreset } from '@/lib/types';
+import { ContextPreset } from '@/components/image-generator/types';
 import { AssetType } from '@/components/image-generator/types';
 
 // Gemini API Configuration
@@ -81,16 +81,17 @@ export interface GeminiGenerationResult {
  */
 export function getGeminiAspectRatio(contextPreset: ContextPreset): string {
   switch (contextPreset) {
-    case 'story':
-      return '2:3'; // Vertical for stories
+    case 'social_media_story':
+      return '9:16'; // Vertical for Instagram/Facebook stories
     case 'hero':
     case 'lifestyle':
-      return '3:2'; // Horizontal for banners
+      return '3:2'; // Horizontal for banners and lifestyle
+    case 'social_media_square':
+      return '1:1'; // Perfect square for Instagram posts
     case 'packshot':
-    case 'instagram':
     case 'detail':
     default:
-      return '1:1'; // Square for social media
+      return '1:1'; // Square for packshots and default
   }
 }
 

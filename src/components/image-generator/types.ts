@@ -35,7 +35,7 @@ export interface ProductInput {
 }
 
 // Context presets for different image types - expanded for e-commerce
-export type ContextPreset = 'packshot' | 'instagram' | 'story' | 'hero' | 'lifestyle' | 'detail';
+export type ContextPreset = 'packshot' | 'social_media_square' | 'social_media_story' | 'hero' | 'lifestyle' | 'detail';
 
 // Context types for the new two-step flow
 export type ContextType = 'packshot' | 'social-media' | 'lifestyle';
@@ -177,7 +177,7 @@ export const DEFAULT_UI_SETTINGS: UiSettings = {
   props: [],
   lighting: 'soft_daylight',
   strictMode: true,
-  quality: 'medium',
+  quality: 'high',
   variations: 2,
 };
 
@@ -292,20 +292,20 @@ export const CONTEXT_TYPE_CONFIG = {
     name: 'Social Media',
     description: 'Engaging posts for Instagram, Facebook, and more',
     icon: '📱',
-    contextPreset: 'instagram' as ContextPreset, // Default, can be overridden
+    contextPreset: 'social_media_square' as ContextPreset, // Default, can be overridden
     size: '1024x1024', // Default, can be overridden
     examples: ['Trendy layouts', 'Eye-catching design', 'Platform optimized'],
     formats: {
       square: {
         name: 'Square Post',
         description: 'Perfect for Instagram posts and Facebook',
-        contextPreset: 'instagram' as ContextPreset,
+        contextPreset: 'social_media_square' as ContextPreset,
         size: '1024x1024'
       },
       story: {
         name: 'Story Format',
         description: 'Vertical format for Instagram and Facebook Stories',
-        contextPreset: 'story' as ContextPreset,
+        contextPreset: 'social_media_story' as ContextPreset,
         size: '1024x1536'
       }
     }
