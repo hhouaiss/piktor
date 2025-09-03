@@ -28,6 +28,7 @@ interface StepEditImagesProps {
   downloadingAll?: boolean;
   isActive: boolean;
   productName?: string;
+  variationsCount?: number;
 }
 
 interface ImageCardProps {
@@ -118,6 +119,7 @@ export function StepEditImages({
   downloadingAll = false,
   isActive,
   productName = "Product",
+  variationsCount = 4,
 }: StepEditImagesProps) {
   const [selectedImage, setSelectedImage] = useState<GeneratedImage | EditedImage | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -290,7 +292,7 @@ export function StepEditImages({
                 )}
               </div>
             )}
-            <LoadingCards count={4} />
+            <LoadingCards count={variationsCount} />
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">

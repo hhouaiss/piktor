@@ -418,7 +418,7 @@ OVERRIDE INSTRUCTION: Ignore conflicting indicators and follow detected placemen
   /**
    * Build wall-mounted specific constraints
    */
-  private static buildWallMountedConstraints(productType: string, _level: string): string {
+  private static buildWallMountedConstraints(productType: string, level: string): string {
     const isDesk = productType.includes('desk') || productType.includes('workstation');
     
     let constraints = `WALL-MOUNTED POSITIONING REQUIREMENTS:
@@ -460,7 +460,7 @@ The furniture must appear professionally wall-mounted with appropriate hardware 
   /**
    * Build floor-standing specific constraints  
    */
-  private static buildFloorStandingConstraints(_productType: string, _level: string): string {
+  private static buildFloorStandingConstraints(_productType: string, level: string): string {
     return `FLOOR-STANDING POSITIONING REQUIREMENTS:
 • ALL furniture support points MUST make proper contact with floor surface
 • Show stable, level positioning demonstrating furniture stability
@@ -484,7 +484,7 @@ SPATIAL RELATIONSHIP REQUIREMENTS:
   /**
    * Build tabletop specific constraints
    */
-  private static buildTabletopConstraints(_productType: string, _level: string): string {
+  private static buildTabletopConstraints(_productType: string, level: string): string {
     return `TABLETOP POSITIONING REQUIREMENTS:
 • Product MUST be positioned on appropriate supporting surface
 • Supporting surface must be proportionally suitable for product size
@@ -506,7 +506,7 @@ PLACEMENT AUTHENTICITY:
   /**
    * Build ceiling-mounted specific constraints
    */
-  private static buildCeilingMountedConstraints(_productType: string, _level: string): string {
+  private static buildCeilingMountedConstraints(_productType: string, level: string): string {
     return `CEILING-MOUNTED POSITIONING REQUIREMENTS:
 • Product MUST hang from ceiling attachment point with appropriate hardware
 • Show realistic suspension system suitable for product weight
@@ -528,7 +528,7 @@ INSTALLATION AUTHENTICITY:
   /**
    * Build built-in specific constraints
    */
-  private static buildBuiltInConstraints(_productType: string, _level: string): string {
+  private static buildBuiltInConstraints(_productType: string, level: string): string {
     return `BUILT-IN POSITIONING REQUIREMENTS:
 • Product MUST appear integrated into architectural space
 • Show seamless integration with walls, floor, or ceiling

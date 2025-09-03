@@ -54,14 +54,14 @@ export default function GeneratePage() {
         updatedAt: new Date().toISOString(),
       };
       
-      console.log('[Frontend] Context selection changed, updating configuration:', {
-        contextSelection: state.contextSelection,
-        newContextPreset: contextAwareSettings.contextPreset
-      });
+      // console.log('[Frontend] Context selection changed, updating configuration:', {
+      //   contextSelection: state.contextSelection,
+      //   newContextPreset: contextAwareSettings.contextPreset
+      // });
       
       updateState({ productConfiguration: updatedConfiguration });
     }
-  }, [state.contextSelection, state.productConfiguration]);
+  }, [state.contextSelection]);
 
   // Step 1: Product Input Handlers
   const handleProductInputChange = useCallback((productInput: ProductInput) => {
@@ -100,11 +100,15 @@ export default function GeneratePage() {
 
   const handleProductInputComplete = () => {
     // DEBUG: Log context selection state
-    console.log('[Frontend] Context selection:', state.contextSelection);
-    console.log('[Frontend] Product configuration contextPreset:', state.productConfiguration?.uiSettings.contextPreset);
+    // console.log('[Frontend] Context selection:', state.contextSelection);
+    // console.log('[Frontend] Product configuration contextPreset:', state.productConfiguration?.uiSettings.contextPreset);
     
     // Directly start generation and move to step 2
     updateState({ currentStep: 2, isGenerating: true });
+    
+    // Scroll to top smoothly when moving to step 2
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
     generateImages();
   };
 
@@ -596,6 +600,7 @@ export default function GeneratePage() {
               downloadingAll={downloadingAll}
               isActive={state.currentStep === 2}
               productName={state.productConfiguration?.productInput.specs.productName}
+              variationsCount={state.productConfiguration?.uiSettings.variations || 2}
             />
           )}
         </div>
