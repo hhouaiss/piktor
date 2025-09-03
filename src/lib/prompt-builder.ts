@@ -128,7 +128,7 @@ ${baseDescription}
 - Professional color grading and tonal balance supporting premium brand aesthetic and marketing objectives`;
       break;
       
-    case 'story':
+    case 'social_media_story':
       prompt += `\n\n📱 MOBILE STORY FORMAT FURNITURE REQUIREMENTS:
 - Vertical 9:16 mobile-optimized furniture composition designed for Instagram/Facebook story formats
 - Eye-catching furniture presentation optimized for mobile viewing and social media engagement
@@ -138,7 +138,7 @@ ${baseDescription}
 - Quick visual impact design suitable for story format consumption patterns and mobile user behavior`;
       break;
       
-    case 'instagram':
+    case 'social_media_square':
       prompt += `\n\n📷 ENTERPRISE FURNITURE INSTAGRAM REQUIREMENTS:
 - Square 1:1 composition specifically optimized for Instagram feed furniture showcase and social media engagement
 - Social media furniture engagement appeal balanced with professional brand consistency
@@ -288,8 +288,8 @@ ${negativePrompt}`.trim();
 function getBasePrompt(contextPreset: ContextPreset): string {
   const furnitureContextDescriptions = {
     packshot: 'professional commercial furniture packshot',
-    instagram: 'Instagram-ready furniture showcase post',
-    story: 'Instagram/Facebook story format furniture presentation',
+    social_media_square: 'Instagram-ready furniture showcase post',
+    social_media_story: 'Instagram/Facebook story format furniture presentation',
     hero: 'website hero banner furniture showcase',
     lifestyle: 'lifestyle furniture image in realistic interior setting',
     detail: 'detailed close-up furniture craftsmanship shot'
@@ -374,7 +374,7 @@ function getContextSpecificInstructions(contextPreset: ContextPreset, settings: 
 - Professional furniture brand presentation - no text in image (added by website)
 - Commercial furniture hero banner standards`;
       
-    case 'story':
+    case 'social_media_story':
       return `📱 FURNITURE STORY FORMAT REQUIREMENTS:
 - Vertical composition optimized for mobile furniture showcase
 - Furniture should be prominently centered and featured
@@ -390,7 +390,7 @@ function getContextSpecificInstructions(contextPreset: ContextPreset, settings: 
 - Professional studio-quality lighting for furniture photography
 - Enterprise furniture packshot standards`;
       
-    case 'instagram':
+    case 'social_media_square':
       return `📷 FURNITURE INSTAGRAM REQUIREMENTS:
 - Engaging, social-media ready furniture composition
 - Consider furniture visibility in Instagram feed context
@@ -427,8 +427,8 @@ FLOOR CONTACT FOR WALL-MOUNTED FURNITURE, legs touching ground, supports on floo
 export function getImageSize(contextPreset: ContextPreset): "1024x1024" | "1024x1536" | "1536x1024" {
   const sizeMapping = {
     packshot: "1024x1024" as const,
-    instagram: "1024x1024" as const,
-    story: "1024x1536" as const,
+    social_media_square: "1024x1024" as const,
+    social_media_story: "1024x1536" as const,
     hero: "1536x1024" as const,
     lifestyle: "1536x1024" as const,
     detail: "1024x1024" as const,
@@ -497,8 +497,8 @@ function optimizePromptLength(
 function getOptimizedBasePrompt(contextPreset: ContextPreset): string {
   const contextMap = {
     packshot: 'Professional product packshot',
-    instagram: 'Instagram product post', 
-    story: 'Instagram story product image',
+    social_media_square: 'Instagram product post', 
+    social_media_story: 'Instagram story product image',
     hero: 'Website hero product image',
     lifestyle: 'Lifestyle product scene',
     detail: 'Detailed product close-up'
@@ -567,11 +567,11 @@ function getOptimizedContextInstructions(contextPreset: ContextPreset, settings:
   switch (contextPreset) {
     case 'hero':
       return `Hero banner: Visual balance, breathing room ${settings.reservedTextZone || 'opposite product'}, no text in image.`;
-    case 'story':
+    case 'social_media_story':
       return 'Vertical mobile format, centered product, thumb-stopping appeal.';
     case 'packshot':
       return 'Clean neutral focus, minimal distractions, catalog-quality.';
-    case 'instagram':
+    case 'social_media_square':
       return 'Social-ready composition, mobile-optimized, professional aesthetic.';
     case 'lifestyle':
       return 'Realistic home environment, natural lighting, contextual integration.';

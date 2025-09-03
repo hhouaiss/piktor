@@ -61,6 +61,7 @@ export default function GeneratePage() {
       
       updateState({ productConfiguration: updatedConfiguration });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.contextSelection]);
 
   // Step 1: Product Input Handlers

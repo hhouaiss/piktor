@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ProductConfiguration, ContextPreset } from "@/lib/types";
+import { ProductConfiguration } from "@/lib/types";
+import { ContextPreset } from "@/components/image-generator/types";
 import { buildGptImagePrompt } from "@/lib/prompt-builder";
 import { 
   generateMultipleImagesWithGemini, 

@@ -61,13 +61,13 @@ export interface BFLGenerationResult {
  */
 export function getAspectRatio(contextPreset: ContextPreset): string {
   switch (contextPreset) {
-    case 'story':
+    case 'social_media_story':
       return '2:3'; // Vertical for stories
     case 'hero':
     case 'lifestyle':
       return '3:2'; // Horizontal for banners
     case 'packshot':
-    case 'instagram':
+    case 'social_media_square':
     case 'detail':
     default:
       return '1:1'; // Square for social media

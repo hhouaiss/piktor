@@ -256,9 +256,9 @@ export class ProductionPromptEngine {
         qualityLevel: config.qualityLevel,
         promptLength: finalPrompt.length,
         productIntelligence: productIntel,
-        placementAnalysis,
+        placementAnalysis: placementAnalysis as unknown as Record<string, unknown>,
         constraintStats,
-        validationResults,
+        validationResults: validationResults as unknown as Record<string, unknown>,
         optimizationsApplied,
         productionReady,
         criticalIssuesAddressed,
@@ -301,7 +301,7 @@ export class ProductionPromptEngine {
       materialProfile,
       scaleGuidance,
       lightingRequirements
-    };
+    } as unknown as ProductIntelligence;
   }
   
   // Recreate essential analysis methods from GeminiPromptEngine
@@ -365,6 +365,7 @@ export class ProductionPromptEngine {
     return 'floor_standing';
   }
   
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private static analyzeMaterials(_materials: string): Record<string, unknown> {
     // Simplified material analysis
     return {
@@ -387,6 +388,7 @@ export class ProductionPromptEngine {
     };
   }
   
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private static determineLighting(_materialProfile: Record<string, unknown>, _category: string): Record<string, unknown> {
     return {
       primaryAngle: 45,
@@ -737,7 +739,15 @@ function validateQualityStandards(prompt: string): boolean {
 /**
  * Generate detailed compliance report
  */
-function generateComplianceReport(validationDetails: any, prompt: string): string[] {
+interface ValidationDetails {
+  productIntegrityCompliance?: boolean;
+  contextAdherenceCompliance?: boolean;
+  formatComplianceChecks?: boolean;
+  constraintEnforcement?: boolean;
+  qualityAssuranceStandards?: boolean;
+}
+
+function generateComplianceReport(validationDetails: ValidationDetails, prompt: string): string[] {
   const report = [];
   
   if (validationDetails.productIntegrityCompliance) {

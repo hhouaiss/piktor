@@ -830,7 +830,7 @@ function getContextPresetForAssetType(assetType: AssetType): ContextPreset {
   const assetToContextMap: Record<AssetType, ContextPreset> = {
     lifestyle: 'lifestyle',
     ad: 'hero', 
-    social: 'instagram',
+    social: 'social_media_square',
     hero: 'hero',
     variation: 'packshot',
   };

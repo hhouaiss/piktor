@@ -15,6 +15,18 @@
 import { ProductSpecs } from '@/components/image-generator/types';
 import { PlacementType, FurnitureCategory } from '@/lib/gemini-prompt-engine';
 
+interface PlacementScore {
+  score: number;
+  supportingKeywords: string[];
+  conflictingKeywords: string[];
+}
+
+interface PlacementKeywords {
+  primary: string[];
+  secondary: string[];
+  negative: string[];
+}
+
 // Advanced Placement Detection Configuration
 export interface PlacementDetectionConfig {
   strictMode: boolean;
@@ -460,6 +472,7 @@ The furniture must appear professionally wall-mounted with appropriate hardware 
   /**
    * Build floor-standing specific constraints  
    */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private static buildFloorStandingConstraints(_productType: string, level: string): string {
     return `FLOOR-STANDING POSITIONING REQUIREMENTS:
 • ALL furniture support points MUST make proper contact with floor surface
@@ -484,6 +497,7 @@ SPATIAL RELATIONSHIP REQUIREMENTS:
   /**
    * Build tabletop specific constraints
    */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private static buildTabletopConstraints(_productType: string, level: string): string {
     return `TABLETOP POSITIONING REQUIREMENTS:
 • Product MUST be positioned on appropriate supporting surface
@@ -506,6 +520,7 @@ PLACEMENT AUTHENTICITY:
   /**
    * Build ceiling-mounted specific constraints
    */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private static buildCeilingMountedConstraints(_productType: string, level: string): string {
     return `CEILING-MOUNTED POSITIONING REQUIREMENTS:
 • Product MUST hang from ceiling attachment point with appropriate hardware
@@ -528,6 +543,7 @@ INSTALLATION AUTHENTICITY:
   /**
    * Build built-in specific constraints
    */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private static buildBuiltInConstraints(_productType: string, level: string): string {
     return `BUILT-IN POSITIONING REQUIREMENTS:
 • Product MUST appear integrated into architectural space

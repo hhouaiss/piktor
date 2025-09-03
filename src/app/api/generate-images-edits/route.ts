@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ProductConfiguration, ContextPreset, UiSettings, ProductProfile, getFieldValue } from "@/lib/types";
+import { ProductConfiguration, UiSettings, ProductProfile, getFieldValue } from "@/lib/types";
+import { ContextPreset } from "@/components/image-generator/types";
 import { 
   editMultipleImagesWithGemini,
   fileToBase64Gemini
@@ -14,13 +15,13 @@ interface GenerationParams {
 // DALL-E-3 size mappings for images.generate
 const getGptImageSize = (contextPreset: ContextPreset): "1024x1024" | "1024x1536" | "1536x1024" => {
   switch (contextPreset) {
-    case 'story':
+    case 'social_media_story':
       return "1024x1536"; // Vertical for stories
     case 'hero':
     case 'lifestyle':
       return "1536x1024"; // Horizontal for banners
     case 'packshot':
-    case 'instagram':
+    case 'social_media_square':
     case 'detail':
     default:
       return "1024x1024"; // Square for social media
@@ -216,9 +217,9 @@ function getContextDescription(contextPreset: ContextPreset): string {
       return 'lifestyle';
     case 'hero':
       return 'hero banner';
-    case 'instagram':
+    case 'social_media_square':
       return 'Instagram post';
-    case 'story':
+    case 'social_media_story':
       return 'Instagram story';
     case 'detail':
       return 'detail shot';
@@ -329,9 +330,9 @@ function generateStructuredJsonProfile(profile: ProductProfile, settings: UiSett
 
 function getContextPlatform(contextPreset: ContextPreset): string {
   switch (contextPreset) {
-    case 'instagram':
+    case 'social_media_square':
       return 'instagram';
-    case 'story':
+    case 'social_media_story':
       return 'instagram_stories';
     case 'hero':
       return 'website_hero';
@@ -389,7 +390,7 @@ function getContextSpecificJsonRequirements(contextPreset: ContextPreset, settin
         text_space: settings.reservedTextZone ? `Reserve ${settings.reservedTextZone} area for text` : "Include space for text overlay"
       };
       
-    case 'instagram':
+    case 'social_media_square':
       return {
         ...base,
         style: "Social media optimized square format",
@@ -400,7 +401,7 @@ function getContextSpecificJsonRequirements(contextPreset: ContextPreset, settin
         context: "Instagram post for social media marketing"
       };
       
-    case 'story':
+    case 'social_media_story':
       return {
         ...base,
         style: "Vertical mobile story format",

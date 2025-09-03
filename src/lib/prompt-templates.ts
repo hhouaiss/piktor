@@ -12,7 +12,8 @@ import {
   buildMaterialSpecification,
   buildFeatureSpecification
 } from './furniture-vocabulary';
-import { ContextPreset, ProductProfile, UiSettings, getFieldValue } from './types';
+import { ProductProfile, UiSettings, getFieldValue } from './types';
+import { ContextPreset } from '@/components/image-generator/types';
 
 // Core Template Structure for All Contexts
 export interface PromptTemplate {
@@ -88,7 +89,7 @@ export const FURNITURE_ANALYSIS_TEMPLATES = {
 - High-end commercial appeal
 - Banner-ready composition with text overlay areas`,
 
-    instagram: `SOCIAL MEDIA COMMERCIAL CONTENT:
+    social_media_square: `SOCIAL MEDIA COMMERCIAL CONTENT:
 - Square format optimized for Instagram feeds
 - Social media engagement appeal with lifestyle context
 - Balanced lighting for mobile device viewing
@@ -96,7 +97,7 @@ export const FURNITURE_ANALYSIS_TEMPLATES = {
 - Brand-consistent visual identity
 - Thumb-stopping visual appeal`,
 
-    story: `VERTICAL MOBILE-OPTIMIZED CONTENT:
+    social_media_story: `VERTICAL MOBILE-OPTIMIZED CONTENT:
 - 9:16 aspect ratio for mobile story formats
 - Product prominently displayed in vertical composition
 - Mobile-first viewing optimization
@@ -185,7 +186,7 @@ export const CONTEXT_PROMPT_TEMPLATES: Record<ContextPreset, PromptTemplate> = {
     photographySpecs: 'Wide banner composition 16:9 or wider, dramatic key lighting with architectural shadows, premium backdrop with texture or architectural elements, strategic text overlay space consideration, strong focal point with clear visual hierarchy, depth of field maintaining product sharpness while creating background separation.'
   },
 
-  instagram: {
+  social_media_square: {
     baseStructure: `Social media optimized presentation of {PRODUCT_TYPE} with {MATERIAL_SPECS} in {STYLE_DESCRIPTION} design for Instagram engagement.`,
     contextSpecific: `Square format social media photography optimized for Instagram feeds. Professional lifestyle context with social media engagement appeal and mobile viewing optimization.`,
     constraints: [
@@ -204,7 +205,7 @@ export const CONTEXT_PROMPT_TEMPLATES: Record<ContextPreset, PromptTemplate> = {
     photographySpecs: 'Square composition, social media lighting balance, mobile-optimized clarity, engagement-focused appeal.'
   },
 
-  story: {
+  social_media_story: {
     baseStructure: `Vertical mobile-optimized presentation of {PRODUCT_TYPE} with {MATERIAL_SPECS} in {STYLE_DESCRIPTION} design for social media story format.`,
     contextSpecific: `Vertical 9:16 aspect ratio composition optimized for mobile story formats. Product prominently displayed with mobile-first viewing considerations and quick visual impact.`,
     constraints: [

@@ -285,7 +285,7 @@ export class PromptTestingSuite {
       qualityImprovements.push(result.improvements.qualityScore);
       constraintImprovements.push(result.improvements.constraintCoverage);
       
-      if (result.improvements.productionReady) {
+      if (result.improvements.productionReadiness) {
         productionReadyCount++;
       }
 
@@ -353,7 +353,7 @@ export class PromptTestingSuite {
         constraintCoverage: this.calculateConstraintCoverage(newPromptResult.prompt, testCase.expectedConstraints),
         lengthOptimization: Math.max(0, oldPromptResult.prompt.length - newPromptResult.prompt.length),
         qualityScore: newValidation.qualityScore,
-        productionReady: newPromptResult.metadata.productionReady
+        productionReadiness: newPromptResult.metadata.productionReady
       };
 
       // Validate specific requirements
@@ -388,7 +388,7 @@ export class PromptTestingSuite {
           constraintCoverage: 0,
           lengthOptimization: 0,
           qualityScore: 0,
-          productionReady: false
+          productionReadiness: false
         },
         validation: {
           humanElementPrevention: false,
@@ -498,22 +498,22 @@ export class PromptTestingSuite {
     // 3. Category-specific validation passes
     // 4. Production ready
 
-    if (improvements.qualityScore < 70) return false;
-    if (improvements.constraintCoverage < 80) return false;
-    if (!improvements.productionReady) return false;
+    if ((improvements.qualityScore as number) < 70) return false;
+    if ((improvements.constraintCoverage as number) < 80) return false;
+    if (!(improvements.productionReadiness as boolean)) return false;
 
     // Category-specific checks
     switch (testCase.category) {
       case TestCategory.HUMAN_ELIMINATION:
-        return validation.humanElementPrevention;
+        return validation.humanElementPrevention as boolean;
       case TestCategory.OBJECT_PREVENTION:
-        return validation.objectPrevention;
+        return validation.objectPrevention as boolean;
       case TestCategory.PLACEMENT_ACCURACY:
-        return validation.placementAccuracy;
+        return validation.placementAccuracy as boolean;
       case TestCategory.ARTIFACT_PREVENTION:
-        return validation.artifactPrevention;
+        return validation.artifactPrevention as boolean;
       case TestCategory.SPECIFICATION_ADHERENCE:
-        return validation.adherenceStrict;
+        return validation.adherenceStrict as boolean;
       default:
         return true;
     }

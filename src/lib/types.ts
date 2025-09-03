@@ -1,6 +1,6 @@
 // Essential types for the SaaS application
 
-export type ContextPreset = 'packshot' | 'instagram' | 'story' | 'hero' | 'lifestyle' | 'detail';
+export type ContextPreset = 'packshot' | 'social_media_square' | 'social_media_story' | 'hero' | 'lifestyle' | 'detail';
 
 export interface UiSettings {
   backgroundStyle: string;
@@ -37,8 +37,8 @@ export interface TextToImagePrompts {
   packshot?: string;
   lifestyle?: string;
   hero?: string;
-  story?: string;
-  instagram?: string;
+  social_media_story?: string;
+  social_media_square?: string;
   detail?: string;
   photographySpecs?: {
     cameraAngle?: string;

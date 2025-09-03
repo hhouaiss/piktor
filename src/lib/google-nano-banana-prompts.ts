@@ -97,6 +97,7 @@ export class NanaBananaPromptEngine {
    * CRITICAL: Build absolute product preservation system
    * ADDRESSES ISSUE #1: Product Integrity Violations
    */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private static buildAbsoluteProductPreservation(specs: ProductSpecs, _productIntel: ProductIntelligence): string {
     return `🔒 ABSOLUTE PRODUCT PRESERVATION - ZERO MODIFICATION TOLERANCE
 
@@ -139,6 +140,7 @@ This model must treat the product description as an immutable blueprint. Generat
    * CRITICAL: Build format and dimension enforcement
    * ADDRESSES ISSUE #3: Format/Dimension Issues
    */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private static buildFormatEnforcement(contextPreset: ContextPreset, _settings: UiSettings): string {
     const formatSpecs = {
       packshot: { ratio: '1:1', dimensions: '1024×1024px', description: 'Perfect square packshot format' },
@@ -344,6 +346,7 @@ The generated image should be immediately recognizable as ${contextPreset} photo
    * Build Google Nano Banana specific constraints
    * ADDRESSES MODEL-SPECIFIC BEHAVIOR ISSUES
    */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private static buildNanoBananaSpecificConstraints(_contextPreset: ContextPreset, _productIntel: ProductIntelligence, _qualityLevel: ProductionQuality): string {
     return `🤖 GOOGLE NANO BANANA MODEL-SPECIFIC OPTIMIZATION
 
@@ -392,7 +395,8 @@ This model must generate consistent, professional results suitable for commercia
       lifestyle: 'authentic interior lifestyle scene with natural integration', 
       social_media_square: 'engaging social media content optimized for square format',
       social_media_story: 'vertical mobile story format with immediate visual impact',
-      hero: 'premium website banner with dramatic presentation and text space'
+      hero: 'premium website banner with dramatic presentation and text space',
+      detail: 'close-up detail photography highlighting product features and craftsmanship'
     };
 
     const qualitySpecs = {
@@ -456,6 +460,7 @@ The product MUST appear exactly as a real, physical ${specs.productType} would a
   /**
    * Build intelligent placement logic with zero-tolerance enforcement
    */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private static buildPlacementLogic(productIntel: ProductIntelligence, _specs: ProductSpecs): string {
     const placementType = productIntel.placementType;
     let placementInstructions = '';
@@ -556,6 +561,7 @@ PLACEMENT BEST PRACTICES:
   /**
    * Build material specifications with authentic surface rendering
    */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private static buildMaterialSpecifications(productIntel: ProductIntelligence, _specs: ProductSpecs): string {
     const materialProfile = productIntel.materialProfile;
     
@@ -884,6 +890,7 @@ HERO BANNER VALIDATION CHECKLIST:
    * Build comprehensive quality assurance checklist
    * ADDRESSES ISSUE #4: Quality Issues
    */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private static buildQualityChecklist(_qualityLevel: ProductionQuality): string {
     return `✅ COMPREHENSIVE QUALITY ASSURANCE SYSTEM
 
@@ -1028,6 +1035,7 @@ All critical production issues have been systematically addressed with zero-tole
 /**
  * Helper function to determine lifestyle environment based on settings
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function getLifestyleEnvironment(_settings: UiSettings): string {
   // Logic to determine appropriate environment based on product type and settings
   return 'modern residential'; // Simplified for this implementation
@@ -1105,7 +1113,7 @@ export function getNanaBananaOptimalSettings(contextPreset: ContextPreset): Part
     quality: 'high' as const,
     lighting: 'studio_softbox' as const,
     backgroundStyle: 'minimal' as const,
-    props: [] as string[]
+    props: [] as Array<'plant' | 'lamp' | 'rug' | 'chair' | 'artwork'>
   };
 
   switch (contextPreset) {

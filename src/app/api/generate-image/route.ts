@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
     console.log("Prompt length:", detailedPrompt.length);
     // Map aspectRatio to contextPreset for getGeminiAspectRatio function
     const contextPreset = promptData.output.type === 'packshot' ? 'packshot' : 
-                         promptData.output.type === 'lifestyle' ? 'lifestyle' : 'instagram';
+                         promptData.output.type === 'lifestyle' ? 'lifestyle' : 'social_media_square';
     console.log("Aspect ratio:", getGeminiAspectRatio(contextPreset));
     
     const response = await generateMultipleImagesWithGemini({

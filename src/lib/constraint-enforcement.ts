@@ -187,7 +187,7 @@ export const CONTEXT_CONSTRAINTS: Record<ContextPreset, ConstraintRule[]> = {
     }
   ],
   
-  instagram: [
+  social_media_square: [
     {
       id: 'instagram_format',
       name: 'Square Format Optimization',
@@ -206,7 +206,7 @@ export const CONTEXT_CONSTRAINTS: Record<ContextPreset, ConstraintRule[]> = {
     }
   ],
   
-  story: [
+  social_media_story: [
     {
       id: 'vertical_composition',
       name: 'Vertical Mobile Composition',

@@ -574,7 +574,7 @@ export class GeminiPromptEngine {
           }
         };
         
-      case 'instagram':
+      case 'social_media_square':
         return {
           composition: {
             framing: 'Social media optimized with thumb-stopping appeal',
@@ -604,7 +604,7 @@ export class GeminiPromptEngine {
           }
         };
         
-      case 'story':
+      case 'social_media_story':
         return {
           composition: {
             framing: 'Vertical mobile-first composition',
@@ -807,8 +807,8 @@ ${productIntel.lightingRequirements.specialRequirements.length > 0 ?
       packshot: 'Clean commercial packshot on neutral background',
       lifestyle: 'Realistic lifestyle scene in appropriate interior environment',
       hero: 'Dramatic hero presentation for premium marketing applications',
-      instagram: 'Social media optimized with engagement appeal',
-      story: 'Vertical mobile story format with immediate visual impact',
+      social_media_square: 'Social media optimized with engagement appeal',
+      social_media_story: 'Vertical mobile story format with immediate visual impact',
       detail: 'Close-up craftsmanship showcase highlighting quality and materials'
     };
     

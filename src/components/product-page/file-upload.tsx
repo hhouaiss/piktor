@@ -169,7 +169,7 @@ export function FileUpload({ onProductsGenerated, onCancel }: FileUploadProps) {
   };
 
   const getFileIcon = (file: File) => {
-    if (file.type.startsWith('image/')) return <Image className="w-5 h-5" alt="Image file icon" />;
+    if (file.type.startsWith('image/')) return <Image className="w-5 h-5" />;
     if (file.type === 'text/csv') return <FileSpreadsheet className="w-5 h-5" />;
     if (file.type === 'application/pdf') return <FileText className="w-5 h-5" />;
     return <FileText className="w-5 h-5" />;
@@ -251,7 +251,7 @@ export function FileUpload({ onProductsGenerated, onCancel }: FileUploadProps) {
               <span>PDF Documents (.pdf)</span>
             </div>
             <div className="flex items-center gap-2">
-              <Image className="w-4 h-4 text-blue-600" alt="Image files icon" />
+              <Image className="w-4 h-4 text-blue-600" />
               <span>Images (.jpg, .png, etc.)</span>
             </div>
           </div>
