@@ -21,7 +21,7 @@
  */
 
 import { ContextPreset, UiSettings, ProductSpecs, ContextType, SocialMediaFormat, ContextSelection, getContextPresetFromSelection } from '@/components/image-generator/types';
-import { ProductIntelligence, GeminiPromptEngine } from '@/lib/gemini-prompt-engine';
+import { ProductIntelligence } from '@/lib/gemini-prompt-engine';
 import { 
   generateNanaBananaPrompt, 
   ProductionQuality,
@@ -35,7 +35,6 @@ import {
 import {
   IntelligentPlacementSystem,
   analyzeProductionPlacement,
-  buildProductionPlacementConstraints
 } from '@/lib/intelligent-placement-system';
 
 // Production Engine Configuration
@@ -58,9 +57,9 @@ export interface ProductionPromptResult {
     qualityLevel: ProductionQuality;
     promptLength: number;
     productIntelligence: ProductIntelligence;
-    placementAnalysis?: any;
-    constraintStats: any;
-    validationResults: any;
+    placementAnalysis?: Record<string, unknown>;
+    constraintStats: Record<string, unknown>;
+    validationResults: Record<string, unknown>;
     optimizationsApplied: string[];
     productionReady: boolean;
     criticalIssuesAddressed: {
@@ -277,16 +276,16 @@ export class ProductionPromptEngine {
    */
   private static analyzeProductIntelligence(specs: ProductSpecs): ProductIntelligence {
     // Use the existing Gemini Prompt Engine analysis as base
-    const mockSettings: UiSettings = {
-      contextPreset: 'packshot',
-      backgroundStyle: 'minimal',
-      productPosition: 'center', 
-      lighting: 'studio_softbox',
-      strictMode: true,
-      quality: 'high',
-      variations: 1,
-      props: []
-    };
+    // const mockSettings: UiSettings = {
+    //   contextPreset: 'packshot',
+    //   backgroundStyle: 'minimal',
+    //   productPosition: 'center', 
+    //   lighting: 'studio_softbox',
+    //   strictMode: true,
+    //   quality: 'high',
+    //   variations: 1,
+    //   props: []
+    // };
     
     // Use the private method from GeminiPromptEngine (we'll need to make it public or recreate logic)
     // For now, recreate the essential logic here
@@ -306,7 +305,7 @@ export class ProductionPromptEngine {
   }
   
   // Recreate essential analysis methods from GeminiPromptEngine
-  private static categorizeProduct(productType: string): any {
+  private static categorizeProduct(productType: string): string {
     const type = productType.toLowerCase();
     
     if (type.includes('chair') || type.includes('sofa') || type.includes('stool') || 
@@ -344,7 +343,7 @@ export class ProductionPromptEngine {
     return 'unknown';
   }
   
-  private static determinePlacement(productType: string): any {
+  private static determinePlacement(productType: string): string {
     const type = productType.toLowerCase();
     
     if (type.includes('wall') || type.includes('mounted') || type.includes('hanging')) {
@@ -366,7 +365,7 @@ export class ProductionPromptEngine {
     return 'floor_standing';
   }
   
-  private static analyzeMaterials(materials: string): any {
+  private static analyzeMaterials(_materials: string): Record<string, unknown> {
     // Simplified material analysis
     return {
       primary: 'wood',
@@ -377,7 +376,7 @@ export class ProductionPromptEngine {
     };
   }
   
-  private static calculateScaleGuidance(specs: ProductSpecs, category: any): any {
+  private static calculateScaleGuidance(specs: ProductSpecs, category: string): Record<string, unknown> {
     return {
       humanReference: category === 'seating' || category === 'tables',
       proportionalElements: ['realistic scale', 'appropriate proportions'],
@@ -388,7 +387,7 @@ export class ProductionPromptEngine {
     };
   }
   
-  private static determineLighting(materialProfile: any, category: any): any {
+  private static determineLighting(_materialProfile: Record<string, unknown>, _category: string): Record<string, unknown> {
     return {
       primaryAngle: 45,
       fillRatio: 0.4,
@@ -456,9 +455,9 @@ export class ProductionPromptEngine {
    * Calculate comprehensive quality score
    */
   private static calculateQualityScore(
-    validationResults: any,
-    constraintStats: any,
-    criticalIssuesAddressed: any,
+    validationResults: Record<string, unknown> | undefined,
+    constraintStats: Record<string, unknown>,
+    criticalIssuesAddressed: Record<string, boolean>,
     warnings: string[]
   ): number {
     let score = 100;
@@ -488,8 +487,8 @@ export class ProductionPromptEngine {
    */
   private static assessProductionReadiness(
     prompt: string,
-    validationResults: any,
-    constraintStats: any,
+    validationResults: Record<string, unknown> | undefined,
+    constraintStats: Record<string, unknown>,
     warnings: string[],
     qualityScore: number
   ): boolean {

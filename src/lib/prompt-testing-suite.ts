@@ -260,8 +260,8 @@ export class PromptTestingSuite {
 
     const testResults: TestResult[] = [];
     let totalPassed = 0;
-    let qualityImprovements: number[] = [];
-    let constraintImprovements: number[] = [];
+    const qualityImprovements: number[] = [];
+    const constraintImprovements: number[] = [];
     let productionReadyCount = 0;
     const criticalIssuesEliminated: string[] = [];
 
@@ -345,7 +345,7 @@ export class PromptTestingSuite {
       );
 
       // Validate both prompts
-      const oldValidation = validateProductionPrompt(oldPromptResult.prompt);
+      // const oldValidation = validateProductionPrompt(oldPromptResult.prompt);
       const newValidation = validateProductionPrompt(newPromptResult.prompt);
 
       // Calculate improvements
@@ -489,8 +489,8 @@ export class PromptTestingSuite {
    */
   private static evaluateTestSuccess(
     testCase: TestCase,
-    improvements: any,
-    validation: any
+    improvements: Record<string, unknown>,
+    validation: Record<string, unknown>
   ): boolean {
     // Test passes if:
     // 1. Quality score is above 70%

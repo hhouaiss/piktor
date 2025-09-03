@@ -97,7 +97,7 @@ export class NanaBananaPromptEngine {
    * CRITICAL: Build absolute product preservation system
    * ADDRESSES ISSUE #1: Product Integrity Violations
    */
-  private static buildAbsoluteProductPreservation(specs: ProductSpecs, productIntel: ProductIntelligence): string {
+  private static buildAbsoluteProductPreservation(specs: ProductSpecs, _productIntel: ProductIntelligence): string {
     return `🔒 ABSOLUTE PRODUCT PRESERVATION - ZERO MODIFICATION TOLERANCE
 
 🚨 CRITICAL PRODUCT INTEGRITY ENFORCEMENT:
@@ -139,7 +139,7 @@ This model must treat the product description as an immutable blueprint. Generat
    * CRITICAL: Build format and dimension enforcement
    * ADDRESSES ISSUE #3: Format/Dimension Issues
    */
-  private static buildFormatEnforcement(contextPreset: ContextPreset, settings: UiSettings): string {
+  private static buildFormatEnforcement(contextPreset: ContextPreset, _settings: UiSettings): string {
     const formatSpecs = {
       packshot: { ratio: '1:1', dimensions: '1024×1024px', description: 'Perfect square packshot format' },
       social_media_square: { ratio: '1:1', dimensions: '1024×1024px', description: 'Instagram square post format' },
@@ -344,7 +344,7 @@ The generated image should be immediately recognizable as ${contextPreset} photo
    * Build Google Nano Banana specific constraints
    * ADDRESSES MODEL-SPECIFIC BEHAVIOR ISSUES
    */
-  private static buildNanoBananaSpecificConstraints(contextPreset: ContextPreset, productIntel: ProductIntelligence, qualityLevel: ProductionQuality): string {
+  private static buildNanoBananaSpecificConstraints(_contextPreset: ContextPreset, _productIntel: ProductIntelligence, _qualityLevel: ProductionQuality): string {
     return `🤖 GOOGLE NANO BANANA MODEL-SPECIFIC OPTIMIZATION
 
 MODEL BEHAVIOR CORRECTION INSTRUCTIONS:
@@ -456,7 +456,7 @@ The product MUST appear exactly as a real, physical ${specs.productType} would a
   /**
    * Build intelligent placement logic with zero-tolerance enforcement
    */
-  private static buildPlacementLogic(productIntel: ProductIntelligence, specs: ProductSpecs): string {
+  private static buildPlacementLogic(productIntel: ProductIntelligence, _specs: ProductSpecs): string {
     const placementType = productIntel.placementType;
     let placementInstructions = '';
 
@@ -556,7 +556,7 @@ PLACEMENT BEST PRACTICES:
   /**
    * Build material specifications with authentic surface rendering
    */
-  private static buildMaterialSpecifications(productIntel: ProductIntelligence, specs: ProductSpecs): string {
+  private static buildMaterialSpecifications(productIntel: ProductIntelligence, _specs: ProductSpecs): string {
     const materialProfile = productIntel.materialProfile;
     
     let materialSpecs = `🎨 MATERIAL SPECIFICATION & SURFACE AUTHENTICITY
@@ -884,7 +884,7 @@ HERO BANNER VALIDATION CHECKLIST:
    * Build comprehensive quality assurance checklist
    * ADDRESSES ISSUE #4: Quality Issues
    */
-  private static buildQualityChecklist(qualityLevel: ProductionQuality): string {
+  private static buildQualityChecklist(_qualityLevel: ProductionQuality): string {
     return `✅ COMPREHENSIVE QUALITY ASSURANCE SYSTEM
 
 🔍 CRITICAL PRODUCTION VALIDATION CHECKLIST:
@@ -1028,7 +1028,7 @@ All critical production issues have been systematically addressed with zero-tole
 /**
  * Helper function to determine lifestyle environment based on settings
  */
-function getLifestyleEnvironment(settings: UiSettings): string {
+function getLifestyleEnvironment(_settings: UiSettings): string {
   // Logic to determine appropriate environment based on product type and settings
   return 'modern residential'; // Simplified for this implementation
 }

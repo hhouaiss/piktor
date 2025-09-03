@@ -11,7 +11,7 @@
  */
 
 import { ContextPreset, UiSettings, ProductSpecs } from '@/components/image-generator/types';
-import { ProductIntelligence, PlacementType, MaterialType } from '@/lib/gemini-prompt-engine';
+import { ProductIntelligence } from '@/lib/gemini-prompt-engine';
 
 // Constraint Enforcement Levels
 export enum ConstraintLevel {
@@ -516,13 +516,13 @@ export function validateConstraintCoverage(
   missingCategories: string[];
   coverageScore: number;
 } {
-  const requiredCategories = [
-    'human element prohibition',
-    'irrelevant object prevention', 
-    'artifact prevention',
-    'placement enforcement',
-    'specification adherence'
-  ];
+  // const requiredCategories = [
+  //   'human element prohibition',
+  //   'irrelevant object prevention', 
+  //   'artifact prevention',
+  //   'placement enforcement',
+  //   'specification adherence'
+  // ];
 
   const missingCategories: string[] = [];
   let coverageScore = 0;

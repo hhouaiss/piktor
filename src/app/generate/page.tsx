@@ -61,7 +61,7 @@ export default function GeneratePage() {
       
       updateState({ productConfiguration: updatedConfiguration });
     }
-  }, [state.contextSelection]);
+  }, [state.contextSelection, state.productConfiguration]);
 
   // Step 1: Product Input Handlers
   const handleProductInputChange = useCallback((productInput: ProductInput) => {
