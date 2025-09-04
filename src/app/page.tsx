@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -338,12 +338,183 @@ export default function Home() {
     }
   };
 
+  // Dynamic Sliding Gallery Component
+  const DynamicGallery = () => {
+    const [currentSlide, setCurrentSlide] = useState(0);
+    const [isAutoPlaying, setIsAutoPlaying] = useState(true);
+    
+    const furnitureData = [
+      {
+        name: 'Canapé moderne',
+        category: 'Salon',
+        beforeDescription: 'Photo basique fond blanc',
+        afterDescription: 'Salon moderne éclairé premium'
+      },
+      {
+        name: 'Table basse design',
+        category: 'Table',
+        beforeDescription: 'Photo brute produit simple',
+        afterDescription: 'Mise en scène lifestyle élégante'
+      },
+      {
+        name: 'Fauteuil scandinave',
+        category: 'Fauteuil',
+        beforeDescription: 'Image catalogue basique',
+        afterDescription: 'Ambiance showroom nordique'
+      },
+      {
+        name: 'Armoire vintage',
+        category: 'Rangement',
+        beforeDescription: 'Photo d\'inventaire standard',
+        afterDescription: 'Chambre design magazine premium'
+      },
+      {
+        name: 'Commode contemporaine',
+        category: 'Rangement',
+        beforeDescription: 'Cliché mobile ordinaire',
+        afterDescription: 'Décor contemporain sophistiqué'
+      },
+      {
+        name: 'Bibliothèque moderne',
+        category: 'Bureau',
+        beforeDescription: 'Vue produit standard',
+        afterDescription: 'Bureau inspirant professionnel'
+      }
+    ];
+
+    const nextSlide = () => {
+      setCurrentSlide((prev) => (prev + 1) % furnitureData.length);
+    };
+
+    const prevSlide = () => {
+      setCurrentSlide((prev) => (prev - 1 + furnitureData.length) % furnitureData.length);
+    };
+
+    const goToSlide = (index: number) => {
+      setCurrentSlide(index);
+    };
+
+    // Auto-play functionality
+    useEffect(() => {
+      if (!isAutoPlaying) return;
+      
+      const interval = setInterval(() => {
+        nextSlide();
+      }, 4000);
+
+      return () => clearInterval(interval);
+    }, [isAutoPlaying, currentSlide]);
+
+    return (
+      <div 
+        className="relative w-full max-w-5xl mx-auto"
+        onMouseEnter={() => setIsAutoPlaying(false)}
+        onMouseLeave={() => setIsAutoPlaying(true)}
+      >
+        {/* Main Carousel Container */}
+        <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-sophisticated-gray-900 shadow-premium">
+          {/* Slides Container */}
+          <div 
+            className="flex transition-transform duration-700 ease-in-out"
+            style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+          >
+            {furnitureData.map((item, index) => (
+              <div key={index} className="w-full flex-shrink-0">
+                <div className="grid md:grid-cols-2 gap-0">
+                  {/* Before Section */}
+                  <div className="relative bg-sophisticated-gray-100 dark:bg-sophisticated-gray-800 aspect-[4/3] flex items-center justify-center">
+                    <div className="absolute top-4 left-4 z-10">
+                      <div className="bg-sophisticated-gray-600 text-white px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide">
+                        AVANT
+                      </div>
+                    </div>
+                    <div className="text-center p-8">
+                      <Package className="w-16 h-16 mx-auto mb-4 text-sophisticated-gray-400" />
+                      <h4 className="text-lg font-semibold text-sophisticated-gray-700 dark:text-sophisticated-gray-300 mb-2">
+                        {item.name}
+                      </h4>
+                      <p className="text-sm text-sophisticated-gray-500 dark:text-sophisticated-gray-400">
+                        {item.beforeDescription}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* After Section */}
+                  <div className="relative bg-gradient-to-br from-ocean-blue-50 via-white to-warm-gold-50 dark:from-sophisticated-gray-700 dark:via-sophisticated-gray-600 dark:to-sophisticated-gray-700 aspect-[4/3] flex items-center justify-center">
+                    <div className="absolute top-4 right-4 z-10">
+                      <div className="bg-gradient-ocean-gold text-white px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide shadow-lg">
+                        APRÈS IA
+                      </div>
+                    </div>
+                    <div className="text-center p-8">
+                      <div className="relative">
+                        <div className="w-16 h-16 mx-auto mb-4 bg-gradient-ocean-gold rounded-xl flex items-center justify-center">
+                          <Sparkles className="w-8 h-8 text-white" />
+                        </div>
+                        <div className="absolute -top-2 -right-2 w-4 h-4 bg-warm-gold-400 rounded-full animate-ping"></div>
+                      </div>
+                      <h4 className="text-lg font-semibold text-sophisticated-gray-800 dark:text-sophisticated-gray-200 mb-2">
+                        {item.name} Premium
+                      </h4>
+                      <p className="text-sm text-ocean-blue-700 dark:text-ocean-blue-300 font-medium">
+                        {item.afterDescription}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Navigation Arrows */}
+          <button
+            onClick={prevSlide}
+            className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/90 dark:bg-sophisticated-gray-800/90 rounded-full shadow-lg flex items-center justify-center text-sophisticated-gray-700 dark:text-sophisticated-gray-300 hover:bg-white dark:hover:bg-sophisticated-gray-700 transition-all duration-200 backdrop-blur-sm"
+            aria-label="Previous slide"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          
+          <button
+            onClick={nextSlide}
+            className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/90 dark:bg-sophisticated-gray-800/90 rounded-full shadow-lg flex items-center justify-center text-sophisticated-gray-700 dark:text-sophisticated-gray-300 hover:bg-white dark:hover:bg-sophisticated-gray-700 transition-all duration-200 backdrop-blur-sm"
+            aria-label="Next slide"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Slide Indicators */}
+        <div className="flex justify-center mt-6 space-x-2">
+          {furnitureData.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => goToSlide(index)}
+              className={cn(
+                "w-3 h-3 rounded-full transition-all duration-300",
+                index === currentSlide
+                  ? "bg-gradient-ocean-gold scale-125"
+                  : "bg-sophisticated-gray-300 dark:bg-sophisticated-gray-600 hover:bg-ocean-blue-400 dark:hover:bg-ocean-blue-500"
+              )}
+              aria-label={`Go to slide ${index + 1}`}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sophisticated-gray-50 via-white to-ocean-blue-50/30 dark:from-sophisticated-gray-950 dark:via-sophisticated-gray-900 dark:to-sophisticated-gray-800">
+    <div className="min-h-screen bg-gradient-to-br from-sophisticated-gray-50 via-white to-ocean-blue-50/30 dark:from-sophisticated-gray-950 dark:via-sophisticated-gray-900 dark:to-sophisticated-gray-800 overflow-x-hidden">
       
       {/* Hero Section */}
-      <section className="container mx-auto px-4 py-20 max-w-screen-2xl">
-        <div className="text-center mb-12 animate-fade-in">
+      <section className="w-full px-4 py-12 sm:py-16 lg:py-20">
+        <div className="container mx-auto max-w-7xl">
+          <div className="text-center mb-12 animate-fade-in">
           <div className="mb-6">
             <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-ocean-blue-50 to-warm-gold-50 border border-ocean-blue-200 rounded-full text-sm font-medium text-ocean-blue-700 dark:from-ocean-blue-900/50 dark:to-warm-gold-900/50 dark:border-ocean-blue-700 dark:text-ocean-blue-300">
               <Sparkles className="w-4 h-4 mr-2 animate-pulse" />
@@ -381,7 +552,7 @@ export default function Home() {
               onClick={scrollToGenerator}
               size="xl" 
               variant="primary" 
-              className="shadow-premium animate-scale-in font-bold group"
+              className="shadow-premium animate-scale-in font-bold group w-full sm:w-auto max-w-sm"
             >
               Tester gratuitement maintenant
               <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
@@ -391,85 +562,62 @@ export default function Home() {
           <p className="text-sm text-sophisticated-gray-500 dark:text-sophisticated-gray-400">
             Aucune inscription - Voir le résultat instantanément
           </p>
+          </div>
         </div>
       </section>
 
       {/* CTA Teaser Section */}
-      <section className="container mx-auto px-4 py-12 max-w-screen-2xl">
-        <div className="text-center bg-gradient-to-r from-ocean-blue-50 to-warm-gold-50 dark:from-sophisticated-gray-900 dark:to-sophisticated-gray-800 p-8 rounded-2xl border border-sophisticated-gray-200/50 dark:border-sophisticated-gray-700/50 animate-fade-in">
-          <h2 className="text-2xl md:text-3xl font-bold mb-4 text-sophisticated-gray-900 dark:text-sophisticated-gray-100">
-            Voyez la différence sur <span className="bg-gradient-ocean-gold bg-clip-text text-transparent">VOS produits</span>
-          </h2>
-          <Button 
-            onClick={scrollToGenerator}
-            variant="outline" 
-            size="lg" 
-            className="font-semibold group hover:border-ocean-blue-500 hover:bg-ocean-blue-50 dark:hover:bg-ocean-blue-900/20"
-          >
-            Transformer ma photo
-            <Camera className="w-5 h-5 ml-2 group-hover:rotate-12 transition-transform" />
-          </Button>
+      <section className="w-full px-4 py-8 sm:py-12">
+        <div className="container mx-auto max-w-7xl">
+          <div className="text-center bg-gradient-to-r from-ocean-blue-50 to-warm-gold-50 dark:from-sophisticated-gray-900 dark:to-sophisticated-gray-800 p-6 sm:p-8 rounded-2xl border border-sophisticated-gray-200/50 dark:border-sophisticated-gray-700/50 animate-fade-in">
+            <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-4 text-sophisticated-gray-900 dark:text-sophisticated-gray-100">
+              Voyez la différence sur <span className="bg-gradient-ocean-gold bg-clip-text text-transparent">VOS produits</span>
+            </h2>
+            <Button 
+              onClick={scrollToGenerator}
+              variant="outline" 
+              size="lg" 
+              className="font-semibold group hover:border-ocean-blue-500 hover:bg-ocean-blue-50 dark:hover:bg-ocean-blue-900/20 w-full sm:w-auto max-w-xs"
+            >
+              Transformer ma photo
+              <Camera className="w-5 h-5 ml-2 group-hover:rotate-12 transition-transform" />
+            </Button>
+          </div>
         </div>
       </section>
 
-      {/* Before/After Gallery */}
-      <section className="container mx-auto px-4 py-20 max-w-screen-2xl">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4 bg-gradient-to-br from-sophisticated-gray-900 to-ocean-blue-700 bg-clip-text text-transparent dark:from-sophisticated-gray-100 dark:to-ocean-blue-300">
-            De la photo basique au visuel showroom
-          </h2>
-        </div>
-        
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
-          {/* Before/After cards would go here - using placeholder examples */}
-          {[
-            { name: 'Canapé moderne', before: 'Fond blanc basique', after: 'Salon moderne éclairé' },
-            { name: 'Table basse', before: 'Photo brute produit', after: 'Mise en scène lifestyle' },
-            { name: 'Fauteuil design', before: 'Image catalogue simple', after: 'Ambiance showroom premium' },
-            { name: 'Armoire vintage', before: 'Photo d\'inventaire', after: 'Chambre design magazine' },
-            { name: 'Commode scandinave', before: 'Cliché mobile basique', after: 'Décor nordique parfait' },
-            { name: 'Bibliothèque', before: 'Vue produit standard', after: 'Bureau inspirant pro' }
-          ].map((item, index) => (
-            <Card key={index} className="group hover:shadow-lg transition-all duration-300 overflow-hidden">
-              <div className="aspect-[4/3] bg-gradient-to-br from-sophisticated-gray-100 to-sophisticated-gray-200 dark:from-sophisticated-gray-800 dark:to-sophisticated-gray-700 relative">
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-center">
-                    <Package className="w-12 h-12 mx-auto mb-2 text-sophisticated-gray-400" />
-                    <p className="text-sm text-sophisticated-gray-500">Avant: {item.before}</p>
-                  </div>
-                </div>
-                <div className="absolute top-2 right-2 bg-gradient-ocean-gold text-white px-2 py-1 rounded text-xs font-medium">
-                  APRÈS IA
-                </div>
-              </div>
-              <CardContent className="p-4">
-                <h3 className="font-semibold text-sophisticated-gray-900 dark:text-sophisticated-gray-100 mb-1">
-                  {item.name}
-                </h3>
-                <p className="text-sm text-sophisticated-gray-600 dark:text-sophisticated-gray-400">
-                  Transformé en: {item.after}
-                </p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-        
-        <div className="text-center">
-          <p className="text-lg font-medium text-sophisticated-gray-700 dark:text-sophisticated-gray-300 bg-white/50 dark:bg-sophisticated-gray-800/50 px-6 py-3 rounded-lg border border-sophisticated-gray-200/50 dark:border-sophisticated-gray-700/50 inline-block">
-            Même qualité professionnelle, même rapidité pour <span className="bg-gradient-ocean-gold bg-clip-text text-transparent font-bold">TOUS vos meubles</span>
-          </p>
+      {/* Dynamic Before/After Gallery */}
+      <section className="w-full px-4 py-12 sm:py-16 lg:py-20">
+        <div className="container mx-auto max-w-7xl">
+          <div className="text-center mb-12 lg:mb-16">
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 bg-gradient-to-br from-sophisticated-gray-900 to-ocean-blue-700 bg-clip-text text-transparent dark:from-sophisticated-gray-100 dark:to-ocean-blue-300 px-2">
+              De la photo basique au visuel showroom
+            </h2>
+          </div>
+          
+          {/* Dynamic Sliding Gallery */}
+          <DynamicGallery />
+          
+          <div className="text-center mt-12">
+            <div className="inline-block">
+              <p className="text-base sm:text-lg font-medium text-sophisticated-gray-700 dark:text-sophisticated-gray-300 bg-white/50 dark:bg-sophisticated-gray-800/50 px-4 sm:px-6 py-3 rounded-lg border border-sophisticated-gray-200/50 dark:border-sophisticated-gray-700/50">
+                Même qualité professionnelle, même rapidité pour <span className="bg-gradient-ocean-gold bg-clip-text text-transparent font-bold">TOUS vos meubles</span>
+              </p>
+            </div>
+          </div>
         </div>
       </section>
 
       {/* Image Generator Tool */}
-      <section id="image-generator" className="container mx-auto px-4 py-20 max-w-screen-2xl">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4 bg-gradient-to-br from-sophisticated-gray-900 to-ocean-blue-700 bg-clip-text text-transparent dark:from-sophisticated-gray-100 dark:to-ocean-blue-300">
-            Testez maintenant avec <span className="bg-gradient-ocean-gold bg-clip-text text-transparent">VOTRE produit</span>
-          </h2>
-        </div>
+      <section id="image-generator" className="w-full px-4 py-12 sm:py-16 lg:py-20">
+        <div className="container mx-auto max-w-6xl">
+          <div className="text-center mb-12">
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 bg-gradient-to-br from-sophisticated-gray-900 to-ocean-blue-700 bg-clip-text text-transparent dark:from-sophisticated-gray-100 dark:to-ocean-blue-300 px-2">
+              Testez maintenant avec <span className="bg-gradient-ocean-gold bg-clip-text text-transparent">VOTRE produit</span>
+            </h2>
+          </div>
 
-        <div className="max-w-4xl mx-auto">
+          <div className="max-w-4xl mx-auto">
           {generatorState.generatedImages.length === 0 ? (
             <Card className="p-8">
               <CardHeader className="text-center pb-6">
@@ -724,53 +872,56 @@ export default function Home() {
               </div>
             </div>
           )}
+          </div>
         </div>
       </section>
 
       {/* Demo CTA Section */}
-      <section className="container mx-auto px-4 py-20 max-w-screen-2xl">
-        <div className="relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-sophisticated-gray-900 via-ocean-blue-900 to-sophisticated-gray-800"></div>
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(2,132,199,0.3),transparent_70%)]"></div>
-          <div className="relative text-center p-16 rounded-2xl backdrop-blur-sm animate-fade-in">
-            
-            <h2 className="text-3xl md:text-5xl font-bold mb-6 text-white">
-              Prêt à révolutionner vos 
-              <span className="block bg-gradient-to-r from-warm-gold-400 to-warm-gold-200 bg-clip-text text-transparent">visuels mobilier ?</span>
-            </h2>
-            
-            <p className="text-xl text-sophisticated-gray-200 mb-8 max-w-3xl mx-auto leading-relaxed">
-              Découvrez comment nos clients génèrent +40% de conversions avec des catalogues premium
-            </p>
-            
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">
-              <Button asChild size="xl" variant="primary" className="shadow-premium font-bold">
-                <Link href="/generate">Réserver ma démo personnalisée</Link>
-              </Button>
-              <Button 
-                onClick={scrollToGenerator}
-                variant="outline" 
-                size="xl" 
-                className="font-semibold border-white/30 text-white hover:bg-white/10"
-              >
-                Continuer à tester l&apos;outil
-              </Button>
-            </div>
-            
-            <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-sophisticated-gray-300">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-warm-gold-400" />
-                <span>Démo sur VOS produits</span>
+      <section className="w-full px-4 py-12 sm:py-16 lg:py-20">
+        <div className="container mx-auto max-w-7xl">
+          <div className="relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-sophisticated-gray-900 via-ocean-blue-900 to-sophisticated-gray-800"></div>
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(2,132,199,0.3),transparent_70%)]"></div>
+            <div className="relative text-center p-8 sm:p-12 lg:p-16 rounded-2xl backdrop-blur-sm animate-fade-in">
+              
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold mb-6 text-white">
+                Prêt à révolutionner vos 
+                <span className="block bg-gradient-to-r from-warm-gold-400 to-warm-gold-200 bg-clip-text text-transparent">visuels mobilier ?</span>
+              </h2>
+              
+              <p className="text-lg sm:text-xl text-sophisticated-gray-200 mb-8 max-w-3xl mx-auto leading-relaxed">
+                Découvrez comment nos clients génèrent +40% de conversions avec des catalogues premium
+              </p>
+              
+              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">
+                <Button asChild size="xl" variant="primary" className="shadow-premium font-bold w-full sm:w-auto max-w-xs">
+                  <Link href="/generate">Réserver ma démo personnalisée</Link>
+                </Button>
+                <Button 
+                  onClick={scrollToGenerator}
+                  variant="outline" 
+                  size="xl" 
+                  className="font-semibold border-white/30 text-white hover:bg-white/10 w-full sm:w-auto max-w-xs"
+                >
+                  Continuer à tester l&apos;outil
+                </Button>
               </div>
-              <span>•</span>
-              <div className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-warm-gold-400" />
-                <span>Conseils personnalisés</span>
-              </div>
-              <span>•</span>
-              <div className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-warm-gold-400" />
-                <span>Tarifs sur mesure</span>
+              
+              <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-sm text-sophisticated-gray-300">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-warm-gold-400" />
+                  <span>Démo sur VOS produits</span>
+                </div>
+                <span className="hidden sm:block">•</span>
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-warm-gold-400" />
+                  <span>Conseils personnalisés</span>
+                </div>
+                <span className="hidden sm:block">•</span>
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-warm-gold-400" />
+                  <span>Tarifs sur mesure</span>
+                </div>
               </div>
             </div>
           </div>
