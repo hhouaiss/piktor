@@ -78,14 +78,9 @@ export default function Home() {
           <Button asChild size="xl" variant="primary" className="shadow-premium animate-scale-in font-bold">
             <Link href="/generate">Transform Your First Image - Free</Link>
           </Button>
-          <Button variant="outline" size="xl" asChild className="font-semibold">
+          {/* <Button variant="outline" size="xl" asChild className="font-semibold">
             <Link href="/templates">See Example Results</Link>
-          </Button>
-          {hasSeenTour && (
-            <Button variant="ghost" size="lg" onClick={startTour} className="font-semibold">
-              Take Tour Again
-            </Button>
-          )}
+          </Button> */}
         </div>
         <p className="text-sm text-sophisticated-gray-500 dark:text-sophisticated-gray-400">
           ✨ No credit card required • Start creating in seconds
@@ -178,7 +173,7 @@ export default function Home() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-6">
             <Button size="xl" variant="primary" asChild className="shadow-premium font-bold animate-scale-in">
-              <Link href="/upload">Start Your Free Transformation</Link>
+              <Link href="/generate">Start Your Free Transformation</Link>
             </Button>
             <div className="flex items-center space-x-4 text-sm text-sophisticated-gray-600 dark:text-sophisticated-gray-400">
               <span className="flex items-center space-x-1">
