@@ -313,7 +313,7 @@ export default function ProductPageBuilderPage() {
                           <span>PDF Documents</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Image className="w-4 h-4 text-blue-600" />
+                          <Image className="w-4 h-4 text-blue-600" aria-label="Product Images" />
                           <span>Product Images</span>
                         </div>
                       </div>

@@ -168,7 +168,7 @@ export default function Home() {
       const newGeneratedImages: GeneratedImage[] = result.result.variations.map((variation: { 
         url: string; 
         prompt: string; 
-        metadata: any 
+        metadata: Record<string, unknown>
       }) => ({
         id: `landing_${Date.now()}_${variation.metadata.variation}`,
         url: variation.url,
@@ -357,7 +357,7 @@ export default function Home() {
           </h1>
           
           <p className="text-xl md:text-2xl text-sophisticated-gray-600 dark:text-sophisticated-gray-400 mb-8 max-w-4xl mx-auto leading-relaxed">
-            Créez des dizaines de visuels professionnels à partir d'une seule photo produit. 
+            Créez des dizaines de visuels professionnels à partir d&apos;une seule photo produit. 
             <span className="font-semibold">Fini les shootings photo hors de prix.</span>
           </p>
           
@@ -753,7 +753,7 @@ export default function Home() {
                 size="xl" 
                 className="font-semibold border-white/30 text-white hover:bg-white/10"
               >
-                Continuer à tester l'outil
+                Continuer à tester l&apos;outil
               </Button>
             </div>
             
