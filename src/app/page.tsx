@@ -348,37 +348,46 @@ export default function Home() {
         name: 'Canapé moderne',
         category: 'Salon',
         beforeDescription: 'Photo basique fond blanc',
-        afterDescription: 'Salon moderne éclairé premium'
+        afterDescription: 'Salon moderne éclairé premium',
+        beforeImage: '/gallery/before/canape-moderne-before.jpg',
+        afterImage: '/gallery/after/canape-moderne-after.jpg',
+        slug: 'canape-moderne'
       },
       {
-        name: 'Table basse design',
-        category: 'Table',
+        name: 'Canapé cosy design',
+        category: 'Salon',
         beforeDescription: 'Photo brute produit simple',
-        afterDescription: 'Mise en scène lifestyle élégante'
+        afterDescription: 'Mise en scène dans un décor different',
+        beforeImage: '/gallery/before/canape-cosy-before.jpg',
+        afterImage: '/gallery/after/canape-cosy-design-after.png',
+        slug: 'canape-cosy-design'
       },
       {
-        name: 'Fauteuil scandinave',
-        category: 'Fauteuil',
+        name: 'Chaise de cuisine design',
+        category: 'Chaise',
         beforeDescription: 'Image catalogue basique',
-        afterDescription: 'Ambiance showroom nordique'
+        afterDescription: 'Ambiance showroom moderne',
+        beforeImage: '/gallery/before/chaise-moderne-before.jpg',
+        afterImage: '/gallery/after/chaise-moderne-after.jpg',
+        slug: 'fauteuil-scandinave'
       },
       {
-        name: 'Armoire vintage',
+        name: 'Lit',
+        category: 'Lit',
+        beforeDescription: 'Photo standard',
+        afterDescription: 'Chambre design magazine premium',
+        beforeImage: '/gallery/before/lit-before.jpg',
+        afterImage: '/gallery/after/lit-after.jpg',
+        slug: 'armoire-vintage'
+      },
+      {
+        name: 'Caisson de bureau',
         category: 'Rangement',
-        beforeDescription: 'Photo d\'inventaire standard',
-        afterDescription: 'Chambre design magazine premium'
-      },
-      {
-        name: 'Commode contemporaine',
-        category: 'Rangement',
-        beforeDescription: 'Cliché mobile ordinaire',
-        afterDescription: 'Décor contemporain sophistiqué'
-      },
-      {
-        name: 'Bibliothèque moderne',
-        category: 'Bureau',
-        beforeDescription: 'Vue produit standard',
-        afterDescription: 'Bureau inspirant professionnel'
+        beforeDescription: 'Photo produit basique',
+        afterDescription: 'Décor de bureau',
+        beforeImage: '/gallery/before/caisson-bureau-before.jpg',
+        afterImage: '/gallery/after/caisson-bureau-after.jpg',
+        slug: 'commode-contemporaine'
       }
     ];
 
@@ -422,44 +431,93 @@ export default function Home() {
               <div key={index} className="w-full flex-shrink-0">
                 <div className="grid md:grid-cols-2 gap-0">
                   {/* Before Section */}
-                  <div className="relative bg-sophisticated-gray-100 dark:bg-sophisticated-gray-800 aspect-[4/3] flex items-center justify-center">
+                  <div className="relative bg-sophisticated-gray-100 dark:bg-sophisticated-gray-800 aspect-[4/3] overflow-hidden">
                     <div className="absolute top-4 left-4 z-10">
                       <div className="bg-sophisticated-gray-600 text-white px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide">
                         AVANT
                       </div>
                     </div>
-                    <div className="text-center p-8">
-                      <Package className="w-16 h-16 mx-auto mb-4 text-sophisticated-gray-400" />
-                      <h4 className="text-lg font-semibold text-sophisticated-gray-700 dark:text-sophisticated-gray-300 mb-2">
-                        {item.name}
-                      </h4>
-                      <p className="text-sm text-sophisticated-gray-500 dark:text-sophisticated-gray-400">
-                        {item.beforeDescription}
-                      </p>
-                    </div>
+                    {item.beforeImage ? (
+                      <>
+                        <Image
+                          src={item.beforeImage}
+                          alt={`${item.name} - Photo avant transformation`}
+                          width={600}
+                          height={450}
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
+                          <h4 className="text-lg font-semibold text-white mb-1">
+                            {item.name}
+                          </h4>
+                          <p className="text-sm text-white/80">
+                            {item.beforeDescription}
+                          </p>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex items-center justify-center h-full">
+                        <div className="text-center p-8">
+                          <Package className="w-16 h-16 mx-auto mb-4 text-sophisticated-gray-400" />
+                          <h4 className="text-lg font-semibold text-sophisticated-gray-700 dark:text-sophisticated-gray-300 mb-2">
+                            {item.name}
+                          </h4>
+                          <p className="text-sm text-sophisticated-gray-500 dark:text-sophisticated-gray-400">
+                            {item.beforeDescription}
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   
                   {/* After Section */}
-                  <div className="relative bg-gradient-to-br from-ocean-blue-50 via-white to-warm-gold-50 dark:from-sophisticated-gray-700 dark:via-sophisticated-gray-600 dark:to-sophisticated-gray-700 aspect-[4/3] flex items-center justify-center">
+                  <div className="relative bg-gradient-to-br from-ocean-blue-50 via-white to-warm-gold-50 dark:from-sophisticated-gray-700 dark:via-sophisticated-gray-600 dark:to-sophisticated-gray-700 aspect-[4/3] overflow-hidden">
                     <div className="absolute top-4 right-4 z-10">
                       <div className="bg-gradient-ocean-gold text-white px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide shadow-lg">
-                        APRÈS IA
+                        AVEC PIKTOR
                       </div>
                     </div>
-                    <div className="text-center p-8">
-                      <div className="relative">
-                        <div className="w-16 h-16 mx-auto mb-4 bg-gradient-ocean-gold rounded-xl flex items-center justify-center">
-                          <Sparkles className="w-8 h-8 text-white" />
+                    {item.afterImage ? (
+                      <>
+                        <Image
+                          src={item.afterImage}
+                          alt={`${item.name} - Photo après transformation avec Piktor`}
+                          width={600}
+                          height={450}
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="w-6 h-6 bg-gradient-ocean-gold rounded-lg flex items-center justify-center">
+                              <Sparkles className="w-4 h-4 text-white" />
+                            </div>
+                            <h4 className="text-lg font-semibold text-white">
+                              {item.name} Premium
+                            </h4>
+                          </div>
+                          <p className="text-sm text-white/80 font-medium">
+                            {item.afterDescription}
+                          </p>
                         </div>
-                        <div className="absolute -top-2 -right-2 w-4 h-4 bg-warm-gold-400 rounded-full animate-ping"></div>
+                      </>
+                    ) : (
+                      <div className="flex items-center justify-center h-full">
+                        <div className="text-center p-8">
+                          <div className="relative">
+                            <div className="w-16 h-16 mx-auto mb-4 bg-gradient-ocean-gold rounded-xl flex items-center justify-center">
+                              <Sparkles className="w-8 h-8 text-white" />
+                            </div>
+                            <div className="absolute -top-2 -right-2 w-4 h-4 bg-warm-gold-400 rounded-full animate-ping"></div>
+                          </div>
+                          <h4 className="text-lg font-semibold text-sophisticated-gray-800 dark:text-sophisticated-gray-200 mb-2">
+                            {item.name} Premium
+                          </h4>
+                          <p className="text-sm text-ocean-blue-700 dark:text-ocean-blue-300 font-medium">
+                            {item.afterDescription}
+                          </p>
+                        </div>
                       </div>
-                      <h4 className="text-lg font-semibold text-sophisticated-gray-800 dark:text-sophisticated-gray-200 mb-2">
-                        {item.name} Premium
-                      </h4>
-                      <p className="text-sm text-ocean-blue-700 dark:text-ocean-blue-300 font-medium">
-                        {item.afterDescription}
-                      </p>
-                    </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -518,18 +576,18 @@ export default function Home() {
           <div className="mb-6">
             <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-ocean-blue-50 to-warm-gold-50 border border-ocean-blue-200 rounded-full text-sm font-medium text-ocean-blue-700 dark:from-ocean-blue-900/50 dark:to-warm-gold-900/50 dark:border-ocean-blue-700 dark:text-ocean-blue-300">
               <Sparkles className="w-4 h-4 mr-2 animate-pulse" />
-              Utilisé par 500+ marques de mobilier
+              Créez, testez, lancez.
             </div>
           </div>
           
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 bg-gradient-to-br from-sophisticated-gray-900 via-ocean-blue-800 to-sophisticated-gray-700 bg-clip-text text-transparent dark:from-sophisticated-gray-100 dark:via-ocean-blue-300 dark:to-sophisticated-gray-300 leading-tight">
-            1 photo = 1 million 
-            <span className="block bg-gradient-ocean-gold bg-clip-text text-transparent">de possibilités</span>
+            Vos visuels produit
+            <span className="block bg-gradient-ocean-gold bg-clip-text text-transparent">SANS STUDIO&nbsp;!</span>
           </h1>
           
           <p className="text-xl md:text-2xl text-sophisticated-gray-600 dark:text-sophisticated-gray-400 mb-8 max-w-4xl mx-auto leading-relaxed">
-            Créez des dizaines de visuels professionnels à partir d&apos;une seule photo produit. 
-            <span className="font-semibold">Fini les shootings photo hors de prix.</span>
+            Piktor génère des images ultra‑réalistes de vos meubles en quelques minutes&nbsp;!<br />
+            <span className="font-semibold">Packshots, ambiances lifestyle, déclinaisons couleur et séries saisonnières.</span>
           </p>
           
           <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-sophisticated-gray-600 dark:text-sophisticated-gray-400 mb-10">
@@ -543,7 +601,7 @@ export default function Home() {
             </div>
             <div className="flex items-center gap-2 bg-white/80 dark:bg-sophisticated-gray-800/80 px-4 py-3 rounded-lg backdrop-blur border border-sophisticated-gray-200/50 dark:border-sophisticated-gray-700/50 shadow-sm">
               <Clock className="w-4 h-4 text-warm-gold-600" />
-              <span className="font-medium">Résultats en 60 secondes</span>
+              <span className="font-medium">Résultats en 10 secondes</span>
             </div>
           </div>
           
@@ -566,7 +624,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* CTA Teaser Section */}
+      {/* CTA Teaser Section 
       <section className="w-full px-4 py-8 sm:py-12">
         <div className="container mx-auto max-w-7xl">
           <div className="text-center bg-gradient-to-r from-ocean-blue-50 to-warm-gold-50 dark:from-sophisticated-gray-900 dark:to-sophisticated-gray-800 p-6 sm:p-8 rounded-2xl border border-sophisticated-gray-200/50 dark:border-sophisticated-gray-700/50 animate-fade-in">
@@ -584,7 +642,7 @@ export default function Home() {
             </Button>
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* Dynamic Before/After Gallery */}
       <section className="w-full px-4 py-12 sm:py-16 lg:py-20">
@@ -598,13 +656,13 @@ export default function Home() {
           {/* Dynamic Sliding Gallery */}
           <DynamicGallery />
           
-          <div className="text-center mt-12">
+          {/* <div className="text-center mt-12">
             <div className="inline-block">
               <p className="text-base sm:text-lg font-medium text-sophisticated-gray-700 dark:text-sophisticated-gray-300 bg-white/50 dark:bg-sophisticated-gray-800/50 px-4 sm:px-6 py-3 rounded-lg border border-sophisticated-gray-200/50 dark:border-sophisticated-gray-700/50">
                 Même qualité professionnelle, même rapidité pour <span className="bg-gradient-ocean-gold bg-clip-text text-transparent font-bold">TOUS vos meubles</span>
               </p>
             </div>
-          </div>
+          </div> */}
         </div>
       </section>
 
@@ -731,10 +789,10 @@ export default function Home() {
                     </div>
                     <div className="space-y-2">
                       <div className="w-10 h-10 bg-warm-gold-500 text-white rounded-full flex items-center justify-center mx-auto font-bold">2</div>
-                      <p className="text-sm font-medium">Attendez 30 secondes (IA en action)</p>
+                      <p className="text-sm font-medium">Attendez 10 secondes (IA en action)</p>
                     </div>
                     <div className="space-y-2">
-                      <div className="w-10 h-10 bg-success text-white rounded-full flex items-center justify-center mx-auto font-bold">3</div>
+                      <div className="w-10 h-10 bg-success-500 text-white rounded-full flex items-center justify-center mx-auto font-bold">3</div>
                       <p className="text-sm font-medium">Découvrez votre visuel premium</p>
                     </div>
                   </div>
@@ -752,12 +810,12 @@ export default function Home() {
                     {generatorState.isGenerating ? (
                       <>
                         <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                        Génération en cours...
+                        Magie en cours...
                       </>
                     ) : (
                       <>
                         <Zap className="w-5 h-5 mr-2" />
-                        Générer mes visuels premium
+                        Générer mes visuels
                       </>
                     )}
                   </Button>
@@ -897,14 +955,14 @@ export default function Home() {
                 <Button asChild size="xl" variant="primary" className="shadow-premium font-bold w-full sm:w-auto max-w-xs">
                   <Link href="/generate">Réserver ma démo personnalisée</Link>
                 </Button>
-                <Button 
+                {/* <Button 
                   onClick={scrollToGenerator}
                   variant="outline" 
                   size="xl" 
                   className="font-semibold border-white/30 text-white hover:bg-white/10 w-full sm:w-auto max-w-xs"
                 >
                   Continuer à tester l&apos;outil
-                </Button>
+                </Button> */}
               </div>
               
               <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-sm text-sophisticated-gray-300">

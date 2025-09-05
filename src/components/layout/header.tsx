@@ -1,11 +1,21 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Sparkles } from "lucide-react";
 
 export function Header() {
+  const pathname = usePathname();
+  const isHomePage = pathname === '/';
   const closeMenu = () => {};
+
+  const scrollToGenerator = () => {
+    const generatorSection = document.getElementById('image-generator');
+    if (generatorSection) {
+      generatorSection.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-sophisticated-gray-200/60 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 shadow-sm dark:border-sophisticated-gray-700/60 dark:bg-sophisticated-gray-950/95 dark:supports-[backdrop-filter]:bg-sophisticated-gray-950/80">
@@ -27,16 +37,38 @@ export function Header() {
 
         {/* Desktop CTA Button */}
         <div className="hidden md:flex flex-1 items-center justify-end">
-          <Button variant="primary" size="default" asChild className="font-semibold">
-            <Link href="/generate">Try for Free</Link>
-          </Button>
+          {isHomePage ? (
+            <Button 
+              variant="primary" 
+              size="default" 
+              className="font-semibold"
+              onClick={scrollToGenerator}
+            >
+              Tester gratuitement
+            </Button>
+          ) : (
+            <Button variant="primary" size="default" asChild className="font-semibold">
+              <Link href="/generate">Tester gratuitement</Link>
+            </Button>
+          )}
         </div>
 
         {/* Mobile CTA Button */}
         <div className="flex md:hidden flex-1 items-center justify-end">
-          <Button variant="primary" size="default" asChild className="font-semibold">
-            <Link href="/generate">Try for Free</Link>
-          </Button>
+          {isHomePage ? (
+            <Button 
+              variant="primary" 
+              size="default" 
+              className="font-semibold"
+              onClick={scrollToGenerator}
+            >
+              Tester gratuitement
+            </Button>
+          ) : (
+            <Button variant="primary" size="default" asChild className="font-semibold">
+              <Link href="/generate">Tester gratuitement</Link>
+            </Button>
+          )}
         </div>
       </div>
 
