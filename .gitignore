@@ -40,5 +40,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# large gallery images
-public/gallery/
+# large original gallery images (backup)
+public/gallery-original-backup/

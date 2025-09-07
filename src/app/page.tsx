@@ -359,7 +359,7 @@ export default function Home() {
         beforeDescription: 'Photo brute produit simple',
         afterDescription: 'Mise en scène dans un décor different',
         beforeImage: '/gallery/before/canape-cosy-before.jpg',
-        afterImage: '/gallery/after/canape-cosy-design-after.png',
+        afterImage: '/gallery/after/canape-cosy-design-after.jpg',
         slug: 'canape-cosy-design'
       },
       {
