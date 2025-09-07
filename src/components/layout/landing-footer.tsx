@@ -16,7 +16,7 @@ export function LandingFooter() {
             </div>
             <div className="flex flex-col">
               <span className="font-bold text-xl text-sophisticated-gray-900 dark:text-sophisticated-gray-50">Piktor</span>
-              <span className="text-xs text-muted-foreground font-medium">AI Image Studio</span>
+              <span className="text-xs text-muted-foreground font-medium">Vos produits, en scène.</span>
             </div>
           </div>
 
@@ -26,13 +26,13 @@ export function LandingFooter() {
               href="/about"
               className="text-sophisticated-gray-600 hover:text-ocean-blue-700 dark:text-sophisticated-gray-400 dark:hover:text-ocean-blue-400 transition-colors text-sm"
             >
-              About Us
+              Qui sommes-nous ?
             </Link>
             <Link
               href="/legal"
               className="text-sophisticated-gray-600 hover:text-ocean-blue-700 dark:text-sophisticated-gray-400 dark:hover:text-ocean-blue-400 transition-colors text-sm"
             >
-              Legal Mention
+              Mentions légales
             </Link>
             <Link
               href="/contact"

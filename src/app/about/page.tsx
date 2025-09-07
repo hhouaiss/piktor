@@ -16,7 +16,7 @@ export default function AboutPage() {
             À propos de Piktor
           </h1>
           <p className="text-xl text-sophisticated-gray-600 dark:text-sophisticated-gray-400 max-w-3xl mx-auto leading-relaxed">
-            Nous révolutionnons la création de contenu visuel pour l'industrie du mobilier grâce à l'intelligence artificielle.
+            Nous révolutionnons la création de contenu visuel pour l&apos;industrie du mobilier grâce à l&apos;intelligence artificielle.
           </p>
         </section>
 
@@ -31,12 +31,12 @@ export default function AboutPage() {
             <CardContent className="text-center">
               <p className="text-lg text-sophisticated-gray-700 dark:text-sophisticated-gray-300 leading-relaxed mb-6">
                 Chez Piktor, nous croyons que chaque marque de mobilier mérite des visuels exceptionnels. 
-                Notre plateforme d'intelligence artificielle permet aux entreprises de créer des images 
-                professionnelles de leurs produits sans les contraintes et les coûts d'un studio photo traditionnel.
+                Notre plateforme d&apos;intelligence artificielle permet aux entreprises de créer des images 
+                professionnelles de leurs produits sans les contraintes et les coûts d&apos;un studio photo traditionnel.
               </p>
               <p className="text-lg text-sophisticated-gray-700 dark:text-sophisticated-gray-300 leading-relaxed">
-                Nous démocratisons l'accès à la photographie professionnelle et permettons aux marques 
-                de se concentrer sur ce qu'elles font de mieux : créer de magnifiques meubles.
+                Nous démocratisons l&apos;accès à la photographie professionnelle et permettons aux marques 
+                de se concentrer sur ce qu&apos;elles font de mieux : créer de magnifiques meubles.
               </p>
             </CardContent>
           </Card>
@@ -59,7 +59,7 @@ export default function AboutPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-sophisticated-gray-600 dark:text-sophisticated-gray-400 text-center">
-                  Nous repoussons les limites de ce qui est possible avec l'IA pour offrir 
+                  Nous repoussons les limites de ce qui est possible avec l&apos;IA pour offrir 
                   des solutions toujours plus performantes et intuitives.
                 </p>
               </CardContent>
@@ -112,12 +112,12 @@ export default function AboutPage() {
                   talentueuses limitées par les coûts et la complexité de la photographie professionnelle.
                 </p>
                 <p>
-                  Notre équipe d'experts en intelligence artificielle et en design a développé une 
+                  Notre équipe d&apos;experts en intelligence artificielle et en design a développé une 
                   technologie révolutionnaire qui transforme une simple photo de produit en visuel 
                   digne des plus grandes marques de luxe.
                 </p>
                 <p>
-                  Aujourd'hui, nous accompagnons plus de 500 marques de mobilier dans le monde entier, 
+                  Aujourd&apos;hui, nous accompagnons plus de 500 marques de mobilier dans le monde entier, 
                   les aidant à créer des catalogues exceptionnels qui boostent leurs ventes et 
                   renforcent leur image de marque.
                 </p>

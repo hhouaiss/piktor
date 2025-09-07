@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Upload, X, CheckCircle, ArrowRight, Camera, Sparkles, Clock, Euro, Zap, Target, Package, Eye, Download } from "lucide-react";
+import { Loader2, Upload, X, CheckCircle, ArrowRight, Sparkles, Clock, Euro, Zap, Target, Package, Eye, Download } from "lucide-react";
 import { ProductSpecs, UploadedImage, GeneratedImage } from "@/components/image-generator/types";
 import { validateImageUrl, generateSafeFilename, getDownloadErrorMessage, downloadWithRetry } from "@/lib/download-utils";
 import { cn } from "@/lib/utils";
@@ -391,9 +391,9 @@ export default function Home() {
       }
     ];
 
-    const nextSlide = () => {
+    const nextSlide = useCallback(() => {
       setCurrentSlide((prev) => (prev + 1) % furnitureData.length);
-    };
+    }, [furnitureData.length]);
 
     const prevSlide = () => {
       setCurrentSlide((prev) => (prev - 1 + furnitureData.length) % furnitureData.length);
@@ -412,7 +412,7 @@ export default function Home() {
       }, 4000);
 
       return () => clearInterval(interval);
-    }, [isAutoPlaying, currentSlide]);
+    }, [isAutoPlaying, currentSlide, nextSlide]);
 
     return (
       <div 
@@ -576,7 +576,7 @@ export default function Home() {
           <div className="mb-6">
             <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-ocean-blue-50 to-warm-gold-50 border border-ocean-blue-200 rounded-full text-sm font-medium text-ocean-blue-700 dark:from-ocean-blue-900/50 dark:to-warm-gold-900/50 dark:border-ocean-blue-700 dark:text-ocean-blue-300">
               <Sparkles className="w-4 h-4 mr-2 animate-pulse" />
-              Créez, testez, lancez.
+              Créez. Déclinez. Publiez.
             </div>
           </div>
           
@@ -586,7 +586,7 @@ export default function Home() {
           </h1>
           
           <p className="text-xl md:text-2xl text-sophisticated-gray-600 dark:text-sophisticated-gray-400 mb-8 max-w-4xl mx-auto leading-relaxed">
-            Piktor génère des images ultra‑réalistes de vos meubles en quelques minutes&nbsp;!<br />
+            Piktor génère des images ultra‑réalistes de vos meubles en 10&nbsp;secondes&nbsp;!<br />
             <span className="font-semibold">Packshots, ambiances lifestyle, déclinaisons couleur et séries saisonnières.</span>
           </p>
           
@@ -601,7 +601,7 @@ export default function Home() {
             </div>
             <div className="flex items-center gap-2 bg-white/80 dark:bg-sophisticated-gray-800/80 px-4 py-3 rounded-lg backdrop-blur border border-sophisticated-gray-200/50 dark:border-sophisticated-gray-700/50 shadow-sm">
               <Clock className="w-4 h-4 text-warm-gold-600" />
-              <span className="font-medium">Résultats en 10 secondes</span>
+              <span className="font-medium">Résultats en moins de 10 secondes</span>
             </div>
           </div>
           
@@ -840,14 +840,17 @@ export default function Home() {
                   Génération terminée !
                 </div>
                 <h3 className="text-2xl font-bold text-sophisticated-gray-900 dark:text-sophisticated-gray-100 mb-2">
-                  Vos visuels premium sont prêts
+                  Votre visuel est prêt !
                 </h3>
                 <p className="text-sophisticated-gray-600 dark:text-sophisticated-gray-400">
-                  Impressionnant ? Imaginez avec 50 visuels par jour...
+                  Bluffant, non ? Et ce n’est qu’un aperçu.
                 </p>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-6">
+              <div className={cn(
+                "grid gap-6 justify-items-center",
+                generatorState.generatedImages.length === 1 ? "grid-cols-1 max-w-md mx-auto" : "md:grid-cols-2"
+              )}>
                 {generatorState.generatedImages.map((image, index) => (
                   <Card key={image.id} className="overflow-hidden">
                     <div className="aspect-square bg-sophisticated-gray-100 dark:bg-sophisticated-gray-800">

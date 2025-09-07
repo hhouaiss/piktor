@@ -101,7 +101,7 @@ export default function ContactPage() {
               <CardContent>
                 <p className="text-sophisticated-gray-700 dark:text-sophisticated-gray-300">
                   Piktor AI SAS<br />
-                  123 Avenue de l'Innovation<br />
+                  123 Avenue de l&apos;Innovation<br />
                   75015 Paris<br />
                   France
                 </p>
@@ -234,13 +234,13 @@ export default function ContactPage() {
                     Combien de temps faut-il pour générer une image ?
                   </h4>
                   <p className="text-sophisticated-gray-700 dark:text-sophisticated-gray-300">
-                    La génération d'images avec Piktor prend généralement entre 10 et 30 secondes, 
+                    La génération d&apos;images avec Piktor prend généralement entre 10 et 30 secondes, 
                     selon la complexité et la qualité demandées.
                   </p>
                 </div>
                 <div>
                   <h4 className="font-semibold text-sophisticated-gray-900 dark:text-sophisticated-gray-100 mb-2">
-                    Quels formats d'images sont acceptés ?
+                    Quels formats d&apos;images sont acceptés ?
                   </h4>
                   <p className="text-sophisticated-gray-700 dark:text-sophisticated-gray-300">
                     Nous acceptons les formats JPG, PNG, HEIC et WebP. La résolution minimale 
@@ -253,7 +253,7 @@ export default function ContactPage() {
                   </h4>
                   <p className="text-sophisticated-gray-700 dark:text-sophisticated-gray-300">
                     Oui, nous proposons des tarifs sur mesure et des solutions enterprise pour 
-                    les grandes marques. Contactez notre équipe commerciale pour plus d'informations.
+                    les grandes marques. Contactez notre équipe commerciale pour plus d&apos;informations.
                   </p>
                 </div>
               </CardContent>

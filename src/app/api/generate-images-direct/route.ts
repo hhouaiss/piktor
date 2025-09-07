@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       lighting: 'studio_softbox' as const,
       strictMode: false,
       quality: params.quality,
-      variations: Math.min(Math.max(params.variations, 1), 4) as 1 | 2 | 3 | 4,
+      variations: 1 as 1 | 2 | 3 | 4,
       props: []
     };
 
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
       defaultUISettings
     );
 
-    console.log(`Generating ${params.variations} ${params.contextPreset} images using Google Nano Banana (Production Optimized)`);
+    console.log(`Generating 1 ${params.contextPreset} image using Google Nano Banana (Production Optimized)`);
     console.log(`Product: ${productSpecs.productName}`);
     console.log(`Reference Images: ${referenceImages.length} base64 images provided`);
     console.log(`Prompt Length: ${promptResult.metadata.promptLength} characters`);
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
         variations = await generateMultipleImagesWithReferences(
           promptResult.prompt,
           validImages,
-          params.variations,
+          1,
           params.contextPreset
         );
         
@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
 
       variations = await generateMultipleImagesWithGemini(
         geminiRequest,
-        params.variations,
+        1,
         params.contextPreset
       );
       

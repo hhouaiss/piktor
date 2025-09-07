@@ -29,7 +29,7 @@ export function Header() {
             </div>
             <div className="flex flex-col">
               <span className="font-bold text-xl text-sophisticated-gray-900 dark:text-sophisticated-gray-50 group-hover:text-ocean-blue-700 dark:group-hover:text-ocean-blue-400 transition-colors">Piktor</span>
-              <span className="text-xs text-muted-foreground font-medium">AI Image Studio</span>
+              <span className="text-xs text-muted-foreground font-medium">Vos produits, en scène.</span>
             </div>
           </Link>
         </div>

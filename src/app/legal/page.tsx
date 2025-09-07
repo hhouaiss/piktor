@@ -16,7 +16,7 @@ export default function LegalPage() {
             Mentions Légales
           </h1>
           <p className="text-xl text-sophisticated-gray-600 dark:text-sophisticated-gray-400 max-w-3xl mx-auto leading-relaxed">
-            Informations légales et conditions d'utilisation de la plateforme Piktor.
+            Informations légales et conditions d&apos;utilisation de la plateforme Piktor.
           </p>
         </section>
 
@@ -43,7 +43,7 @@ export default function LegalPage() {
                   Siège social
                 </h4>
                 <p className="text-sophisticated-gray-700 dark:text-sophisticated-gray-300">
-                  123 Avenue de l'Innovation<br />
+                  123 Avenue de l&apos;Innovation<br />
                   75015 Paris, France
                 </p>
               </div>
@@ -101,7 +101,7 @@ export default function LegalPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-3">
                 <FileText className="w-6 h-6 text-ocean-blue-600" />
-                Conditions d'Utilisation
+                Conditions d&apos;Utilisation
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -110,9 +110,9 @@ export default function LegalPage() {
                   1. Objet
                 </h4>
                 <p className="text-sophisticated-gray-700 dark:text-sophisticated-gray-300">
-                  Les présentes conditions générales d'utilisation (CGU) ont pour objet l'encadrement juridique 
+                  Les présentes conditions générales d&apos;utilisation (CGU) ont pour objet l&apos;encadrement juridique 
                   des modalités de mise à disposition du site et des services par Piktor AI et de définir les 
-                  conditions d'accès et d'utilisation des services par l'utilisateur.
+                  conditions d&apos;accès et d&apos;utilisation des services par l&apos;utilisateur.
                 </p>
               </div>
               
@@ -121,8 +121,8 @@ export default function LegalPage() {
                   2. Accès au Site
                 </h4>
                 <p className="text-sophisticated-gray-700 dark:text-sophisticated-gray-300">
-                  Le site Piktor permet à l'utilisateur un accès gratuit aux services suivants : génération 
-                  d'images de mobilier par intelligence artificielle. Le site est accessible gratuitement en 
+                  Le site Piktor permet à l&apos;utilisateur un accès gratuit aux services suivants : génération 
+                  d&apos;images de mobilier par intelligence artificielle. Le site est accessible gratuitement en 
                   tout lieu à tout utilisateur ayant un accès à Internet.
                 </p>
               </div>
@@ -133,8 +133,8 @@ export default function LegalPage() {
                 </h4>
                 <p className="text-sophisticated-gray-700 dark:text-sophisticated-gray-300">
                   Les marques, logos, signes ainsi que tous les contenus du site (textes, images, son...) 
-                  font l'objet d'une protection par le Code de la propriété intellectuelle et plus 
-                  particulièrement par le droit d'auteur. L'utilisateur doit solliciter l'autorisation 
+                  font l&apos;objet d&apos;une protection par le Code de la propriété intellectuelle et plus 
+                  particulièrement par le droit d&apos;auteur. L&apos;utilisateur doit solliciter l&apos;autorisation 
                   préalable du site pour toute reproduction, publication, copie des différents contenus.
                 </p>
               </div>
@@ -145,8 +145,8 @@ export default function LegalPage() {
                 </h4>
                 <p className="text-sophisticated-gray-700 dark:text-sophisticated-gray-300">
                   Piktor AI ne peut être tenu responsable des dommages directs et indirects causés au 
-                  matériel de l'utilisateur, lors de l'accès au site, et résultant soit de l'utilisation 
-                  d'un matériel ne répondant pas aux spécifications indiquées, soit de l'apparition d'un bug ou d'une incompatibilité.
+                  matériel de l&apos;utilisateur, lors de l&apos;accès au site, et résultant soit de l&apos;utilisation 
+                  d&apos;un matériel ne répondant pas aux spécifications indiquées, soit de l&apos;apparition d&apos;un bug ou d&apos;une incompatibilité.
                 </p>
               </div>
             </CardContent>
@@ -163,11 +163,11 @@ export default function LegalPage() {
             <CardContent className="space-y-4">
               <p className="text-sophisticated-gray-700 dark:text-sophisticated-gray-300">
                 Conformément au Règlement Général sur la Protection des Données (RGPD) et à la loi 
-                « Informatique et Libertés », vous disposez d'un droit d'accès, de rectification, 
-                d'effacement et de portabilité de vos données personnelles.
+                « Informatique et Libertés », vous disposez d&apos;un droit d&apos;accès, de rectification, 
+                d&apos;effacement et de portabilité de vos données personnelles.
               </p>
               <p className="text-sophisticated-gray-700 dark:text-sophisticated-gray-300">
-                Pour exercer ces droits, vous pouvez nous contacter à l'adresse : 
+                Pour exercer ces droits, vous pouvez nous contacter à l&apos;adresse : 
                 <span className="font-semibold"> privacy@piktor.ai</span>
               </p>
             </CardContent>
@@ -185,7 +185,7 @@ export default function LegalPage() {
               <ul className="list-disc list-inside mt-2 space-y-1 text-sophisticated-gray-700 dark:text-sophisticated-gray-300">
                 <li>Email : legal@piktor.ai</li>
                 <li>Téléphone : +33 1 23 45 67 89</li>
-                <li>Courrier : Piktor AI SAS, 123 Avenue de l'Innovation, 75015 Paris</li>
+                <li>Courrier : Piktor AI SAS, 123 Avenue de l&apos;Innovation, 75015 Paris</li>
               </ul>
             </CardContent>
           </Card>
