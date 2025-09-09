@@ -100,7 +100,7 @@ export function UsageLimitReached({
               </Button>
               
               <Button asChild size="xl" variant="outline" className="w-full sm:w-auto border-ocean-blue-300 hover:bg-ocean-blue-50 dark:border-ocean-blue-600 dark:hover:bg-ocean-blue-900/20">
-                <Link href="mailto:contact@piktor.com">
+                <Link href="mailto:hello@piktorapp.com">
                   <MessageCircle className="w-5 h-5 mr-2" />
                   Nous contacter
                 </Link>
@@ -108,7 +108,7 @@ export function UsageLimitReached({
             </div>
             
             <p className="text-sm text-center text-sophisticated-gray-600 dark:text-sophisticated-gray-400">
-              Démo sur VOS produits • Conseils personnalisés • Tarifs sur mesure
+              Démo sur VOS produits • Conseils personnalisés • Tarifs
             </p>
           </div>
         </CardContent>

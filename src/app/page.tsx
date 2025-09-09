@@ -16,7 +16,7 @@ import { UsageLimitProvider, useUsageLimit, useCanGenerate, useGenerationRecorde
 import { UsageLimitReached } from "@/components/UsageLimitReached";
 
 // Import admin utils for testing (only in development)
-if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+if (process.env.NODE_ENV === 'development') {
   import('@/lib/admin-utils');
 }
 
@@ -124,6 +124,7 @@ function HomeContent() {
   const { canGenerate, remainingGenerations, isLimitReached, environment, isAdminOverride } = useCanGenerate();
   const { recordGeneration } = useGenerationRecorder();
   const { resetUserUsage, usageData } = useUsageLimit();
+
 
   // Generate images
   const generateImages = async () => {
@@ -713,7 +714,6 @@ function HomeContent() {
           </div>
 
           <div className="max-w-4xl mx-auto">
-          
           {/* Usage Information Display */}
           {environment === 'production' && !isAdminOverride && (
             <div className="mb-6">

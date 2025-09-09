@@ -214,18 +214,25 @@ export function checkUsageLimit(config: UsageLimitConfig = DEFAULT_USAGE_CONFIG)
     };
   }
   
-  // Development environment: unlimited for testing
+  // Development environment: unlimited for testing (unless forcing limits for testing)
   if (environment === 'development') {
-    return {
-      canGenerate: true,
-      remainingGenerations: Infinity,
-      isLimitReached: false,
-      isAdminOverride: false,
-      environment,
-      resetInfo: {
-        resetMethod: 'manual',
-      }
-    };
+    // Check if we're forcing limits for testing
+    const forceLimitsForTesting = typeof window !== 'undefined' && 
+      localStorage.getItem('piktor_force_limits_testing') === 'true';
+    
+    if (!forceLimitsForTesting) {
+      return {
+        canGenerate: true,
+        remainingGenerations: Infinity,
+        isLimitReached: false,
+        isAdminOverride: false,
+        environment,
+        resetInfo: {
+          resetMethod: 'manual',
+        }
+      };
+    }
+    // If forcing limits, fall through to normal limit checking
   }
   
   // Production environment: enforce limits

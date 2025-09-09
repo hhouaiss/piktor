@@ -14,6 +14,7 @@ import {
   disableAdminMode,
   debugUsageState,
 } from '@/lib/usage-limits';
+import { registerContextRefresh } from '@/lib/admin-utils';
 
 interface UsageLimitContextValue {
   // State
@@ -86,6 +87,11 @@ export function UsageLimitProvider({ children, initialConfig = {} }: UsageLimitP
   // Initialize on mount and when config changes
   useEffect(() => {
     refreshUsageData();
+  }, [refreshUsageData]);
+
+  // Register refresh function with admin utils on mount
+  useEffect(() => {
+    registerContextRefresh(refreshUsageData);
   }, [refreshUsageData]);
 
   // Check current limit without updating state
