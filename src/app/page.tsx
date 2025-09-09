@@ -768,7 +768,7 @@ export default function Home() {
                 {/* Quick Specs */}
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="productName">Nom du produit (optionnel)</Label>
+                    <Label htmlFor="productName">Nom du produit</Label>
                     <Input
                       id="productName"
                       placeholder="ex: Canapé 3 places"
@@ -779,7 +779,7 @@ export default function Home() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="productType">Type (optionnel)</Label>
+                    <Label htmlFor="productType">Type du produit</Label>
                     <Input
                       id="productType"
                       placeholder="ex: Canapé, Chaise, Table..."
