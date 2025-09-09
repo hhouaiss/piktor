@@ -618,17 +618,16 @@ function HomeContent() {
             </div>
           </div>
           
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 bg-gradient-to-br from-sophisticated-gray-900 via-ocean-blue-800 to-sophisticated-gray-700 bg-clip-text text-transparent dark:from-sophisticated-gray-100 dark:via-ocean-blue-300 dark:to-sophisticated-gray-300 leading-tight">
+          <h1 className="text-4xl md:text-4xl lg:text-5xl font-bold mb-6 bg-gradient-to-br from-sophisticated-gray-900 via-ocean-blue-800 to-sophisticated-gray-700 bg-clip-text text-transparent dark:from-sophisticated-gray-100 dark:via-ocean-blue-300 dark:to-sophisticated-gray-300 leading-tight">
             Vos visuels produit
-            <span className="block bg-gradient-ocean-gold bg-clip-text text-transparent">SANS STUDIO&nbsp;!</span>
+            <span className="block bg-gradient-ocean-gold bg-clip-text text-transparent">ultra-réalistes en 10 secondes&nbsp;!</span>
           </h1>
           
-          <p className="text-xl md:text-2xl text-sophisticated-gray-600 dark:text-sophisticated-gray-400 mb-8 max-w-4xl mx-auto leading-relaxed">
-            Piktor génère des images ultra‑réalistes de vos meubles en 10&nbsp;secondes&nbsp;!<br />
-            <span className="font-semibold">Packshots, ambiances lifestyle, déclinaisons couleur et séries saisonnières.</span>
+          <p className="text-xl font-semibold md:text-2xl text-sophisticated-gray-600 dark:text-sophisticated-gray-400 mb-8 max-w-4xl mx-auto leading-relaxed">
+          Sans studio. Sans shooting. Illimité.
           </p>
           
-          <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-sophisticated-gray-600 dark:text-sophisticated-gray-400 mb-10">
+          {/* <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-sophisticated-gray-600 dark:text-sophisticated-gray-400 mb-10">
             <div className="flex items-center gap-2 bg-white/80 dark:bg-sophisticated-gray-800/80 px-4 py-3 rounded-lg backdrop-blur border border-sophisticated-gray-200/50 dark:border-sophisticated-gray-700/50 shadow-sm">
               <Euro className="w-4 h-4 text-success" />
               <span className="font-medium">0€ de shooting</span>
@@ -641,7 +640,7 @@ function HomeContent() {
               <Clock className="w-4 h-4 text-warm-gold-600" />
               <span className="font-medium">Résultats en moins de 10 secondes</span>
             </div>
-          </div>
+          </div> */}
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-6">
             <Button 
