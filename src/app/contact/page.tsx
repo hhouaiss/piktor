@@ -63,18 +63,12 @@ export default function ContactPage() {
                   Support général
                 </p>
                 <p className="font-semibold text-ocean-blue-600 dark:text-ocean-blue-400">
-                  contact@piktor.ai
-                </p>
-                <p className="text-sophisticated-gray-700 dark:text-sophisticated-gray-300 mt-4 mb-2">
-                  Ventes & Partenariats
-                </p>
-                <p className="font-semibold text-ocean-blue-600 dark:text-ocean-blue-400">
-                  sales@piktor.ai
+                  hello@piktorapp.com
                 </p>
               </CardContent>
             </Card>
 
-            <Card>
+            {/* <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-3">
                   <Phone className="w-6 h-6 text-ocean-blue-600" />
@@ -89,9 +83,9 @@ export default function ContactPage() {
                   Du lundi au vendredi, de 9h à 18h
                 </p>
               </CardContent>
-            </Card>
+            </Card> */}
 
-            <Card>
+            {/* <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-3">
                   <MapPin className="w-6 h-6 text-ocean-blue-600" />
@@ -106,9 +100,9 @@ export default function ContactPage() {
                   France
                 </p>
               </CardContent>
-            </Card>
+            </Card> */}
 
-            <Card>
+            {/* <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-3">
                   <Clock className="w-6 h-6 text-ocean-blue-600" />
@@ -131,12 +125,12 @@ export default function ContactPage() {
                   </div>
                 </div>
               </CardContent>
-            </Card>
+            </Card> */}
           </div>
 
           {/* Contact Form */}
           <div className="lg:col-span-2">
-            <Card>
+            {/* <Card>
               <CardHeader>
                 <CardTitle className="text-2xl">Envoyez-nous un message</CardTitle>
                 <p className="text-sophisticated-gray-600 dark:text-sophisticated-gray-400">
@@ -221,10 +215,10 @@ export default function ContactPage() {
                   </Button>
                 </form>
               </CardContent>
-            </Card>
+            </Card> */}
 
             {/* FAQ Section */}
-            <Card className="mt-8">
+            <Card className="mt-0">
               <CardHeader>
                 <CardTitle>Questions Fréquentes</CardTitle>
               </CardHeader>
@@ -234,8 +228,7 @@ export default function ContactPage() {
                     Combien de temps faut-il pour générer une image ?
                   </h4>
                   <p className="text-sophisticated-gray-700 dark:text-sophisticated-gray-300">
-                    La génération d&apos;images avec Piktor prend généralement entre 10 et 30 secondes, 
-                    selon la complexité et la qualité demandées.
+                    La génération d&apos;images avec Piktor prend généralement entre 8 et 10 secondes.
                   </p>
                 </div>
                 <div>
@@ -243,7 +236,7 @@ export default function ContactPage() {
                     Quels formats d&apos;images sont acceptés ?
                   </h4>
                   <p className="text-sophisticated-gray-700 dark:text-sophisticated-gray-300">
-                    Nous acceptons les formats JPG, PNG, HEIC et WebP. La résolution minimale 
+                    Nous acceptons les formats JPG, PNG, HEIC. La résolution minimale 
                     recommandée est de 1024x1024 pixels pour des résultats optimaux.
                   </p>
                 </div>

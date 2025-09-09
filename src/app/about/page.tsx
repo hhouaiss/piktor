@@ -1,5 +1,7 @@
 import { Sparkles, Users, Target, Award } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 export default function AboutPage() {
   return (
@@ -117,7 +119,7 @@ export default function AboutPage() {
                   digne des plus grandes marques de luxe.
                 </p>
                 <p>
-                  Aujourd&apos;hui, nous accompagnons plus de 500 marques de mobilier dans le monde entier, 
+                  Aujourd&apos;hui, nous accompagnons plusieurs marques de mobilier en France, 
                   les aidant à créer des catalogues exceptionnels qui boostent leurs ventes et 
                   renforcent leur image de marque.
                 </p>
@@ -136,6 +138,11 @@ export default function AboutPage() {
               <p className="text-sophisticated-gray-600 dark:text-sophisticated-gray-400 mb-6">
                 Découvrez comment Piktor peut révolutionner votre stratégie de contenu visuel.
               </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">
+                <Button asChild size="xl" variant="primary" className="shadow-premium font-bold w-full sm:w-auto max-w-xs">
+                  <Link href="https://calendar.notion.so/meet/hassanhouaiss/piktor">Réserver ma démo</Link>
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </section>

@@ -6,7 +6,7 @@ import { LandingFooter } from "./landing-footer";
 
 export function FooterWrapper() {
   const pathname = usePathname();
-  const isHomePage = pathname === '/';
+  const shouldUseLandingFooter = pathname === '/' || pathname === '/contact' || pathname === '/legal' || pathname === '/about';
 
-  return isHomePage ? <LandingFooter /> : <Footer />;
+  return shouldUseLandingFooter ? <LandingFooter /> : <Footer />;
 }

@@ -789,11 +789,11 @@ export default function Home() {
                     </div>
                     <div className="space-y-2">
                       <div className="w-10 h-10 bg-warm-gold-500 text-white rounded-full flex items-center justify-center mx-auto font-bold">2</div>
-                      <p className="text-sm font-medium">Attendez 10 secondes (IA en action)</p>
+                      <p className="text-sm font-medium">Attendez 10 secondes</p>
                     </div>
                     <div className="space-y-2">
                       <div className="w-10 h-10 bg-success-500 text-white rounded-full flex items-center justify-center mx-auto font-bold">3</div>
-                      <p className="text-sm font-medium">Découvrez votre visuel premium</p>
+                      <p className="text-sm font-medium">Découvrez votre visuel</p>
                     </div>
                   </div>
                 </div>
@@ -815,7 +815,7 @@ export default function Home() {
                     ) : (
                       <>
                         <Zap className="w-5 h-5 mr-2" />
-                        Générer mes visuels
+                        Découvrir mon visuel
                       </>
                     )}
                   </Button>
@@ -930,6 +930,9 @@ export default function Home() {
                 >
                   Tester avec une autre photo
                 </Button>
+                <Button asChild size="lg" variant="primary" className="shadow-premium ml-2 font-bold w-full sm:w-auto max-w-xs">
+                  <Link href="https://calendar.notion.so/meet/hassanhouaiss/piktor">Réserver ma démo</Link>
+                </Button>
               </div>
             </div>
           )}
@@ -956,16 +959,8 @@ export default function Home() {
               
               <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">
                 <Button asChild size="xl" variant="primary" className="shadow-premium font-bold w-full sm:w-auto max-w-xs">
-                  <Link href="/generate">Réserver ma démo personnalisée</Link>
+                  <Link href="https://calendar.notion.so/meet/hassanhouaiss/piktor">Réserver ma démo</Link>
                 </Button>
-                {/* <Button 
-                  onClick={scrollToGenerator}
-                  variant="outline" 
-                  size="xl" 
-                  className="font-semibold border-white/30 text-white hover:bg-white/10 w-full sm:w-auto max-w-xs"
-                >
-                  Continuer à tester l&apos;outil
-                </Button> */}
               </div>
               
               <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-sm text-sophisticated-gray-300">
@@ -981,7 +976,7 @@ export default function Home() {
                 <span className="hidden sm:block">•</span>
                 <div className="flex items-center gap-2">
                   <CheckCircle className="w-4 h-4 text-warm-gold-400" />
-                  <span>Tarifs sur mesure</span>
+                  <span>Tarifs</span>
                 </div>
               </div>
             </div>
