@@ -15,7 +15,7 @@ import {
 
 // Make admin functions globally available for testing
 if (typeof window !== 'undefined') {
-  // @ts-ignore - Adding to window for debugging
+  // @ts-expect-error - Adding to window for debugging
   window.piktorAdmin = {
     // Enable unlimited generations
     enableAdmin: () => {

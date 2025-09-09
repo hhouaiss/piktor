@@ -52,7 +52,7 @@ export function UsageLimitReached({
             Vous avez utilisé vos {maxGenerations} générations gratuites !
           </CardTitle>
           <CardDescription className="text-lg text-sophisticated-gray-600 dark:text-sophisticated-gray-400">
-            Impressionnant, non ? C'est juste un aperçu de ce que Piktor peut faire pour votre business.
+            Impressionnant, non ? C&apos;est juste un aperçu de ce que Piktor peut faire pour votre business.
           </CardDescription>
         </CardHeader>
         
@@ -125,7 +125,7 @@ export function UsageLimitReached({
               Catalogue complet
             </h4>
             <p className="text-sm text-sophisticated-gray-600 dark:text-sophisticated-gray-400">
-              Générez des milliers d'images pour tout votre catalogue produit
+              Générez des milliers d&apos;images pour tout votre catalogue produit
             </p>
           </CardContent>
         </Card>
@@ -169,7 +169,7 @@ export function UsageLimitReached({
               ))}
             </div>
             <blockquote className="text-lg sm:text-xl italic mb-4">
-              "Piktor a révolutionné notre catalogue e-commerce. +40% de conversions en 3 mois."
+              &ldquo;Piktor a révolutionné notre catalogue e-commerce. +40% de conversions en 3 mois.&rdquo;
             </blockquote>
             <cite className="text-warm-gold-200 font-medium">
               — Client Piktor, Mobilier Design
@@ -214,10 +214,8 @@ export function UsageLimitReached({
 
 // Simplified version for inline usage
 export function UsageLimitReachedInline({ 
-  remainingGenerations = 0,
   className = ""
 }: {
-  remainingGenerations?: number;
   className?: string;
 }) {
   return (
