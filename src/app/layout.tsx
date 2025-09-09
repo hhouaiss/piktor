@@ -10,8 +10,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Piktor - AI-Powered Image Generation for Furniture",
-  description: "Upload images and 3D models of desks to generate consistent AI-powered packshots, lifestyle images, and social media visuals.",
+  title: "Piktor | Générateur d’images produit IA pour e-commerce et mobilier",
+  description: "Créez des packshots et visuels lifestyle ultra-réalistes grâce à l’IA. Idéal pour les sites e-commerce, marques de meubles et réseaux sociaux.",
   viewport: "width=device-width, initial-scale=1, maximum-scale=5",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "white" },
