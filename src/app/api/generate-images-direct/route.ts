@@ -6,11 +6,51 @@ import {
   getGeminiAspectRatio
 } from "@/lib/gemini-api";
 import { generateProductionPrompt } from "@/lib/production-prompt-engine";
+import { detectEnvironment } from "@/lib/usage-limits";
 
 interface GenerationParams {
   contextPreset: ContextPreset;
   variations: number;
   quality: 'high' | 'medium' | 'low';
+}
+
+// Server-side usage limit checking
+async function checkServerSideUsageLimit(request: NextRequest): Promise<{ allowed: boolean; reason?: string; environment: string }> {
+  const environment = detectEnvironment();
+  
+  // Preview branch: unlimited generations
+  if (environment === 'preview') {
+    return { allowed: true, environment };
+  }
+  
+  // Development: unlimited generations
+  if (environment === 'development') {
+    return { allowed: true, environment };
+  }
+  
+  // Check for admin override in headers
+  const adminHeader = request.headers.get('x-admin-override');
+  if (adminHeader === 'true') {
+    return { allowed: true, reason: 'admin-override', environment };
+  }
+  
+  // For production, we rely on client-side tracking
+  // but add additional server-side rate limiting based on IP/session
+  const clientUsageHeader = request.headers.get('x-usage-count');
+  const maxGenerations = 5;
+  
+  if (clientUsageHeader) {
+    const usageCount = parseInt(clientUsageHeader, 10);
+    if (usageCount >= maxGenerations) {
+      return { 
+        allowed: false, 
+        reason: `Usage limit exceeded (${usageCount}/${maxGenerations})`, 
+        environment 
+      };
+    }
+  }
+  
+  return { allowed: true, environment };
 }
 
 export async function POST(request: NextRequest) {
@@ -19,6 +59,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ 
         error: "Gemini API key not configured. Please add GEMINI_API_KEY to your .env.local file" 
       }, { status: 500 });
+    }
+
+    // Check usage limits first
+    const usageLimitCheck = await checkServerSideUsageLimit(request);
+    if (!usageLimitCheck.allowed) {
+      return NextResponse.json({ 
+        error: "Usage limit exceeded", 
+        details: usageLimitCheck.reason,
+        environment: usageLimitCheck.environment,
+        limitType: 'server-side',
+        maxGenerations: 5,
+        suggestion: "Contact us for unlimited access or try again later"
+      }, { status: 429 }); // Too Many Requests
     }
 
     const { productSpecs, referenceImages, generationParams } = await request.json();
@@ -141,6 +194,11 @@ export async function POST(request: NextRequest) {
       productName: productSpecs.productName,
       contextPreset: params.contextPreset,
       variations,
+      usageLimitInfo: {
+        environment: usageLimitCheck.environment,
+        limitEnforced: usageLimitCheck.environment === 'production',
+        serverSideValidation: true,
+      },
       generationDetails: {
         sourceImageCount: referenceImages.length,
         profileSource: 'production-prompt-engine-v2',

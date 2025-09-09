@@ -8,10 +8,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Upload, X, CheckCircle, ArrowRight, Sparkles, Clock, Euro, Zap, Target, Package, Eye, Download } from "lucide-react";
+import { Loader2, Upload, X, CheckCircle, ArrowRight, Sparkles, Clock, Euro, Zap, Target, Package, Eye, Download, AlertCircle } from "lucide-react";
 import { ProductSpecs, UploadedImage, GeneratedImage } from "@/components/image-generator/types";
 import { validateImageUrl, generateSafeFilename, getDownloadErrorMessage, downloadWithRetry } from "@/lib/download-utils";
 import { cn } from "@/lib/utils";
+import { UsageLimitProvider, useUsageLimit, useCanGenerate, useGenerationRecorder } from "@/contexts/UsageLimitContext";
+import { UsageLimitReached } from "@/components/UsageLimitReached";
+
+// Import admin utils for testing (only in development)
+if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+  import('@/lib/admin-utils');
+}
 
 // Types for the landing page image generator
 interface LandingPageGeneratorState {
@@ -27,7 +34,8 @@ interface LandingPageGeneratorState {
   downloadingImages: Set<string>;
 }
 
-export default function Home() {
+// Internal component that uses the usage limit hooks
+function HomeContent() {
   const [generatorState, setGeneratorState] = useState<LandingPageGeneratorState>({
     uploadedImages: [],
     generatedImages: [],
@@ -112,10 +120,23 @@ export default function Home() {
     }
   }, [generatorState.uploadedImages]);
 
+  // Usage limiting hooks
+  const { canGenerate, remainingGenerations, isLimitReached, environment, isAdminOverride } = useCanGenerate();
+  const { recordGeneration } = useGenerationRecorder();
+  const { resetUserUsage, usageData } = useUsageLimit();
+
   // Generate images
   const generateImages = async () => {
     if (generatorState.uploadedImages.length === 0) {
       updateGeneratorState({ generationError: 'Veuillez uploader au moins une image produit.' });
+      return;
+    }
+
+    // Check usage limits before generation
+    if (!canGenerate) {
+      updateGeneratorState({ 
+        generationError: 'Limite de générations atteinte. Contactez-nous pour plus de générations.' 
+      });
       return;
     }
 
@@ -155,6 +176,8 @@ export default function Home() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-usage-count': (usageData?.generationCount || 0).toString(),
+          'x-admin-override': isAdminOverride ? 'true' : 'false',
         },
         body: JSON.stringify(apiPayload),
       });
@@ -194,6 +217,9 @@ export default function Home() {
         generatedImages: newGeneratedImages,
         isGenerating: false 
       });
+
+      // Record the successful generation
+      recordGeneration();
 
       // Auto-scroll to results after a brief delay to ensure DOM updates
       setTimeout(() => {
@@ -687,7 +713,51 @@ export default function Home() {
           </div>
 
           <div className="max-w-4xl mx-auto">
-          {generatorState.generatedImages.length === 0 ? (
+          
+          {/* Usage Information Display */}
+          {environment === 'production' && !isAdminOverride && (
+            <div className="mb-6">
+              <div className="bg-gradient-to-r from-ocean-blue-50 to-warm-gold-50 dark:from-sophisticated-gray-800 dark:to-sophisticated-gray-700 p-4 rounded-lg border border-ocean-blue-200 dark:border-ocean-blue-700">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold",
+                      canGenerate ? "bg-success-500" : "bg-sophisticated-gray-400"
+                    )}>
+                      {remainingGenerations}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-sophisticated-gray-900 dark:text-sophisticated-gray-100">
+                        {canGenerate 
+                          ? `${remainingGenerations} génération${remainingGenerations > 1 ? 's' : ''} restante${remainingGenerations > 1 ? 's' : ''}`
+                          : 'Limite atteinte'
+                        }
+                      </p>
+                      <p className="text-sm text-sophisticated-gray-600 dark:text-sophisticated-gray-400">
+                        Essai gratuit • {usageData?.generationCount || 0}/5 générations utilisées
+                      </p>
+                    </div>
+                  </div>
+                  {!canGenerate && (
+                    <div className="flex items-center gap-2 text-orange-600 dark:text-orange-400">
+                      <AlertCircle className="w-4 h-4" />
+                      <span className="text-sm font-medium">Contactez-nous</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Show usage limit reached component or generator */}
+          {isLimitReached && generatorState.generatedImages.length === 0 ? (
+            <UsageLimitReached 
+              generationCount={usageData?.generationCount || 5}
+              maxGenerations={5}
+              environment={environment}
+              onReset={environment === 'development' ? resetUserUsage : undefined}
+            />
+          ) : generatorState.generatedImages.length === 0 ? (
             <Card className="p-8">
               <CardHeader className="text-center pb-6">
                 <CardTitle className="text-2xl font-bold mb-2">
@@ -813,7 +883,7 @@ export default function Home() {
                 <div className="text-center">
                   <Button
                     onClick={generateImages}
-                    disabled={generatorState.uploadedImages.length === 0 || generatorState.isGenerating}
+                    disabled={generatorState.uploadedImages.length === 0 || generatorState.isGenerating || !canGenerate}
                     size="xl"
                     variant="primary"
                     className="shadow-premium font-bold"
@@ -822,6 +892,11 @@ export default function Home() {
                       <>
                         <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                         Magie en cours...
+                      </>
+                    ) : !canGenerate ? (
+                      <>
+                        <AlertCircle className="w-5 h-5 mr-2" />
+                        Limite atteinte - Nous contacter
                       </>
                     ) : (
                       <>
@@ -1069,5 +1144,21 @@ export default function Home() {
         </div>
       )}
     </div>
+  );
+}
+
+// Main component with usage limit provider
+export default function Home() {
+  return (
+    <UsageLimitProvider 
+      initialConfig={{
+        maxGenerations: 5,
+        trackingMethod: 'localStorage',
+        storageKey: 'piktor_usage_data',
+        adminBypassKey: 'piktor_admin_bypass'
+      }}
+    >
+      <HomeContent />
+    </UsageLimitProvider>
   );
 }
