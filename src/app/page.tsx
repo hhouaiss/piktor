@@ -47,6 +47,7 @@ export default function Home() {
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const generatedResultsRef = useRef<HTMLDivElement>(null);
 
   const updateGeneratorState = (updates: Partial<LandingPageGeneratorState>) => {
     setGeneratorState(prev => ({ ...prev, ...updates }));
@@ -193,6 +194,16 @@ export default function Home() {
         generatedImages: newGeneratedImages,
         isGenerating: false 
       });
+
+      // Auto-scroll to results after a brief delay to ensure DOM updates
+      setTimeout(() => {
+        if (generatedResultsRef.current) {
+          generatedResultsRef.current.scrollIntoView({ 
+            behavior: 'smooth',
+            block: 'start'
+          });
+        }
+      }, 100);
 
     } catch (error) {
       console.error('Image generation failed:', error);
@@ -833,7 +844,7 @@ export default function Home() {
             </Card>
           ) : (
             /* Generated Results */
-            <div className="space-y-8">
+            <div ref={generatedResultsRef} className="space-y-8">
               <div className="text-center">
                 <div className="inline-flex items-center px-4 py-2 bg-gradient-ocean-gold text-white rounded-full text-sm font-medium shadow-lg mb-4">
                   <CheckCircle className="w-4 h-4 mr-2" />
