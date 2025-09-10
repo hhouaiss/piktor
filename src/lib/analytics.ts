@@ -50,7 +50,7 @@ export const trackEvent = (
 // Page view tracking
 export const trackPageView = (pagePath: string, pageTitle?: string) => {
   if (isTrackingEnabled()) {
-    window.gtag('config', 'G-40Z06ESGCJ', {
+    window.gtag('config', 'G-NH26LFWXZ7', {
       page_path: pagePath,
       page_title: pageTitle
     });
