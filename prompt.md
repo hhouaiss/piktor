@@ -314,7 +314,154 @@ Create a lifestyle image for our ecommerce website of our main product in the im
 {"meta":{"format":"lifestyle","platform":"marketing_lifestyle","use_case":"ecommerce_product_image","generated_at":"2025-08-12T15:59:54.100Z","version":"2.0","generation_method":"images_edits_with_reference"},"product":{"name":"[object Object] [object Object]","type":{"value":"Wall mounted desk","source":"override"},"materials":{"value":"laminated plywood, metal","source":"detected"},"primary_color":{"value":"#F5F5F5","source":"detected"},"style":{"value":"modern","source":"detected"},"dimensions":{"width":65,"height":54,"depth":25,"unit":"cm"},"key_features":[],"all_features":[]},"visual_requirements":{"context_preset":"lifestyle","background_style":"lifestyle","lighting_setup":"warm ambient","product_position":"center","image_dimensions":"1536x1024","quality_level":"high","strict_mode":true,"props_allowed":["artwork"],"reserved_text_zone":null},"photography_specs":{"cameraAngle":"eye-level","lightingSetup":"soft diffused lighting with a key light positioned at 45 degrees","depthOfField":"shallow depth of field to focus on the desk","composition":"rule of thirds with leading lines from the desk edges"},"material_details":{"materialTextures":"The laminated plywood has a smooth, matte finish with visible edge grain that adds a natural texture contrast.","colorPalette":"The primary color is white with subtle natural wood grain edges, providing a soft contrast.","hardwareDetails":"The metal gas struts are polished and sleek, providing smooth support for the foldable desk surface.","proportionalRelationships":"The desk surface is proportionally balanced with the supporting struts, creating a harmonious design."},"context_specific":{"background":"lifestyle","lighting":"warm ambient","product_position":"center","style":"Natural lifestyle photography in realistic home setting","background_requirement":"Authentic home environment matching product category","lighting_requirement":"Natural or warm artificial lighting","composition_requirement":"Product integrated naturally into living space","focus_requirement":"Product prominent but contextually placed","context":"Home lifestyle inspiration"},"output_specifications":{"format":"PNG","quality":"maximum","color_profile":"sRGB","compression":"lossless","background_handling":"auto","moderation":"auto"},"constraints":{"no_text_overlay":true,"no_watermarks":true,"no_logos":true,"maintain_product_fidelity":true,"respect_aspect_ratio":true,"commercial_use":true}}
 
 
+  🌍 Translation Options for Next.js
 
-Here's your Claude Code prompt:
+  1. Next.js Built-in i18n (Recommended)
 
----
+  Next.js has built-in internationalization support that works great for your use case.
+
+  How it works:
+  - URL-based routing: /en/about, /fr/about
+  - Automatic locale detection
+  - SEO-friendly with proper hreflang tags
+
+  Setup:
+  // next.config.js
+  module.exports = {
+    i18n: {
+      locales: ['fr', 'en'],
+      defaultLocale: 'fr',
+      localeDetection: true
+    }
+  }
+
+  2. Popular Libraries
+
+  Option A: next-i18next
+  - Built on top of react-i18next
+  - Great for complex translations
+  - Server-side rendering support
+
+  Option B: react-intl (Format.js)
+  - Rich formatting (dates, numbers, plurals)
+  - Good TypeScript support
+
+  Option C: next-intl
+  - Newer, lighter alternative
+  - Great performance
+  - Good for App Router
+
+  🏗️ Recommended Architecture for Piktor
+
+  Given your project structure, here's what I'd recommend:
+
+  File Structure:
+
+  /locales
+    /fr
+      - common.json      (buttons, navigation, etc.)
+      - homepage.json    (landing page content)
+      - generator.json   (image generator UI)
+      - limits.json      (usage limiting messages)
+    /en
+      - common.json
+      - homepage.json
+      - generator.json
+      - limits.json
+
+  Translation Files Example:
+
+  // /locales/fr/homepage.json
+  {
+    "hero": {
+      "title": "Vos visuels produit SANS STUDIO !",
+      "subtitle": "Piktor génère des images ultra‑réalistes...",
+      "cta": "Tester gratuitement maintenant"
+    }
+  }
+
+  // /locales/en/homepage.json
+  {
+    "hero": {
+      "title": "Your product visuals WITHOUT STUDIO !",
+      "subtitle": "Piktor generates ultra‑realistic images...",
+      "cta": "Try it free now"
+    }
+  }
+
+  🔧 Implementation Strategy
+
+  Phase 1: Setup
+
+  1. Configure Next.js i18n in next.config.js
+  2. Create translation files for each locale
+  3. Add language switcher component
+
+  Phase 2: Component Updates
+
+  1. Replace hardcoded text with translation keys
+  2. Update usage limiting messages in both languages
+  3. Translate UsageLimitReached component
+
+  Phase 3: Dynamic Content
+
+  1. Form validation messages
+  2. Error messages
+  3. Admin utils console messages
+
+  📱 User Experience
+
+  URL Structure:
+
+  - piktorapp.com → French (default)
+  - piktorapp.com/en → English
+  - piktorapp.com/fr → French (explicit)
+
+  Language Detection:
+
+  1. URL path (highest priority)
+  2. Browser language preference
+  3. Fallback to French
+
+  🎯 Benefits for Your SaaS
+
+  1. SEO: Separate URLs for each language
+  2. Performance: Static generation for both languages
+  3. User Experience: Automatic language detection
+  4. Maintenance: Centralized translation files
+
+  🔍 Specific Areas to Translate
+
+  Looking at your current codebase, you'd need to translate:
+
+  1. Homepage (src/app/page.tsx)
+    - Hero section
+    - Feature descriptions
+    - CTA buttons
+    - Gallery descriptions
+  2. Usage Limiting (src/components/UsageLimitReached.tsx)
+    - Limit reached messages
+    - CTA text
+    - Feature showcases
+  3. Static Pages
+    - About page
+    - Legal page
+    - Contact page
+  4. Image Generator
+    - Upload instructions
+    - Form labels
+    - Progress messages
+    - Error messages
+  5. Admin Utils (optional)
+    - Console messages for debugging
+
+  💡 My Recommendation
+
+  For Piktor, I'd suggest:
+  1. Start with Next.js built-in i18n (simplest, most performant)
+  2. Use JSON files for translations (easy to manage)
+  3. Implement URL-based routing (/en for English)
+  4. Add language switcher in header/footer
+  5. Focus on key pages first (homepage, limit reached component)
+
+  Would you like me to implement this step by step, starting with the basic setup?

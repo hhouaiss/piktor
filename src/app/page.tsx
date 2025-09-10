@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Upload, X, CheckCircle, ArrowRight, Sparkles, Clock, Euro, Zap, Target, Package, Eye, Download, AlertCircle } from "lucide-react";
+import { Loader2, Upload, X, CheckCircle, ArrowRight, Sparkles, Zap, Package, Eye, Download, AlertCircle } from "lucide-react";
 import { ProductSpecs, UploadedImage, GeneratedImage } from "@/components/image-generator/types";
 import { validateImageUrl, generateSafeFilename, getDownloadErrorMessage, downloadWithRetry } from "@/lib/download-utils";
 import { cn } from "@/lib/utils";
