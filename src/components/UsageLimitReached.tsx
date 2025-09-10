@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +17,7 @@ import {
   Clock,
   Package
 } from "lucide-react";
+import { trackConversion, trackUsageLimit } from "@/lib/analytics";
 
 interface UsageLimitReachedProps {
   generationCount?: number;
@@ -33,6 +34,14 @@ export function UsageLimitReached({
   onReset,
   className = ""
 }: UsageLimitReachedProps) {
+  
+  // Track when limit is reached (only once)
+  useEffect(() => {
+    trackUsageLimit.limitReached({
+      generationCount,
+      environment
+    });
+  }, [generationCount, environment]);
   
   return (
     <div className={`w-full max-w-4xl mx-auto space-y-8 ${className}`}>
@@ -93,14 +102,27 @@ export function UsageLimitReached({
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-4">
               <Button asChild size="xl" variant="primary" className="shadow-premium font-bold w-full sm:w-auto">
-                <Link href="https://calendar.notion.so/meet/hassanhouaiss/piktor">
+                <Link 
+                  href="https://calendar.notion.so/meet/hassanhouaiss/piktor"
+                  onClick={() => trackConversion.demoBookingClicked({
+                    location: 'limit_reached',
+                    hasGeneratedImages: true,
+                    generationCount
+                  })}
+                >
                   <Calendar className="w-5 h-5 mr-2" />
                   Réserver ma démo personnalisée
                 </Link>
               </Button>
               
               <Button asChild size="xl" variant="outline" className="w-full sm:w-auto border-ocean-blue-300 hover:bg-ocean-blue-50 dark:border-ocean-blue-600 dark:hover:bg-ocean-blue-900/20">
-                <Link href="mailto:hello@piktorapp.com">
+                <Link 
+                  href="mailto:hello@piktorapp.com"
+                  onClick={() => trackConversion.contactClicked({
+                    location: 'limit_reached',
+                    hasGeneratedImages: true
+                  })}
+                >
                   <MessageCircle className="w-5 h-5 mr-2" />
                   Nous contacter
                 </Link>
@@ -235,7 +257,14 @@ export function UsageLimitReachedInline({
           </div>
         </div>
         <Button asChild size="sm" variant="primary">
-          <Link href="https://calendar.notion.so/meet/hassanhouaiss/piktor">
+          <Link 
+            href="https://calendar.notion.so/meet/hassanhouaiss/piktor"
+            onClick={() => trackConversion.demoBookingClicked({
+              location: 'limit_reached',
+              hasGeneratedImages: true,
+              generationCount: 5
+            })}
+          >
             Démo
             <ArrowRight className="w-4 h-4 ml-2" />
           </Link>

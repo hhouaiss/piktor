@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/layout/header";
 import { FooterWrapper } from "@/components/layout/footer-wrapper";
+import Script from "next/script";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -34,6 +35,20 @@ export default function RootLayout({
       <body
         className={`${inter.variable} font-sans antialiased min-h-screen bg-background text-foreground overflow-x-hidden`}
       >
+        {/* Google Analytics */}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-40Z06ESGCJ"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-40Z06ESGCJ');
+          `}
+        </Script>
+        
         <div className="relative flex min-h-screen flex-col">
           <Header />
           <main className="flex-1 w-full">{children}</main>

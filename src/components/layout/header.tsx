@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Sparkles } from "lucide-react";
+import { trackNavigation } from "@/lib/analytics";
 
 export function Header() {
   const pathname = usePathname();
@@ -16,9 +17,18 @@ export function Header() {
       const generatorSection = document.getElementById('image-generator');
       if (generatorSection) {
         generatorSection.scrollIntoView({ behavior: 'smooth' });
+        
+        // Track header CTA scroll
+        trackNavigation.scrollToGenerator({
+          source: 'header_cta',
+          currentPage: 'home'
+        });
       }
     } else {
       // If on another page, navigate to home page with hash
+      trackNavigation.navigateToGenerator({
+        fromPage: pathname
+      });
       window.location.href = '/#image-generator';
     }
   };

@@ -14,6 +14,7 @@ import { validateImageUrl, generateSafeFilename, getDownloadErrorMessage, downlo
 import { cn } from "@/lib/utils";
 import { UsageLimitProvider, useUsageLimit, useCanGenerate, useGenerationRecorder } from "@/contexts/UsageLimitContext";
 import { UsageLimitReached } from "@/components/UsageLimitReached";
+import { trackImageGeneration, trackConversion, trackNavigation, trackUsageLimit } from "@/lib/analytics";
 
 // Import admin utils for testing (only in development)
 if (process.env.NODE_ENV === 'development') {
@@ -65,6 +66,12 @@ function HomeContent() {
           const generatorSection = document.getElementById('image-generator');
           if (generatorSection) {
             generatorSection.scrollIntoView({ behavior: 'smooth' });
+            
+            // Track hash navigation to generator
+            trackNavigation.scrollToGenerator({
+              source: 'hash_navigation',
+              currentPage: 'home'
+            });
           }
         }, 100); // Small delay to ensure DOM is ready
       }
@@ -134,6 +141,13 @@ function HomeContent() {
         uploadedImages: [...generatorState.uploadedImages, ...newImages],
         isUploading: false 
       });
+
+      // Track image upload
+      trackImageGeneration.imageUploaded({
+        imageCount: newImages.length,
+        productType: generatorState.specs.productType,
+        productName: generatorState.specs.productName
+      });
       
     } catch (error) {
       console.error('Upload error:', error);
@@ -166,6 +180,15 @@ function HomeContent() {
     }
 
     updateGeneratorState({ isGenerating: true, generationError: null });
+
+    const generationStartTime = Date.now();
+    
+    // Track generation start
+    trackImageGeneration.generationStarted({
+      referenceImageCount: generatorState.uploadedImages.length,
+      productType: generatorState.specs.productType,
+      productName: generatorState.specs.productName
+    });
 
     try {
       const base64Images: Array<{ data: string; mimeType: string }> = [];
@@ -246,6 +269,15 @@ function HomeContent() {
       // Record the successful generation
       recordGeneration();
 
+      // Track successful generation
+      const generationTime = (Date.now() - generationStartTime) / 1000;
+      trackImageGeneration.generationCompleted({
+        generatedImageCount: newGeneratedImages.length,
+        generationTime,
+        productType: generatorState.specs.productType,
+        productName: generatorState.specs.productName
+      });
+
       // Auto-scroll to results after a brief delay to ensure DOM updates
       setTimeout(() => {
         if (generatedResultsRef.current) {
@@ -258,6 +290,14 @@ function HomeContent() {
 
     } catch (error) {
       console.error('Image generation failed:', error);
+      
+      // Track generation failure
+      trackImageGeneration.generationFailed({
+        errorType: 'generation_error',
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        productType: generatorState.specs.productType
+      });
+      
       updateGeneratorState({ 
         isGenerating: false,
         generationError: error instanceof Error ? error.message : 'Erreur inconnue' 
@@ -343,6 +383,14 @@ function HomeContent() {
       URL.revokeObjectURL(url);
       
       console.log(`[Client] Download completed successfully: ${filename}`);
+      
+      // Track successful download
+      const imageIndex = generatorState.generatedImages.findIndex(img => img.id === imageId);
+      trackImageGeneration.imageDownloaded({
+        imageIndex: imageIndex >= 0 ? imageIndex : 0,
+        productType: generatorState.specs.productType,
+        filename
+      });
     };
     
     try {
@@ -365,6 +413,13 @@ function HomeContent() {
   // Image view functions
   const viewImage = (image: GeneratedImage) => {
     updateGeneratorState({ viewingImage: image });
+    
+    // Track image view
+    const imageIndex = generatorState.generatedImages.findIndex(img => img.id === image.id);
+    trackImageGeneration.imageViewed({
+      imageIndex: imageIndex >= 0 ? imageIndex : 0,
+      productType: generatorState.specs.productType
+    });
   };
 
   const closeImageView = () => {
@@ -397,6 +452,12 @@ function HomeContent() {
     const generatorSection = document.getElementById('image-generator');
     if (generatorSection) {
       generatorSection.scrollIntoView({ behavior: 'smooth' });
+      
+      // Track scroll to generator
+      trackNavigation.scrollToGenerator({
+        source: 'hero_cta',
+        currentPage: 'home'
+      });
     }
   };
 
@@ -1040,7 +1101,16 @@ function HomeContent() {
                   Tester avec une autre photo
                 </Button>
                 <Button asChild size="lg" variant="primary" className="shadow-premium ml-2 font-bold w-full sm:w-auto max-w-xs">
-                  <Link href="https://calendar.notion.so/meet/hassanhouaiss/piktor">Réserver ma démo</Link>
+                  <Link 
+                    href="https://calendar.notion.so/meet/hassanhouaiss/piktor"
+                    onClick={() => trackConversion.demoBookingClicked({
+                      location: 'generator_result',
+                      hasGeneratedImages: true,
+                      generationCount: generatorState.generatedImages.length
+                    })}
+                  >
+                    Réserver ma démo
+                  </Link>
                 </Button>
               </div>
             </div>
@@ -1068,7 +1138,16 @@ function HomeContent() {
               
               <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">
                 <Button asChild size="xl" variant="primary" className="shadow-premium font-bold w-full sm:w-auto max-w-xs">
-                  <Link href="https://calendar.notion.so/meet/hassanhouaiss/piktor">Réserver ma démo</Link>
+                  <Link 
+                    href="https://calendar.notion.so/meet/hassanhouaiss/piktor"
+                    onClick={() => trackConversion.demoBookingClicked({
+                      location: 'cta_section',
+                      hasGeneratedImages: generatorState.generatedImages.length > 0,
+                      generationCount: generatorState.generatedImages.length
+                    })}
+                  >
+                    Réserver ma démo
+                  </Link>
                 </Button>
               </div>
               
