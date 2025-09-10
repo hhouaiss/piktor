@@ -2,13 +2,23 @@
  * Google Analytics tracking utilities for Piktor SaaS
  */
 
+// Define proper types for gtag parameters
+type GtagEventParameters = {
+  event_category?: string;
+  event_label?: string;
+  value?: number;
+  custom_parameters?: Record<string, string | number | boolean | undefined>;
+  page_path?: string;
+  page_title?: string;
+};
+
 // Declare gtag function for TypeScript
 declare global {
   interface Window {
     gtag: (
       command: 'config' | 'event' | 'js' | 'set',
       targetId: string | Date,
-      config?: Record<string, any>
+      config?: GtagEventParameters
     ) => void;
   }
 }
@@ -22,7 +32,7 @@ const isTrackingEnabled = () => {
 // Generic event tracking function
 export const trackEvent = (
   eventName: string,
-  parameters?: Record<string, any>
+  parameters?: GtagEventParameters
 ) => {
   if (isTrackingEnabled()) {
     window.gtag('event', eventName, {

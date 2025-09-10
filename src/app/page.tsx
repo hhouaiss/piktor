@@ -14,7 +14,7 @@ import { validateImageUrl, generateSafeFilename, getDownloadErrorMessage, downlo
 import { cn } from "@/lib/utils";
 import { UsageLimitProvider, useUsageLimit, useCanGenerate, useGenerationRecorder } from "@/contexts/UsageLimitContext";
 import { UsageLimitReached } from "@/components/UsageLimitReached";
-import { trackImageGeneration, trackConversion, trackNavigation, trackUsageLimit } from "@/lib/analytics";
+import { trackImageGeneration, trackConversion, trackNavigation } from "@/lib/analytics";
 
 // Import admin utils for testing (only in development)
 if (process.env.NODE_ENV === 'development') {
@@ -156,7 +156,7 @@ function HomeContent() {
         isUploading: false 
       });
     }
-  }, [generatorState.uploadedImages]);
+  }, [generatorState.uploadedImages, generatorState.specs.productName, generatorState.specs.productType]);
 
   // Usage limiting hooks
   const { canGenerate, remainingGenerations, isLimitReached, environment, isAdminOverride } = useCanGenerate();
