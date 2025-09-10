@@ -57,6 +57,30 @@ function HomeContent() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const generatedResultsRef = useRef<HTMLDivElement>(null);
 
+  // Handle hash navigation (for deep links from other pages)
+  useEffect(() => {
+    const handleHashNavigation = () => {
+      if (window.location.hash === '#image-generator') {
+        setTimeout(() => {
+          const generatorSection = document.getElementById('image-generator');
+          if (generatorSection) {
+            generatorSection.scrollIntoView({ behavior: 'smooth' });
+          }
+        }, 100); // Small delay to ensure DOM is ready
+      }
+    };
+
+    // Check on mount
+    handleHashNavigation();
+    
+    // Listen for hash changes
+    window.addEventListener('hashchange', handleHashNavigation);
+    
+    return () => {
+      window.removeEventListener('hashchange', handleHashNavigation);
+    };
+  }, []);
+
   const updateGeneratorState = (updates: Partial<LandingPageGeneratorState>) => {
     setGeneratorState(prev => ({ ...prev, ...updates }));
   };

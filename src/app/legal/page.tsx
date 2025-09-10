@@ -35,7 +35,7 @@ export default function LegalPage() {
                   Raison sociale
                 </h4>
                 <p className="text-sophisticated-gray-700 dark:text-sophisticated-gray-300">
-                  Piktor AI SAS
+                  Piktor est une platforme de Remood SAS
                 </p>
               </div>
               <div>
@@ -43,8 +43,8 @@ export default function LegalPage() {
                   Siège social
                 </h4>
                 <p className="text-sophisticated-gray-700 dark:text-sophisticated-gray-300">
-                  123 Avenue de l&apos;Innovation<br />
-                  75015 Paris, France
+                  1 Av du Maréchal de Lattre de Tassigny<br />
+                  93420 Villepinte, France
                 </p>
               </div>
               <div>
@@ -52,7 +52,7 @@ export default function LegalPage() {
                   SIRET
                 </h4>
                 <p className="text-sophisticated-gray-700 dark:text-sophisticated-gray-300">
-                  123 456 789 00012
+                  91835233700011
                 </p>
               </div>
               <div>
@@ -60,7 +60,7 @@ export default function LegalPage() {
                   Capital social
                 </h4>
                 <p className="text-sophisticated-gray-700 dark:text-sophisticated-gray-300">
-                  100 000 €
+                  1 000 €
                 </p>
               </div>
               <div>
@@ -68,7 +68,7 @@ export default function LegalPage() {
                   Directeur de publication
                 </h4>
                 <p className="text-sophisticated-gray-700 dark:text-sophisticated-gray-300">
-                  Hassan Otsmane-Elhaou, Président
+                  Hassan Houaiss, Président
                 </p>
               </div>
             </CardContent>
@@ -144,7 +144,7 @@ export default function LegalPage() {
                   4. Responsabilité
                 </h4>
                 <p className="text-sophisticated-gray-700 dark:text-sophisticated-gray-300">
-                  Piktor AI ne peut être tenu responsable des dommages directs et indirects causés au 
+                  Piktor ne peut être tenu responsable des dommages directs et indirects causés au 
                   matériel de l&apos;utilisateur, lors de l&apos;accès au site, et résultant soit de l&apos;utilisation 
                   d&apos;un matériel ne répondant pas aux spécifications indiquées, soit de l&apos;apparition d&apos;un bug ou d&apos;une incompatibilité.
                 </p>
@@ -168,7 +168,7 @@ export default function LegalPage() {
               </p>
               <p className="text-sophisticated-gray-700 dark:text-sophisticated-gray-300">
                 Pour exercer ces droits, vous pouvez nous contacter à l&apos;adresse : 
-                <span className="font-semibold"> privacy@piktor.ai</span>
+                <span className="font-semibold">hello@piktorapp.com</span>
               </p>
             </CardContent>
           </Card>
@@ -183,9 +183,7 @@ export default function LegalPage() {
                 Pour toute question concernant ces mentions légales, vous pouvez nous contacter à :
               </p>
               <ul className="list-disc list-inside mt-2 space-y-1 text-sophisticated-gray-700 dark:text-sophisticated-gray-300">
-                <li>Email : legal@piktor.ai</li>
-                <li>Téléphone : +33 1 23 45 67 89</li>
-                <li>Courrier : Piktor AI SAS, 123 Avenue de l&apos;Innovation, 75015 Paris</li>
+                <li>Email : hello@piktorapp.com</li>
               </ul>
             </CardContent>
           </Card>

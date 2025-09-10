@@ -11,9 +11,15 @@ export function Header() {
   const closeMenu = () => {};
 
   const scrollToGenerator = () => {
-    const generatorSection = document.getElementById('image-generator');
-    if (generatorSection) {
-      generatorSection.scrollIntoView({ behavior: 'smooth' });
+    if (isHomePage) {
+      // If on home page, just scroll to the generator
+      const generatorSection = document.getElementById('image-generator');
+      if (generatorSection) {
+        generatorSection.scrollIntoView({ behavior: 'smooth' });
+      }
+    } else {
+      // If on another page, navigate to home page with hash
+      window.location.href = '/#image-generator';
     }
   };
 
@@ -37,38 +43,26 @@ export function Header() {
 
         {/* Desktop CTA Button */}
         <div className="hidden md:flex flex-1 items-center justify-end">
-          {isHomePage ? (
-            <Button 
-              variant="primary" 
-              size="default" 
-              className="font-semibold"
-              onClick={scrollToGenerator}
-            >
-              Tester gratuitement
-            </Button>
-          ) : (
-            <Button variant="primary" size="default" asChild className="font-semibold">
-              <Link href="/generate">Tester gratuitement</Link>
-            </Button>
-          )}
+          <Button 
+            variant="primary" 
+            size="default" 
+            className="font-semibold"
+            onClick={scrollToGenerator}
+          >
+            Tester gratuitement
+          </Button>
         </div>
 
         {/* Mobile CTA Button */}
         <div className="flex md:hidden flex-1 items-center justify-end">
-          {isHomePage ? (
-            <Button 
-              variant="primary" 
-              size="default" 
-              className="font-semibold"
-              onClick={scrollToGenerator}
-            >
-              Tester gratuitement
-            </Button>
-          ) : (
-            <Button variant="primary" size="default" asChild className="font-semibold">
-              <Link href="/generate">Tester gratuitement</Link>
-            </Button>
-          )}
+          <Button 
+            variant="primary" 
+            size="default" 
+            className="font-semibold"
+            onClick={scrollToGenerator}
+          >
+            Tester gratuitement
+          </Button>
         </div>
       </div>
 
