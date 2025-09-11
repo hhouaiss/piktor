@@ -14,6 +14,7 @@ import { validateImageUrl, generateSafeFilename, getDownloadErrorMessage, downlo
 import { cn } from "@/lib/utils";
 import { UsageLimitProvider, useUsageLimit, useCanGenerate, useGenerationRecorder } from "@/contexts/UsageLimitContext";
 import { UsageLimitReached } from "@/components/UsageLimitReached";
+import { GenerationEvaluation } from "@/components/GenerationEvaluation";
 import { trackImageGeneration, trackConversion, trackNavigation } from "@/lib/analytics";
 
 // Import admin utils for testing (only in development)
@@ -845,10 +846,10 @@ function HomeContent() {
             <Card className="p-8">
               <CardHeader className="text-center pb-6">
                 <CardTitle className="text-2xl font-bold mb-2">
-                  UPLOADEZ VOTRE PHOTO MEUBLE
+                  Glissez vos photos ICI
                 </CardTitle>
                 <CardDescription className="text-lg">
-                  Transformation IA en temps réel
+                  <span className="font-bold">Astuce</span>&nbsp;: choisissez une image claire, produit entier et bien visible, de préférence sur un fond uni.
                 </CardDescription>
               </CardHeader>
               
@@ -1079,6 +1080,14 @@ function HomeContent() {
                           {generatorState.downloadingImages.has(image.id) ? 'Téléchargement...' : 'Télécharger'}
                         </Button>
                       </div>
+                      <div className="mt-3 pt-3 border-t border-sophisticated-gray-200 dark:border-sophisticated-gray-700">
+                        <GenerationEvaluation
+                          imageId={image.id}
+                          productType={generatorState.specs.productType}
+                          productName={generatorState.specs.productName}
+                          imageIndex={index}
+                        />
+                      </div>
                     </CardContent>
                   </Card>
                 ))}
@@ -1209,7 +1218,7 @@ function HomeContent() {
                     Premium
                   </Badge>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex gap-3 mb-4">
                   <Button
                     onClick={() => {
                       const filename = generateSafeFilename(
@@ -1239,6 +1248,14 @@ function HomeContent() {
                   <Button onClick={closeImageView} variant="outline">
                     Fermer
                   </Button>
+                </div>
+                <div className="pt-3 border-t border-sophisticated-gray-200 dark:border-sophisticated-gray-700">
+                  <GenerationEvaluation
+                    imageId={generatorState.viewingImage.id}
+                    productType={generatorState.specs.productType}
+                    productName={generatorState.specs.productName}
+                    imageIndex={generatorState.generatedImages.findIndex(img => img.id === generatorState.viewingImage!.id)}
+                  />
                 </div>
               </div>
             </div>
