@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,11 +34,25 @@ export function AuthWrapper({ children }: AuthWrapperProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
 
-  useEffect(() => {
-    checkAuthentication();
-  }, []);
+  const handleAuthenticationFailure = useCallback((error: string) => {
+    setAuthError(error);
+    setUser(null);
+    
+    trackEvent('dashboard_auth_failed', {
+      event_category: 'auth',
+      event_label: 'dashboard_access_denied',
+      custom_parameters: {
+        error_message: error
+      }
+    });
+    
+    // Redirect to login page after a delay
+    setTimeout(() => {
+      router.push('/login?redirect=/dashboard');
+    }, 3000);
+  }, [router]);
 
-  const checkAuthentication = async () => {
+  const checkAuthentication = useCallback(async () => {
     try {
       // TODO: Replace with actual authentication check
       // const response = await fetch('/api/auth/me', {
@@ -81,25 +95,11 @@ export function AuthWrapper({ children }: AuthWrapperProps) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [handleAuthenticationFailure]);
 
-  const handleAuthenticationFailure = (error: string) => {
-    setAuthError(error);
-    setUser(null);
-    
-    trackEvent('dashboard_auth_failed', {
-      event_category: 'auth',
-      event_label: 'dashboard_access_denied',
-      custom_parameters: {
-        error_message: error
-      }
-    });
-    
-    // Redirect to login page after a delay
-    setTimeout(() => {
-      router.push('/login?redirect=/dashboard');
-    }, 3000);
-  };
+  useEffect(() => {
+    checkAuthentication();
+  }, [checkAuthentication]);
 
   const handleLoginClick = () => {
     trackEvent('dashboard_login_clicked', {

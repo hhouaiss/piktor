@@ -7,16 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { 
   User,
-  Mail,
-  Building,
-  Phone,
-  MapPin,
   Crown,
   CreditCard,
   Calendar,
   Download,
   FileText,
-  Zap,
   Check,
   AlertTriangle,
   Edit,
@@ -124,8 +119,8 @@ const planFeatures = {
 
 export function AccountPage() {
   const [profile, setProfile] = useState<UserProfile>(mockProfile);
-  const [subscription, setSubscription] = useState<Subscription>(mockSubscription);
-  const [billingHistory, setBillingHistory] = useState<BillingHistory[]>(mockBillingHistory);
+  const [subscription] = useState<Subscription>(mockSubscription);
+  const [billingHistory] = useState<BillingHistory[]>(mockBillingHistory);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editedProfile, setEditedProfile] = useState<UserProfile>(mockProfile);
@@ -455,7 +450,7 @@ export function AccountPage() {
 
         {/* Plan Change Options */}
         <div className="mt-8 pt-6 border-t border-border">
-          <h4 className="font-medium text-foreground mb-4">Changer d'abonnement</h4>
+          <h4 className="font-medium text-foreground mb-4">Changer d&apos;abonnement</h4>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {Object.entries(planFeatures).map(([planKey, plan]) => (
               <Card key={planKey} className={`p-4 ${planKey === subscription.plan ? 'border-primary bg-primary/5' : ''}`}>
@@ -544,7 +539,7 @@ export function AccountPage() {
             </p>
             <div className="space-y-3">
               <Button variant="outline" className="border-error-200 text-error-700 hover:bg-error-50">
-                Annuler l'abonnement
+                Annuler l&apos;abonnement
               </Button>
               <Button variant="outline" className="border-error-200 text-error-700 hover:bg-error-50">
                 Supprimer le compte

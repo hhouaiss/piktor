@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { FlexibleStepper } from "@/components/ui/flexible-stepper";
 import { 
   Upload, 
-  Image as ImageIcon, 
+ 
   Sparkles, 
   Download,
   Eye,
@@ -353,7 +354,7 @@ export function VisualCreation() {
             </p>
           </div>
           <p className="text-sm text-muted-foreground">
-            JPG, PNG jusqu'à 10MB chacune
+            JPG, PNG jusqu&apos;à 10MB chacune
           </p>
         </div>
         <input
@@ -376,10 +377,11 @@ export function VisualCreation() {
             {uploadedImages.map((image) => (
               <div key={image.id} className="relative group">
                 <div className="aspect-square bg-sophisticated-gray-100 rounded-lg overflow-hidden">
-                  <img
+                  <Image
                     src={image.url}
                     alt={image.name}
-                    className="w-full h-full object-cover"
+                    fill
+                    className="object-cover"
                   />
                 </div>
                 <button
@@ -409,7 +411,7 @@ export function VisualCreation() {
           Personnalisez vos visuels
         </h2>
         <p className="text-muted-foreground">
-          Définissez le style et l'ambiance de vos futures créations
+          Définissez le style et l&apos;ambiance de vos futures créations
         </p>
       </div>
 
@@ -590,7 +592,7 @@ export function VisualCreation() {
            generatedImages.length > 0 ? "Vos visuels sont prêts !" : "Générer vos visuels"}
         </h2>
         <p className="text-muted-foreground">
-          {isGenerating ? "L'IA crée vos visuels personnalisés..." :
+          {isGenerating ? "L&apos;IA crée vos visuels personnalisés..." :
            generatedImages.length > 0 ? "Téléchargez et utilisez vos créations" : "Cliquez sur générer pour créer vos visuels IA"}
         </p>
       </div>
@@ -642,7 +644,7 @@ export function VisualCreation() {
                   Création en cours...
                 </h3>
                 <p className="text-muted-foreground">
-                  L'IA analyse vos photos et génère vos visuels personnalisés
+                  L&apos;IA analyse vos photos et génère vos visuels personnalisés
                 </p>
               </div>
             </div>
@@ -666,10 +668,11 @@ export function VisualCreation() {
             {generatedImages.map((image) => (
               <Card key={image.id} className="overflow-hidden">
                 <div className="aspect-square bg-sophisticated-gray-100">
-                  <img
+                  <Image
                     src={image.url}
                     alt={`${productName} - ${image.format}`}
-                    className="w-full h-full object-cover"
+                    fill
+                    className="object-cover"
                   />
                 </div>
                 <div className="p-4 space-y-3">

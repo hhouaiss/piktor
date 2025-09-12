@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { Header } from "@/components/layout/header";
-import { FooterWrapper } from "@/components/layout/footer-wrapper";
 import { ConditionalLayout } from "@/components/layout/conditional-layout";
 import Script from "next/script";
 

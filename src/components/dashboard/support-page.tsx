@@ -10,12 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { 
   MessageCircle,
   Mail,
-  Phone,
   Clock,
   Send,
   Plus,
   Search,
-  Filter,
   ChevronDown,
   CheckCircle,
   AlertCircle,
@@ -307,7 +305,7 @@ export function SupportPage() {
           </div>
           <h3 className="font-semibold text-foreground mb-2">Chat en direct</h3>
           <p className="text-sm text-muted-foreground mb-4">
-            Assistance instantanée pendant les heures d'ouverture
+            Assistance instantanée pendant les heures d&apos;ouverture
           </p>
           <Button variant="outline" className="w-full">
             Démarrer un chat
@@ -579,7 +577,7 @@ export function SupportPage() {
               required
             />
             <p className="text-xs text-muted-foreground">
-              Incluez des détails comme les messages d'erreur, les étapes que vous avez suivies, etc.
+              Incluez des détails comme les messages d&apos;erreur, les étapes que vous avez suivies, etc.
             </p>
           </div>
 
@@ -637,7 +635,7 @@ export function SupportPage() {
             className="flex-1"
           >
             <Zap className="w-4 h-4 mr-2" />
-            Vue d'ensemble
+            Vue d&apos;ensemble
           </Button>
           <Button
             variant={activeTab === "tickets" ? "default" : "ghost"}

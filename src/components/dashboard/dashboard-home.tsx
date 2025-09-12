@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { 
@@ -75,9 +76,8 @@ const mockRecentProjects: RecentProject[] = [
 ];
 
 export function DashboardHome() {
-  const [stats, setStats] = useState<ProjectStats>(mockStats);
-  const [recentProjects, setRecentProjects] = useState<RecentProject[]>(mockRecentProjects);
-  const [isLoading, setIsLoading] = useState(false);
+  const [stats] = useState<ProjectStats>(mockStats);
+  const [recentProjects] = useState<RecentProject[]>(mockRecentProjects);
 
   useEffect(() => {
     // Track dashboard home view
@@ -91,7 +91,6 @@ export function DashboardHome() {
   }, []);
 
   const loadDashboardData = async () => {
-    setIsLoading(true);
     try {
       // TODO: Replace with actual API calls
       // const [statsResponse, projectsResponse] = await Promise.all([
@@ -104,8 +103,6 @@ export function DashboardHome() {
       
     } catch (error) {
       console.error('Error loading dashboard data:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -240,10 +237,11 @@ export function DashboardHome() {
                     onClick={() => handleViewProject(project)}>
                 <div className="flex items-center space-x-4">
                   <div className="w-16 h-16 bg-sophisticated-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
-                    <img 
+                    <Image 
                       src={project.thumbnail} 
                       alt={project.name}
-                      className="w-full h-full object-cover"
+                      fill
+                      className="object-cover"
                       onError={(e) => {
                         e.currentTarget.style.display = 'none';
                         e.currentTarget.nextElementSibling!.classList.remove('hidden');

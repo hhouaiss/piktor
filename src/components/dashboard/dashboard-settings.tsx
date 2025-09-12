@@ -3,14 +3,12 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { 
   Settings,
   Palette,
-  Image as ImageIcon,
   Download,
   Bell,
   Zap,
@@ -91,12 +89,12 @@ export function DashboardSettings() {
   const updateNestedSettings = <K extends keyof SettingsData>(
     key: K, 
     nestedKey: keyof SettingsData[K], 
-    value: any
+    value: boolean
   ) => {
     setSettings(prev => ({
       ...prev,
       [key]: {
-        ...prev[key],
+        ...(prev[key] as object),
         [nestedKey]: value
       }
     }));
@@ -265,7 +263,7 @@ export function DashboardSettings() {
           </div>
 
           <div className="space-y-3">
-            <Label htmlFor="imageQuality">Qualité d'image</Label>
+            <Label htmlFor="imageQuality">Qualité d&apos;image</Label>
             <Select 
               value={settings.imageQuality} 
               onValueChange={(value) => updateSettings({ imageQuality: value })}
@@ -403,7 +401,7 @@ export function DashboardSettings() {
       <Card className="p-6">
         <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center">
           <Zap className="w-5 h-5 mr-2" />
-          Préférences d'interface
+          Préférences d&apos;interface
         </h2>
         
         <div className="space-y-4">
@@ -411,7 +409,7 @@ export function DashboardSettings() {
             <div className="space-y-0.5">
               <Label className="text-base">Afficher les tutoriels</Label>
               <p className="text-sm text-muted-foreground">
-                Montrer les conseils et astuces dans l'interface
+                Montrer les conseils et astuces dans l&apos;interface
               </p>
             </div>
             <Switch
@@ -426,7 +424,7 @@ export function DashboardSettings() {
             <div className="space-y-0.5">
               <Label className="text-base">Mode compact</Label>
               <p className="text-sm text-muted-foreground">
-                Interface plus dense avec moins d'espacement
+                Interface plus dense avec moins d&apos;espacement
               </p>
             </div>
             <Switch

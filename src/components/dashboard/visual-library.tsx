@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,7 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ImageModal } from "@/components/ui/image-modal";
 import { 
   Search, 
-  Filter,
   Download,
   Eye,
   Trash2,
@@ -16,13 +16,7 @@ import {
   Grid3X3,
   List,
   Plus,
-  SortAsc,
-  SortDesc,
-  Tag,
-  Share,
-  Edit,
   Star,
-  MoreHorizontal,
   Images
 } from "lucide-react";
 import { trackEvent, trackImageGeneration } from "@/lib/analytics";
@@ -121,8 +115,6 @@ export function VisualLibrary() {
   const [sortBy, setSortBy] = useState<SortBy>("date");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
   const [selectedVisual, setSelectedVisual] = useState<Visual | null>(null);
-  const [selectedVisuals, setSelectedVisuals] = useState<Set<string>>(new Set());
-  const [isLoading, setIsLoading] = useState(false);
 
   // Get unique formats and tags for filters
   const availableFormats = Array.from(new Set(visuals.map(v => v.format)));
@@ -274,10 +266,11 @@ export function VisualLibrary() {
       {filteredVisuals.map((visual) => (
         <Card key={visual.id} className="group overflow-hidden hover:shadow-lg transition-shadow">
           <div className="relative aspect-square bg-sophisticated-gray-100 overflow-hidden">
-            <img
+            <Image
               src={visual.thumbnail}
               alt={visual.name}
-              className="w-full h-full object-cover cursor-pointer transition-transform group-hover:scale-105"
+              fill
+              className="object-cover cursor-pointer transition-transform group-hover:scale-105"
               onClick={() => handleVisualClick(visual)}
               onError={(e) => {
                 e.currentTarget.style.display = 'none';
@@ -382,10 +375,11 @@ export function VisualLibrary() {
         <Card key={visual.id} className="p-4 hover:shadow-md transition-shadow">
           <div className="flex items-center space-x-4">
             <div className="w-20 h-20 bg-sophisticated-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-              <img
+              <Image
                 src={visual.thumbnail}
                 alt={visual.name}
-                className="w-full h-full object-cover cursor-pointer"
+                fill
+                className="object-cover cursor-pointer"
                 onClick={() => handleVisualClick(visual)}
                 onError={(e) => {
                   e.currentTarget.style.display = 'none';
@@ -583,13 +577,8 @@ export function VisualLibrary() {
         <ImageModal
           isOpen={true}
           onClose={() => setSelectedVisual(null)}
-          images={[{
-            url: selectedVisual.fullSizeUrl,
-            alt: selectedVisual.name,
-            title: selectedVisual.name,
-            description: `${selectedVisual.format} • ${formatDate(selectedVisual.createdAt)}`
-          }]}
-          currentIndex={0}
+          imageUrl={selectedVisual.fullSizeUrl}
+          imageAlt={selectedVisual.name}
           onDownload={() => handleDownload(selectedVisual)}
         />
       )}

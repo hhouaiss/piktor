@@ -362,7 +362,7 @@ export const trackDashboard = {
   },
 
   // Settings and account
-  settingChanged: (settingName: string, newValue: any, oldValue?: any) => {
+  settingChanged: (settingName: string, newValue: string | number | boolean, oldValue?: string | number | boolean) => {
     trackEvent('setting_changed', {
       event_category: 'settings',
       event_label: settingName,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,7 +17,6 @@ import {
   Star,
   CheckCircle,
   ArrowRight,
-  Download,
   Users,
   Zap
 } from "lucide-react";
@@ -271,11 +271,11 @@ export function TutorialsPage() {
       <div className="text-center">
         <h1 className="text-3xl font-bold text-foreground flex items-center justify-center">
           <BookOpen className="w-8 h-8 mr-3" />
-          Centre d'aide et tutoriels
+          Centre d&apos;aide et tutoriels
         </h1>
         <p className="text-muted-foreground mt-2 max-w-2xl mx-auto">
           Apprenez à créer des visuels professionnels avec nos guides pas-à-pas, 
-          vidéos explicatives et conseils d'experts.
+          vidéos explicatives et conseils d&apos;experts.
         </p>
       </div>
 
@@ -344,10 +344,11 @@ export function TutorialsPage() {
             <Card key={tutorial.id} className="group overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
                   onClick={() => handleTutorialClick(tutorial)}>
               <div className="relative aspect-video bg-sophisticated-gray-100">
-                <img 
+                <Image 
                   src={tutorial.thumbnail} 
                   alt={tutorial.title}
-                  className="w-full h-full object-cover"
+                  fill
+                  className="object-cover"
                   onError={(e) => {
                     e.currentTarget.style.display = 'none';
                     e.currentTarget.nextElementSibling!.classList.remove('hidden');
@@ -503,7 +504,7 @@ export function TutorialsPage() {
           Une question spécifique ?
         </h3>
         <p className="text-muted-foreground mb-6 max-w-2xl mx-auto">
-          Notre équipe d'experts est là pour vous accompagner. 
+          Notre équipe d&apos;experts est là pour vous accompagner. 
           Posez vos questions et obtenez une réponse personnalisée.
         </p>
         <Button size="lg" className="bg-gradient-ocean-deep hover:opacity-90 text-white">
