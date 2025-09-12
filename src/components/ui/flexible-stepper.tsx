@@ -112,7 +112,7 @@ export function FlexibleStepper({
             const isAccessible = stepData.isAccessible || allowSkip;
             
             return (
-              <div key={stepData.step} className="flex items-center flex-1">
+              <div key={`desktop-step-${stepData.step}-${index}`} className="flex items-center flex-1">
                 <div className="flex flex-col items-center flex-1">
                   {/* Step Circle */}
                   <div
@@ -197,11 +197,11 @@ export function FlexibleStepper({
         </div>
         
         {/* Current Step Info */}
-        {steps.map((stepData) => {
+        {steps.map((stepData, index) => {
           if (stepData.step !== currentStep) return null;
           
           return (
-            <div key={stepData.step} className="text-center space-y-2">
+            <div key={`mobile-step-${stepData.step}-${index}`} className="text-center space-y-2">
               <div className={cn("w-12 h-12 rounded-full flex items-center justify-center mx-auto", 
                 getStepStyles(stepData, true).split(' ').filter(c => c.includes('bg-') || c.includes('text-') || c.includes('border-')).join(' ')
               )}>
@@ -238,7 +238,7 @@ export function FlexibleStepper({
             <div className="flex gap-1 items-center">
               {steps.map((_, index) => (
                 <div
-                  key={index}
+                  key={`step-indicator-${index}`}
                   className={cn(
                     "w-2 h-2 rounded-full transition-colors",
                     index + 1 === currentStep ? 'bg-primary' :

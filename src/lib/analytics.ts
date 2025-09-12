@@ -268,3 +268,207 @@ export const trackNavigation = {
     });
   }
 };
+
+// Dashboard specific tracking
+export const trackDashboard = {
+  // Dashboard navigation and interaction
+  sidebarToggled: (collapsed: boolean) => {
+    trackEvent('dashboard_sidebar_toggled', {
+      event_category: 'dashboard',
+      event_label: collapsed ? 'collapsed' : 'expanded'
+    });
+  },
+
+  pageViewed: (pageName: string) => {
+    trackEvent('dashboard_page_viewed', {
+      event_category: 'dashboard',
+      event_label: pageName
+    });
+  },
+
+  searchPerformed: (query: string, context: 'library' | 'tutorials' | 'support') => {
+    trackEvent('dashboard_search', {
+      event_category: 'search',
+      event_label: context,
+      custom_parameters: {
+        search_query: query,
+        search_context: context
+      }
+    });
+  },
+
+  filterApplied: (filterType: string, filterValue: string, context: string) => {
+    trackEvent('dashboard_filter_applied', {
+      event_category: 'dashboard',
+      event_label: context,
+      custom_parameters: {
+        filter_type: filterType,
+        filter_value: filterValue,
+        context: context
+      }
+    });
+  },
+
+  // Visual creation workflow
+  creationStepCompleted: (step: number, stepName: string) => {
+    trackEvent('creation_step_completed', {
+      event_category: 'creation_flow',
+      event_label: stepName,
+      value: step
+    });
+  },
+
+  creationAbandoned: (step: number, reason?: string) => {
+    trackEvent('creation_abandoned', {
+      event_category: 'creation_flow',
+      event_label: 'abandoned',
+      value: step,
+      custom_parameters: {
+        abandonment_reason: reason || 'unknown'
+      }
+    });
+  },
+
+  // Library interactions
+  visualViewed: (visualId: string, source: 'grid' | 'list' | 'search') => {
+    trackEvent('visual_viewed', {
+      event_category: 'library',
+      event_label: 'visual_view',
+      custom_parameters: {
+        visual_id: visualId,
+        view_source: source
+      }
+    });
+  },
+
+  visualFavorited: (visualId: string, isFavorited: boolean) => {
+    trackEvent('visual_favorited', {
+      event_category: 'library',
+      event_label: isFavorited ? 'favorited' : 'unfavorited',
+      custom_parameters: {
+        visual_id: visualId
+      }
+    });
+  },
+
+  visualDeleted: (visualId: string) => {
+    trackEvent('visual_deleted', {
+      event_category: 'library',
+      event_label: 'visual_deleted',
+      custom_parameters: {
+        visual_id: visualId
+      }
+    });
+  },
+
+  // Settings and account
+  settingChanged: (settingName: string, newValue: any, oldValue?: any) => {
+    trackEvent('setting_changed', {
+      event_category: 'settings',
+      event_label: settingName,
+      custom_parameters: {
+        setting_name: settingName,
+        new_value: String(newValue),
+        old_value: oldValue ? String(oldValue) : undefined
+      }
+    });
+  },
+
+  profileUpdated: (fieldsUpdated: string[]) => {
+    trackEvent('profile_updated', {
+      event_category: 'account',
+      event_label: 'profile_edit',
+      custom_parameters: {
+        fields_updated: fieldsUpdated.join(','),
+        field_count: fieldsUpdated.length
+      }
+    });
+  },
+
+  subscriptionViewed: (planType: string) => {
+    trackEvent('subscription_viewed', {
+      event_category: 'subscription',
+      event_label: 'plan_viewed',
+      custom_parameters: {
+        current_plan: planType
+      }
+    });
+  },
+
+  planChangeInitiated: (fromPlan: string, toPlan: string) => {
+    trackEvent('plan_change_initiated', {
+      event_category: 'subscription',
+      event_label: 'plan_change',
+      custom_parameters: {
+        from_plan: fromPlan,
+        to_plan: toPlan
+      }
+    });
+  },
+
+  // Support interactions
+  ticketCreated: (category: string, priority: string) => {
+    trackEvent('support_ticket_created', {
+      event_category: 'support',
+      event_label: 'ticket_created',
+      custom_parameters: {
+        ticket_category: category,
+        ticket_priority: priority
+      }
+    });
+  },
+
+  chatStarted: (context: 'help' | 'support' | 'sales') => {
+    trackEvent('chat_started', {
+      event_category: 'support',
+      event_label: 'chat_initiated',
+      custom_parameters: {
+        chat_context: context
+      }
+    });
+  },
+
+  tutorialViewed: (tutorialId: string, tutorialType: 'video' | 'guide' | 'tip') => {
+    trackEvent('tutorial_viewed', {
+      event_category: 'tutorials',
+      event_label: tutorialType,
+      custom_parameters: {
+        tutorial_id: tutorialId
+      }
+    });
+  },
+
+  faqExpanded: (faqId: string, category: string) => {
+    trackEvent('faq_expanded', {
+      event_category: 'help',
+      event_label: 'faq_view',
+      custom_parameters: {
+        faq_id: faqId,
+        faq_category: category
+      }
+    });
+  },
+
+  // Performance and engagement metrics
+  sessionDuration: (durationMinutes: number, pagesVisited: number) => {
+    trackEvent('dashboard_session', {
+      event_category: 'engagement',
+      event_label: 'session_summary',
+      value: durationMinutes,
+      custom_parameters: {
+        pages_visited: pagesVisited,
+        session_duration_minutes: durationMinutes
+      }
+    });
+  },
+
+  featureDiscovered: (featureName: string, discoveryMethod: 'tooltip' | 'tutorial' | 'exploration') => {
+    trackEvent('feature_discovered', {
+      event_category: 'onboarding',
+      event_label: featureName,
+      custom_parameters: {
+        discovery_method: discoveryMethod
+      }
+    });
+  }
+};

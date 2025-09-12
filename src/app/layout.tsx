@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/layout/header";
 import { FooterWrapper } from "@/components/layout/footer-wrapper";
+import { ConditionalLayout } from "@/components/layout/conditional-layout";
 import Script from "next/script";
 
 const inter = Inter({
@@ -49,11 +50,9 @@ export default function RootLayout({
           `}
         </Script>
         
-        <div className="relative flex min-h-screen flex-col">
-          <Header />
-          <main className="flex-1 w-full">{children}</main>
-          <FooterWrapper />
-        </div>
+        <ConditionalLayout>
+          {children}
+        </ConditionalLayout>
       </body>
     </html>
   );
