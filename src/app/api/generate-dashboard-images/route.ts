@@ -6,6 +6,7 @@ import {
   DashboardProductProfile,
   DashboardGenerationSettings
 } from "@/lib/dashboard-prompt-engine";
+import { ContextPreset } from "@/lib/types";
 import { 
   generateMultipleImagesWithReferences,
   generateMultipleImagesWithGemini,
@@ -122,9 +123,9 @@ export async function POST(request: NextRequest) {
     // Also generate production-optimized prompt for comparison/fallback
     const productionPromptResult = generateProductionPrompt(
       productionSpecs.productSpecs,
-      productionSpecs.generationParams.contextPreset as any,
+      productionSpecs.generationParams.contextPreset as ContextPreset,
       {
-        contextPreset: productionSpecs.generationParams.contextPreset as any,
+        contextPreset: productionSpecs.generationParams.contextPreset as ContextPreset,
         backgroundStyle: 'minimal',
         productPosition: 'center',
         lighting: 'studio_softbox',
@@ -167,7 +168,7 @@ ${productionPromptResult.prompt.split('🔧 PRODUCTION QUALITY ENHANCEMENT:')[1]
           hybridPrompt,
           validImages,
           settings.formats.length, // Generate one image per format
-          productionSpecs.generationParams.contextPreset as any
+          productionSpecs.generationParams.contextPreset as ContextPreset
         );
         
         generationMethod = 'multimodal-dashboard-hybrid';
@@ -182,7 +183,7 @@ ${productionPromptResult.prompt.split('🔧 PRODUCTION QUALITY ENHANCEMENT:')[1]
       // Fallback to text-only generation using dashboard prompt
       console.log('[Dashboard API] Falling back to text-only generation with dashboard prompt');
       
-      const aspectRatio = getGeminiAspectRatio(productionSpecs.generationParams.contextPreset as any);
+      const aspectRatio = getGeminiAspectRatio(productionSpecs.generationParams.contextPreset as ContextPreset);
       const geminiRequest = {
         prompt: `${dashboardPrompt}
 
@@ -193,7 +194,7 @@ ${productionPromptResult.prompt.split('🔧 PRODUCTION QUALITY ENHANCEMENT:')[1]
       variations = await generateMultipleImagesWithGemini(
         geminiRequest,
         settings.formats.length,
-        productionSpecs.generationParams.contextPreset as any
+        productionSpecs.generationParams.contextPreset as ContextPreset
       );
       
       generationMethod = 'text-only-dashboard-enhanced';
