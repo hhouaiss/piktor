@@ -12,7 +12,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { FlexibleStepper } from "@/components/ui/flexible-stepper";
 import { 
   Upload, 
- 
   Sparkles, 
   Download,
   Eye,
@@ -29,9 +28,16 @@ import {
   Check,
   X,
   Loader2,
-  Plus
+  Plus,
+  AlertCircle
 } from "lucide-react";
 import { trackEvent, trackImageGeneration } from "@/lib/analytics";
+import { ProductSpecs, GeneratedImage as GeneratedImageType } from "@/components/image-generator/types";
+import { validateImageUrl, generateSafeFilename, getDownloadErrorMessage, downloadWithRetry } from "@/lib/download-utils";
+import { cn } from "@/lib/utils";
+import { UsageLimitProvider, useUsageLimit, useCanGenerate, useGenerationRecorder } from "@/contexts/UsageLimitContext";
+import { UsageLimitReached } from "@/components/UsageLimitReached";
+import { GenerationEvaluation } from "@/components/GenerationEvaluation";
 
 interface UploadedImage {
   id: string;
@@ -49,13 +55,8 @@ interface GenerationSettings {
   customPrompt?: string;
 }
 
-interface GeneratedImage {
-  id: string;
-  url: string;
-  format: string;
-  prompt: string;
-  downloadUrl?: string;
-}
+// Use the type from the main image generator types
+type DashboardGeneratedImage = GeneratedImageType;
 
 const styleOptions = [
   { value: "moderne", label: "Moderne", description: "Design épuré et contemporain" },
@@ -122,7 +123,8 @@ const steps = [
   }
 ];
 
-export function VisualCreation() {
+// Internal component that uses the usage limit hooks
+function VisualCreationContent() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -137,15 +139,66 @@ export function VisualCreation() {
     angle: "",
     formats: []
   });
-  const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
+  const [generatedImages, setGeneratedImages] = useState<DashboardGeneratedImage[]>([]);
+  const [downloadingImages, setDownloadingImages] = useState<Set<string>>(new Set());
+  const [viewingImage, setViewingImage] = useState<DashboardGeneratedImage | null>(null);
+  const [generationError, setGenerationError] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
 
+  // Usage limiting hooks
+  const { canGenerate, remainingGenerations, isLimitReached, environment, isAdminOverride } = useCanGenerate();
+  const { recordGeneration } = useGenerationRecorder();
+  const { resetUserUsage, usageData } = useUsageLimit();
+
+  // Base64 conversion function
+  const convertFileToBase64 = (file: File): Promise<{ data: string; mimeType: string }> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (reader.result && typeof reader.result === 'string') {
+          const base64Data = reader.result.split(',')[1];
+          resolve({
+            data: base64Data,
+            mimeType: file.type
+          });
+        } else {
+          reject(new Error('Failed to read file'));
+        }
+      };
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Helper function to map dashboard settings to context presets
+  const determineContextFromSettings = (settings: GenerationSettings) => {
+    // Map environment and format to appropriate context
+    if (settings.environment === 'studio') return 'packshot';
+    if (settings.formats.includes('instagram-post') || settings.formats.includes('facebook')) return 'social_media_square';
+    if (settings.formats.includes('instagram-story')) return 'social_media_story';
+    if (settings.formats.includes('web-banner')) return 'hero';
+    if (settings.formats.includes('print')) return 'lifestyle';
+    
+    // Default based on environment
+    if (settings.environment === 'salon' || settings.environment === 'chambre' || settings.environment === 'cuisine') {
+      return 'lifestyle';
+    }
+    
+    return 'lifestyle'; // Safe default
+  };
+
   const handleFileUpload = useCallback((files: FileList) => {
+    setUploadError(null);
     const newImages: UploadedImage[] = [];
     
-    Array.from(files).forEach((file) => {
-      if (file.type.startsWith('image/')) {
+    try {
+      Array.from(files).forEach((file) => {
+        if (!file.type.startsWith('image/')) {
+          throw new Error(`${file.name} n'est pas un fichier image valide`);
+        }
+        
         const id = Math.random().toString(36).substr(2, 9);
         const url = URL.createObjectURL(file);
         
@@ -155,17 +208,20 @@ export function VisualCreation() {
           url,
           name: file.name
         });
-      }
-    });
-    
-    if (newImages.length > 0) {
-      setUploadedImages(prev => [...prev, ...newImages]);
-      
-      trackImageGeneration.imageUploaded({
-        imageCount: newImages.length,
-        productType: productCategory || undefined,
-        productName: productName || undefined
       });
+      
+      if (newImages.length > 0) {
+        setUploadedImages(prev => [...prev, ...newImages]);
+        
+        trackImageGeneration.imageUploaded({
+          imageCount: newImages.length,
+          productType: productCategory || undefined,
+          productName: productName || undefined
+        });
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      setUploadError(error instanceof Error ? error.message : 'Upload failed');
     }
   }, [productCategory, productName]);
 
@@ -227,9 +283,26 @@ export function VisualCreation() {
   };
 
   const handleGenerate = async () => {
-    if (!canGenerate()) return;
+    if (uploadedImages.length === 0) {
+      setGenerationError('Veuillez uploader au moins une image produit.');
+      return;
+    }
+
+    if (!productName.trim()) {
+      setGenerationError('Veuillez saisir le nom du produit.');
+      return;
+    }
+
+    // Check usage limits before generation
+    if (!canGenerate) {
+      setGenerationError('Limite de générations atteinte. Contactez-nous pour plus de générations.');
+      return;
+    }
 
     setIsGenerating(true);
+    setGenerationError(null);
+    
+    const generationStartTime = Date.now();
     
     trackImageGeneration.generationStarted({
       referenceImageCount: uploadedImages.length,
@@ -238,23 +311,185 @@ export function VisualCreation() {
     });
 
     try {
-      // TODO: Replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 3000)); // Mock generation time
+      // Convert uploaded images to base64
+      const base64Images: Array<{ data: string; mimeType: string }> = [];
+      for (const image of uploadedImages) {
+        try {
+          const base64Result = await convertFileToBase64(image.file);
+          base64Images.push(base64Result);
+        } catch (error) {
+          console.error(`Failed to convert image ${image.name}:`, error);
+        }
+      }
+
+      if (base64Images.length === 0) {
+        throw new Error('Impossible de traiter les images de référence.');
+      }
+
+      // Create enhanced product specs with dashboard personalization
+      const productSpecs: ProductSpecs = {
+        productName: productName || 'Meuble',
+        productType: productCategory || settings.environment || 'Mobilier',
+        materials: 'Divers', // Can be enhanced later
+        additionalSpecs: settings.customPrompt || ''
+      };
+
+      // Create dashboard-specific payload that includes personalization
+      const dashboardPayload = {
+        productProfile: {
+          productName: productName || 'Meuble',
+          productCategory: productCategory || 'autre',
+          uploadedImages: uploadedImages.map(img => ({
+            id: img.id,
+            file: img.file,
+            url: img.url,
+            name: img.name
+          }))
+        },
+        settings: {
+          style: settings.style || 'moderne',
+          environment: settings.environment || 'salon',
+          lighting: settings.lighting || 'naturelle',
+          angle: settings.angle || 'trois-quarts',
+          formats: settings.formats.length > 0 ? settings.formats : ['ecommerce'],
+          customPrompt: settings.customPrompt
+        },
+        referenceImages: base64Images
+      };
+
+      // Try dashboard API first for enhanced personalization
+      let response;
+      try {
+        response = await fetch('/api/generate-dashboard-images', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-usage-count': (usageData?.generationCount || 0).toString(),
+            'x-admin-override': isAdminOverride ? 'true' : 'false',
+          },
+          body: JSON.stringify(dashboardPayload),
+        });
+        
+        if (!response.ok) {
+          console.warn('Dashboard API failed, falling back to direct generation');
+          throw new Error('Dashboard API not available');
+        }
+      } catch {
+        console.log('Falling back to direct generation API with enhanced context');
+        
+        // Fallback to direct generation with enhanced context
+        const fallbackPayload = {
+          productSpecs,
+          referenceImages: base64Images,
+          generationParams: {
+            contextPreset: determineContextFromSettings(settings),
+            variations: Math.min(settings.formats.length, 2),
+            quality: 'high'
+          }
+        };
+
+        response = await fetch('/api/generate-images-direct', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-usage-count': (usageData?.generationCount || 0).toString(),
+            'x-admin-override': isAdminOverride ? 'true' : 'false',
+          },
+          body: JSON.stringify(fallbackPayload),
+        });
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Échec de la génération d\'images');
+      }
+
+      const result = await response.json();
       
-      // Mock generated images
-      const mockResults: GeneratedImage[] = settings.formats.map((format, index) => ({
-        id: `gen_${index}`,
-        url: `/api/placeholder/400/400?text=${format}`,
-        format,
-        prompt: `${settings.style} ${productName} dans un ${settings.environment} avec éclairage ${settings.lighting}`,
-        downloadUrl: `/api/placeholder/400/400?text=${format}`
+      // Check if this is a dashboard API response or direct API response
+      const isDashboardResponse = result.success !== undefined;
+      let variations, generationMethod = 'unknown';
+      
+      if (isDashboardResponse) {
+        // Dashboard API response
+        variations = result.result?.variations || [];
+        generationMethod = result.result?.dashboardMetadata?.generationMethod || 'dashboard';
+        
+        // Log dashboard-specific feedback
+        if (result.result?.feedback) {
+          console.log('Dashboard generation feedback:', result.result.feedback);
+          
+          // Show warnings to user if any
+          if (result.result.feedback.warnings?.length > 0) {
+            console.warn('Generation warnings:', result.result.feedback.warnings);
+          }
+        }
+      } else {
+        // Direct API response (fallback)
+        variations = result.result?.variations || [];
+        generationMethod = 'direct-fallback';
+      }
+      
+      // Transform API response to dashboard format
+      const newGeneratedImages: DashboardGeneratedImage[] = variations.map((variation: { 
+        url: string; 
+        prompt: string; 
+        metadata: Record<string, unknown>;
+        format?: string;
+      }, index: number) => ({
+        id: `dashboard_${Date.now()}_${index}`,
+        url: variation.url,
+        productConfigId: 'dashboard-create',
+        settings: {
+          contextPreset: determineContextFromSettings(settings),
+          backgroundStyle: settings.environment || 'lifestyle',
+          productPosition: 'center' as const,
+          lighting: 'studio_softbox' as const,
+          strictMode: false,
+          quality: 'high' as const,
+          variations: 2 as const,
+          props: []
+        },
+        specs: productSpecs,
+        prompt: variation.prompt,
+        generationSource: {
+          method: generationMethod as const,
+          model: variation.metadata?.model as string || 'google-nano-banana',
+          confidence: 1.0,
+          referenceImageUsed: true
+        },
+        metadata: {
+          model: variation.metadata?.model as string || 'google-nano-banana',
+          timestamp: new Date().toISOString(),
+          size: '1536x1024',
+          quality: 'high',
+          variation: index + 1,
+          contextPreset: determineContextFromSettings(settings),
+          processingTime: (Date.now() - generationStartTime) / 1000,
+          // Dashboard personalization metadata
+          dashboardPersonalization: {
+            style: settings.style,
+            environment: settings.environment,
+            lighting: settings.lighting,
+            angle: settings.angle,
+            format: variation.format || settings.formats[index] || settings.formats[0],
+            customInstructions: settings.customPrompt,
+            generationMethod: generationMethod,
+            isDashboardEnhanced: isDashboardResponse
+          }
+        }
       }));
+
+      setGeneratedImages(newGeneratedImages);
       
-      setGeneratedImages(mockResults);
-      
+      // Record the successful generation
+      recordGeneration();
+
+      // Track successful generation
+      const generationTime = (Date.now() - generationStartTime) / 1000;
       trackImageGeneration.generationCompleted({
-        generatedImageCount: mockResults.length,
-        generationTime: 3,
+        generatedImageCount: newGeneratedImages.length,
+        generationTime,
         productType: productCategory || undefined,
         productName: productName || undefined
       });
@@ -268,25 +503,137 @@ export function VisualCreation() {
         productType: productCategory || undefined
       });
       
+      setGenerationError(error instanceof Error ? error.message : 'Erreur inconnue');
+      
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const handleDownload = (image: GeneratedImage) => {
-    // TODO: Implement actual download
-    console.log('Downloading:', image);
+  // Image download function
+  const downloadImage = async (imageUrl: string, filename: string, imageId: string) => {
+    // Pre-validate the URL
+    const validation = validateImageUrl(imageUrl);
+    if (!validation.isValid) {
+      const errorMessage = `URL d'image invalide: ${validation.issues.join(', ')}`;
+      console.error('[Client] URL validation failed:', validation);
+      alert(`Échec du téléchargement: ${errorMessage}`);
+      return;
+    }
     
-    trackImageGeneration.imageDownloaded({
-      imageIndex: generatedImages.indexOf(image),
-      productType: productCategory || undefined,
-      filename: `${productName}_${image.format}.jpg`
+    const downloadFn = async () => {
+      // Set downloading state
+      setDownloadingImages(prev => new Set([...prev, imageId]));
+
+      console.log(`[Client] Starting download for: ${filename}`);
+      console.log(`[Client] Image URL type: ${imageUrl.startsWith('data:') ? 'data URL' : 'HTTP URL'}`);
+      
+      let blob: Blob;
+      
+      // Handle data URLs (from Gemini API) - can download directly
+      if (imageUrl.startsWith('data:')) {
+        console.log('[Client] Processing data URL for direct download');
+        
+        try {
+          // Convert data URL to blob
+          const response = await fetch(imageUrl);
+          blob = await response.blob();
+        } catch (error) {
+          console.error('[Client] Failed to convert data URL to blob:', error);
+          throw new Error('Échec du traitement des données d\'image pour le téléchargement');
+        }
+      } else {
+        // Handle HTTP URLs - use proxy API
+        console.log('[Client] Using proxy API for HTTP URL download');
+        
+        const proxyUrl = `/api/download-image?url=${encodeURIComponent(imageUrl)}&filename=${encodeURIComponent(filename)}`;
+        const response = await fetch(proxyUrl);
+        
+        if (!response.ok) {
+          let errorMessage = `Échec du téléchargement: HTTP ${response.status}`;
+          
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.error || errorMessage;
+            if (errorData.details) {
+              errorMessage += ` - ${errorData.details}`;
+            }
+          } catch (jsonError) {
+            console.error('[Client] Could not parse error response:', jsonError);
+          }
+          
+          throw new Error(errorMessage);
+        }
+        
+        blob = await response.blob();
+      }
+      
+      if (blob.size === 0) {
+        throw new Error('Le fichier téléchargé est vide');
+      }
+      
+      console.log(`[Client] Downloaded blob size: ${blob.size} bytes`);
+      
+      const url = URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      console.log(`[Client] Download completed successfully: ${filename}`);
+      
+      // Track successful download
+      const imageIndex = generatedImages.findIndex(img => img.id === imageId);
+      trackImageGeneration.imageDownloaded({
+        imageIndex: imageIndex >= 0 ? imageIndex : 0,
+        productType: productCategory || undefined,
+        filename
+      });
+    };
+    
+    try {
+      await downloadWithRetry(downloadFn, 3, 1000);
+    } catch (error) {
+      const errorMessage = getDownloadErrorMessage(error);
+      console.error('[Client] Download failed after retries:', error);
+      
+      // Show user-friendly error notification
+      alert(`Échec du téléchargement: ${errorMessage}`);
+      
+    } finally {
+      // Clear downloading state
+      setDownloadingImages(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(imageId);
+        return newSet;
+      });
+    }
+  };
+
+  // Image view functions
+  const viewImage = (image: DashboardGeneratedImage) => {
+    setViewingImage(image);
+    
+    // Track image view
+    const imageIndex = generatedImages.findIndex(img => img.id === image.id);
+    trackImageGeneration.imageViewed({
+      imageIndex: imageIndex >= 0 ? imageIndex : 0,
+      productType: productCategory || undefined
     });
+  };
+
+  const closeImageView = () => {
+    setViewingImage(null);
   };
 
   const canProceedFromStep1 = () => uploadedImages.length > 0 && productName.trim() !== "";
   const canProceedFromStep2 = () => settings.style && settings.environment && settings.lighting && settings.angle && settings.formats.length > 0;
-  const canGenerate = () => canProceedFromStep1() && canProceedFromStep2();
+  const canGenerateImages = () => canProceedFromStep1() && canProceedFromStep2() && canGenerate;
 
   const renderStep1 = () => (
     <div className="space-y-8">
@@ -398,6 +745,46 @@ export function VisualCreation() {
                 </p>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Error Display */}
+      {uploadError && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+          <p className="text-red-600 dark:text-red-400 text-sm">
+            {uploadError}
+          </p>
+        </div>
+      )}
+
+      {/* Usage Limit Info */}
+      {environment === 'production' && !isAdminOverride && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
+          <div className="flex items-center gap-3">
+            <div className={cn(
+              "w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-sm",
+              canGenerate ? "bg-green-500" : "bg-gray-400"
+            )}>
+              {remainingGenerations}
+            </div>
+            <div>
+              <p className="font-semibold text-foreground text-sm">
+                {canGenerate 
+                  ? `${remainingGenerations} génération${remainingGenerations > 1 ? 's' : ''} restante${remainingGenerations > 1 ? 's' : ''}`
+                  : 'Limite atteinte'
+                }
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Essai gratuit • {usageData?.generationCount || 0}/5 générations utilisées
+              </p>
+            </div>
+            {!canGenerate && (
+              <div className="flex items-center gap-2 text-orange-600 dark:text-orange-400 ml-auto">
+                <AlertCircle className="w-4 h-4" />
+                <span className="text-sm font-medium">Contactez-nous</span>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -606,13 +993,66 @@ export function VisualCreation() {
               </div>
               
               <div>
-                <h3 className="text-xl font-semibold text-foreground mb-2">Récapitulatif</h3>
-                <div className="text-left bg-muted p-4 rounded-lg space-y-2">
-                  <p><strong>Produit:</strong> {productName}</p>
-                  <p><strong>Style:</strong> {styleOptions.find(s => s.value === settings.style)?.label}</p>
-                  <p><strong>Environnement:</strong> {environmentOptions.find(e => e.value === settings.environment)?.label}</p>
-                  <p><strong>Images source:</strong> {uploadedImages.length}</p>
-                  <p><strong>Formats:</strong> {settings.formats.length} format(s)</p>
+                <h3 className="text-xl font-semibold text-foreground mb-2">Configuration Personnalisée</h3>
+                <div className="text-left bg-muted p-4 rounded-lg space-y-4">
+                  {/* Product Information */}
+                  <div className="space-y-1">
+                    <p><strong>Produit:</strong> {productName}</p>
+                    <p><strong>Catégorie:</strong> {productCategory ? productCategory.charAt(0).toUpperCase() + productCategory.slice(1) : 'Non spécifiée'}</p>
+                    <p><strong>Images source:</strong> {uploadedImages.length} photo(s) de référence</p>
+                  </div>
+
+                  {/* Style Configuration */}
+                  <div className="border-t pt-3 space-y-1">
+                    <p><strong>Style artistique:</strong> {styleOptions.find(s => s.value === settings.style)?.label || 'Non sélectionné'}</p>
+                    {styleOptions.find(s => s.value === settings.style)?.description && (
+                      <p className="text-sm text-muted-foreground italic">
+                        {styleOptions.find(s => s.value === settings.style)?.description}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Environment Configuration */}
+                  <div className="border-t pt-3 space-y-1">
+                    <p><strong>Environnement:</strong> {environmentOptions.find(e => e.value === settings.environment)?.label || 'Non sélectionné'}</p>
+                  </div>
+
+                  {/* Technical Configuration */}
+                  <div className="border-t pt-3 space-y-1">
+                    <p><strong>Éclairage:</strong> {lightingOptions.find(l => l.value === settings.lighting)?.label || 'Non sélectionné'}</p>
+                    <p><strong>Angle de vue:</strong> {angleOptions.find(a => a.value === settings.angle)?.label || 'Non sélectionné'}</p>
+                  </div>
+
+                  {/* Output Configuration */}
+                  <div className="border-t pt-3 space-y-1">
+                    <p><strong>Formats de sortie:</strong> {settings.formats.length} format(s)</p>
+                    {settings.formats.length > 0 && (
+                      <div className="text-sm text-muted-foreground">
+                        {settings.formats.map(format => formatOptions.find(f => f.value === format)?.label).join(', ')}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Custom Instructions */}
+                  {settings.customPrompt && (
+                    <div className="border-t pt-3 space-y-1">
+                      <p><strong>Instructions personnalisées:</strong></p>
+                      <p className="text-sm bg-background p-2 rounded border italic">
+                        &ldquo;{settings.customPrompt}&rdquo;
+                      </p>
+                    </div>
+                  )}
+
+                  {/* AI Enhancement Notice */}
+                  <div className="border-t pt-3">
+                    <div className="flex items-center gap-2 text-sm text-blue-600">
+                      <Sparkles className="w-4 h-4" />
+                      <span className="font-medium">IA Personnalisée Activée</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Vos paramètres seront intégrés dans un prompt IA avancé pour générer exactement ce que vous avez configuré.
+                    </p>
+                  </div>
                 </div>
               </div>
 
@@ -620,10 +1060,19 @@ export function VisualCreation() {
                 size="lg" 
                 className="bg-gradient-ocean-deep hover:opacity-90 text-white"
                 onClick={handleGenerate}
-                disabled={!canGenerate()}
+                disabled={!canGenerateImages()}
               >
-                <Sparkles className="w-5 h-5 mr-2" />
-                Générer mes visuels ({settings.formats.length} crédits)
+                {!canGenerate ? (
+                  <>
+                    <AlertCircle className="w-5 h-5 mr-2" />
+                    Limite atteinte - Nous contacter
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-5 h-5 mr-2" />
+                    Générer mes visuels ({Math.min(settings.formats.length, 2)} variations)
+                  </>
+                )}
               </Button>
               
               <p className="text-sm text-muted-foreground">
@@ -652,7 +1101,30 @@ export function VisualCreation() {
         </div>
       )}
 
-      {generatedImages.length > 0 && (
+      {/* Error Display */}
+      {generationError && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-center">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
+            <p className="font-semibold text-red-600 dark:text-red-400">
+              Erreur de génération
+            </p>
+          </div>
+          <p className="text-red-600 dark:text-red-400 text-sm">
+            {generationError}
+          </p>
+        </div>
+      )}
+
+      {/* Show usage limit reached or results */}
+      {isLimitReached && generatedImages.length === 0 && !isGenerating ? (
+        <UsageLimitReached 
+          generationCount={usageData?.generationCount || 5}
+          maxGenerations={5}
+          environment={environment}
+          onReset={environment === 'development' ? resetUserUsage : undefined}
+        />
+      ) : generatedImages.length > 0 && (
         <div className="space-y-6">
           <div className="flex justify-between items-center">
             <h3 className="text-xl font-semibold text-foreground">
@@ -664,32 +1136,69 @@ export function VisualCreation() {
             </Button>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {generatedImages.map((image) => (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {generatedImages.map((image, index) => (
               <Card key={image.id} className="overflow-hidden">
-                <div className="aspect-square bg-sophisticated-gray-100">
+                <div className="relative aspect-square bg-sophisticated-gray-100 overflow-hidden">
                   <Image
                     src={image.url}
-                    alt={`${productName} - ${image.format}`}
+                    alt={`Visuel généré ${index + 1}`}
                     fill
-                    className="object-cover"
+                    className="object-cover object-center cursor-pointer hover:scale-105 transition-transform duration-300"
+                    onClick={() => viewImage(image)}
+                    sizes="(max-width: 768px) 100vw, 50vw"
                   />
                 </div>
                 <div className="p-4 space-y-3">
                   <div>
-                    <h4 className="font-medium text-foreground">{image.format}</h4>
-                    <p className="text-sm text-muted-foreground line-clamp-2">
-                      {image.prompt}
+                    <h4 className="font-medium text-foreground">
+                      Visuel {index + 1} - Style {settings.style || 'lifestyle'}
+                    </h4>
+                    <p className="text-sm text-muted-foreground">
+                      Créé avec vos paramètres personnalisés
                     </p>
                   </div>
-                  <Button 
-                    className="w-full" 
-                    variant="outline"
-                    onClick={() => handleDownload(image)}
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    Télécharger
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => viewImage(image)}
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                    >
+                      <Eye className="w-4 h-4 mr-2" />
+                      Voir
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        const filename = generateSafeFilename(
+                          productName || 'Meuble',
+                          'lifestyle',
+                          index + 1,
+                          'jpg'
+                        );
+                        downloadImage(image.url, filename, image.id);
+                      }}
+                      variant="default"
+                      size="sm"
+                      className="flex-1"
+                      disabled={downloadingImages.has(image.id)}
+                    >
+                      {downloadingImages.has(image.id) ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Download className="w-4 h-4 mr-2" />
+                      )}
+                      {downloadingImages.has(image.id) ? 'Téléchargement...' : 'Télécharger'}
+                    </Button>
+                  </div>
+                  <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+                    <GenerationEvaluation
+                      imageId={image.id}
+                      productType={productCategory || settings.environment || 'Mobilier'}
+                      productName={productName || 'Meuble'}
+                      imageIndex={index}
+                    />
+                  </div>
                 </div>
               </Card>
             ))}
@@ -768,7 +1277,7 @@ export function VisualCreation() {
             disabled={
               (currentStep === 1 && !canProceedFromStep1()) ||
               (currentStep === 2 && !canProceedFromStep2()) ||
-              (currentStep === 3 && !canGenerate())
+              (currentStep === 3 && !canGenerateImages())
             }
           >
             {currentStep === 3 ? (
@@ -785,6 +1294,109 @@ export function VisualCreation() {
           </Button>
         </div>
       )}
+
+      {/* Image View Modal */}
+      {viewingImage && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-fade-in p-4" 
+          onClick={closeImageView}
+        >
+          <div className="relative w-full max-w-4xl max-h-[90vh] mx-auto" onClick={(e) => e.stopPropagation()}>
+            <Button
+              onClick={closeImageView}
+              variant="ghost"
+              size="icon"
+              className="absolute -top-12 right-0 text-white hover:text-gray-300 hover:bg-white/10"
+            >
+              <X className="w-6 h-6" />
+            </Button>
+            
+            <div className="bg-white dark:bg-gray-900 rounded-lg overflow-hidden shadow-premium">
+              <div className="relative bg-sophisticated-gray-50 flex items-center justify-center min-h-[40vh] md:min-h-[60vh]">
+                <Image
+                  src={viewingImage.url}
+                  alt="Visuel en taille réelle"
+                  width={1200}
+                  height={800}
+                  className="w-full h-auto max-h-[60vh] md:max-h-[80vh] object-contain"
+                  priority
+                />
+              </div>
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-foreground">
+                      Visuel Premium - Style {settings.style || 'Lifestyle'}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      {productName || 'Meuble'} - Généré par IA
+                    </p>
+                  </div>
+                  <div className="px-3 py-1 bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 rounded-full text-sm font-medium">
+                    Premium
+                  </div>
+                </div>
+                <div className="flex gap-3 mb-4">
+                  <Button
+                    onClick={() => {
+                      const imageIndex = generatedImages.findIndex(img => img.id === viewingImage.id);
+                      const filename = generateSafeFilename(
+                        productName || 'Meuble',
+                        'lifestyle',
+                        imageIndex + 1,
+                        'jpg'
+                      );
+                      downloadImage(viewingImage.url, filename, viewingImage.id);
+                    }}
+                    variant="default"
+                    className="flex-1"
+                    disabled={downloadingImages.has(viewingImage.id)}
+                  >
+                    {downloadingImages.has(viewingImage.id) ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Téléchargement...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4 mr-2" />
+                        Télécharger en haute qualité
+                      </>
+                    )}
+                  </Button>
+                  <Button onClick={closeImageView} variant="outline">
+                    Fermer
+                  </Button>
+                </div>
+                <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+                  <GenerationEvaluation
+                    imageId={viewingImage.id}
+                    productType={productCategory || settings.environment || 'Mobilier'}
+                    productName={productName || 'Meuble'}
+                    imageIndex={generatedImages.findIndex(img => img.id === viewingImage.id)}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+// Main component with usage limit provider
+export function VisualCreation() {
+  return (
+    <UsageLimitProvider 
+      initialConfig={{
+        maxGenerations: 5,
+        trackingMethod: 'localStorage',
+        storageKey: 'piktor_usage_data',
+        adminBypassKey: 'piktor_admin_bypass'
+      }}
+    >
+      <VisualCreationContent />
+    </UsageLimitProvider>
   );
 }
