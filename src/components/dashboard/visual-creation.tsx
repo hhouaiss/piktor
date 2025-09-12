@@ -453,7 +453,7 @@ function VisualCreationContent() {
         specs: productSpecs,
         prompt: variation.prompt,
         generationSource: {
-          method: generationMethod as const,
+          method: generationMethod,
           model: variation.metadata?.model as string || 'google-nano-banana',
           confidence: 1.0,
           referenceImageUsed: true
