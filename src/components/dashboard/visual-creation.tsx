@@ -32,6 +32,7 @@ import {
   AlertCircle
 } from "lucide-react";
 import { trackEvent, trackImageGeneration } from "@/lib/analytics";
+import { authenticatedPost, getAuthHeaders } from "@/lib/api-client";
 import { ProductSpecs, GeneratedImage as GeneratedImageType } from "@/components/image-generator/types";
 import { validateImageUrl, generateSafeFilename, getDownloadErrorMessage, downloadWithRetry } from "@/lib/download-utils";
 import { cn } from "@/lib/utils";
@@ -360,14 +361,9 @@ function VisualCreationContent() {
       // Try dashboard API first for enhanced personalization
       let response;
       try {
-        response = await fetch('/api/generate-dashboard-images', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-usage-count': (usageData?.generationCount || 0).toString(),
-            'x-admin-override': isAdminOverride ? 'true' : 'false',
-          },
-          body: JSON.stringify(dashboardPayload),
+        response = await authenticatedPost('/api/generate-dashboard-images', dashboardPayload, {
+          'x-usage-count': (usageData?.generationCount || 0).toString(),
+          'x-admin-override': isAdminOverride ? 'true' : 'false',
         });
         
         if (!response.ok) {
@@ -388,14 +384,9 @@ function VisualCreationContent() {
           }
         };
 
-        response = await fetch('/api/generate-images-direct', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-usage-count': (usageData?.generationCount || 0).toString(),
-            'x-admin-override': isAdminOverride ? 'true' : 'false',
-          },
-          body: JSON.stringify(fallbackPayload),
+        response = await authenticatedPost('/api/generate-images-direct', fallbackPayload, {
+          'x-usage-count': (usageData?.generationCount || 0).toString(),
+          'x-admin-override': isAdminOverride ? 'true' : 'false',
         });
       }
 

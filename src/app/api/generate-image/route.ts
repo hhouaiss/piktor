@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateMultipleImagesWithGemini, getGeminiAspectRatio, base64ToDataUrl } from "@/lib/gemini-api";
+import { generationService } from "@/lib/firebase";
+import type { GenerationRequest, GeneratedImageData } from "@/lib/firebase/generation-service";
 
 interface PromptData {
   product: {
@@ -150,6 +152,63 @@ export async function POST(request: NextRequest) {
     const generatedImageUrl = base64ToDataUrl(firstResult.imageData);
     console.log("Generated image URL:", generatedImageUrl);
 
+    // Save to Firebase if user is authenticated
+    let firebaseResult = null;
+    let userId = request.headers.get('x-user-id');
+    
+    // If no user ID in header, try to get from authorization (for future JWT implementation)
+    if (!userId) {
+      const authHeader = request.headers.get('authorization');
+      // For now, we'll skip if no user ID - future JWT implementation will extract userId from token
+    }
+    
+    if (userId) {
+      try {
+        const generationRequest: GenerationRequest = {
+          userId,
+          projectName: `${promptData.product.name} - ${promptData.output.type}`,
+          prompt: detailedPrompt,
+          style: promptData.product.style,
+          environment: promptData.output.background,
+          formats: [promptData.output.type],
+          generationParams: {
+            model: 'gemini-2.5-flash-image-preview',
+            contextPreset,
+            aspectRatio: promptData.output.aspectRatio,
+            lighting: promptData.output.lighting,
+            cameraAngle: promptData.output.cameraAngle,
+            material: promptData.product.material,
+            color: promptData.product.color,
+            dimensions: promptData.product.dimensions
+          }
+        };
+        
+        const generatedImageData: GeneratedImageData[] = [{
+          imageData: firstResult.imageData,
+          format: promptData.output.type,
+          prompt: detailedPrompt
+        }];
+        
+        const results = await generationService.saveGeneratedImages(
+          generationRequest,
+          generatedImageData
+        );
+        
+        if (results.length > 0 && results[0].success) {
+          firebaseResult = {
+            visualId: results[0].visualId,
+            projectId: results[0].projectId,
+            savedToLibrary: true
+          };
+        }
+        
+        console.log('Saved to Firebase:', firebaseResult);
+      } catch (firebaseError) {
+        console.error('Firebase save error:', firebaseError);
+        // Continue without Firebase integration
+      }
+    }
+
     return NextResponse.json({
       success: true,
       imageUrl: generatedImageUrl,
@@ -161,6 +220,10 @@ export async function POST(request: NextRequest) {
         promptData: promptData,
         analysisData: analysisDataStr ? JSON.parse(analysisDataStr) : null,
       },
+      // Firebase integration data
+      ...(firebaseResult && {
+        firebase: firebaseResult
+      })
     });
 
   } catch (error) {

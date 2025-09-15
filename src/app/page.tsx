@@ -16,6 +16,7 @@ import { UsageLimitProvider, useUsageLimit, useCanGenerate, useGenerationRecorde
 import { UsageLimitReached } from "@/components/UsageLimitReached";
 import { GenerationEvaluation } from "@/components/GenerationEvaluation";
 import { trackImageGeneration, trackConversion, trackNavigation } from "@/lib/analytics";
+import { getAuthHeaders } from "@/lib/api-client";
 
 // Import admin utils for testing (only in development)
 if (process.env.NODE_ENV === 'development') {
@@ -221,12 +222,14 @@ function HomeContent() {
         }
       };
 
+      const authHeaders = getAuthHeaders();
       const response = await fetch('/api/generate-images-direct', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'x-usage-count': (usageData?.generationCount || 0).toString(),
           'x-admin-override': isAdminOverride ? 'true' : 'false',
+          ...authHeaders
         },
         body: JSON.stringify(apiPayload),
       });

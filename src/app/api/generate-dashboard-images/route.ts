@@ -14,6 +14,8 @@ import {
 } from "@/lib/gemini-api";
 import { generateProductionPrompt } from "@/lib/production-prompt-engine";
 import { detectEnvironment } from "@/lib/usage-limits";
+import { authService, generationService } from "@/lib/firebase";
+import type { GenerationRequest, GeneratedImageData } from "@/lib/firebase/generation-service";
 
 // Dashboard-specific generation request interface
 interface DashboardGenerationRequest {
@@ -25,8 +27,8 @@ interface DashboardGenerationRequest {
   }>;
 }
 
-// Server-side usage limit checking (reused from existing system)
-async function checkServerSideUsageLimit(request: NextRequest): Promise<{ allowed: boolean; reason?: string; environment: string }> {
+// Server-side usage limit checking with Firebase integration
+async function checkServerSideUsageLimit(request: NextRequest): Promise<{ allowed: boolean; reason?: string; environment: string; userId?: string }> {
   const environment = detectEnvironment();
   
   // Preview branch: unlimited generations
@@ -45,22 +47,51 @@ async function checkServerSideUsageLimit(request: NextRequest): Promise<{ allowe
     return { allowed: true, reason: 'admin-override', environment };
   }
   
-  // For production, we rely on client-side tracking
-  const clientUsageHeader = request.headers.get('x-usage-count');
-  const maxGenerations = 5;
-  
-  if (clientUsageHeader) {
-    const usageCount = parseInt(clientUsageHeader, 10);
-    if (usageCount >= maxGenerations) {
+  // Check Firebase authentication and credits
+  try {
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader) {
+      return { allowed: false, reason: 'Authentication required', environment };
+    }
+    
+    // In a real implementation, you would verify the JWT token here
+    // For now, we'll assume the user ID is passed in a header
+    const userId = request.headers.get('x-user-id');
+    if (!userId) {
+      return { allowed: false, reason: 'User ID required', environment };
+    }
+    
+    // Check if user has sufficient credits
+    const hasCredits = await authService.hasCredits(userId, 1);
+    if (!hasCredits) {
       return { 
         allowed: false, 
-        reason: `Usage limit exceeded (${usageCount}/${maxGenerations})`, 
-        environment 
+        reason: 'Insufficient credits', 
+        environment,
+        userId
       };
     }
+    
+    return { allowed: true, environment, userId };
+  } catch (error) {
+    console.error('Error checking usage limits:', error);
+    // Fallback to original client-side tracking for backward compatibility
+    const clientUsageHeader = request.headers.get('x-usage-count');
+    const maxGenerations = 5;
+    
+    if (clientUsageHeader) {
+      const usageCount = parseInt(clientUsageHeader, 10);
+      if (usageCount >= maxGenerations) {
+        return { 
+          allowed: false, 
+          reason: `Usage limit exceeded (${usageCount}/${maxGenerations})`, 
+          environment 
+        };
+      }
+    }
+    
+    return { allowed: true, environment };
   }
-  
-  return { allowed: true, environment };
 }
 
 export async function POST(request: NextRequest) {
@@ -201,6 +232,49 @@ ${productionPromptResult.prompt.split('🔧 PRODUCTION QUALITY ENHANCEMENT:')[1]
       console.log('[Dashboard API] Generated variations using text-only fallback:', variations.length);
     }
 
+    // Save generated images to Firebase if user is authenticated
+    let firebaseResults = [];
+    if (usageLimitCheck.userId) {
+      try {
+        const generationRequest: GenerationRequest = {
+          userId: usageLimitCheck.userId,
+          projectName: `${productProfile.productName} - Dashboard`,
+          prompt: dashboardPrompt,
+          style: settings.style,
+          environment: settings.environment,
+          formats: settings.formats,
+          generationParams: {
+            model: 'gemini-dashboard',
+            method: generationMethod,
+            contextPreset: productionSpecs.generationParams.contextPreset,
+            lighting: settings.lighting,
+            angle: settings.angle,
+            customPrompt: settings.customPrompt
+          },
+          customPrompt: settings.customPrompt
+        };
+        
+        const generatedImageData: GeneratedImageData[] = variations.map((variation, index) => ({
+          imageData: variation.imageData,
+          format: settings.formats[index] || settings.formats[0],
+          prompt: dashboardPrompt
+        }));
+        
+        firebaseResults = await generationService.saveGeneratedImages(
+          generationRequest,
+          generatedImageData
+        );
+        
+        console.log('[Dashboard API] Saved to Firebase:', {
+          successCount: firebaseResults.filter(r => r.success).length,
+          totalCount: firebaseResults.length
+        });
+      } catch (firebaseError) {
+        console.error('[Dashboard API] Firebase save error:', firebaseError);
+        // Continue without Firebase integration
+      }
+    }
+    
     // Build comprehensive response
     const result = {
       generationId: `dashboard-${Date.now()}`,
@@ -210,8 +284,24 @@ ${productionPromptResult.prompt.split('🔧 PRODUCTION QUALITY ENHANCEMENT:')[1]
       variations: variations.map((variation, index) => ({
         ...variation,
         format: settings.formats[index] || settings.formats[0],
-        prompt: index === 0 ? dashboardPrompt : `${dashboardPrompt} (Format: ${settings.formats[index] || 'primary'})`
+        prompt: index === 0 ? dashboardPrompt : `${dashboardPrompt} (Format: ${settings.formats[index] || 'primary'})`,
+        // Add Firebase data if available
+        ...(firebaseResults[index]?.success && {
+          firebaseVisualId: firebaseResults[index].visualId,
+          firebaseProjectId: firebaseResults[index].projectId,
+          savedToLibrary: true
+        })
       })),
+      
+      // Firebase integration metadata
+      ...(usageLimitCheck.userId && {
+        firebaseIntegration: {
+          enabled: true,
+          userId: usageLimitCheck.userId,
+          savedCount: firebaseResults.filter(r => r.success).length,
+          errors: firebaseResults.filter(r => !r.success).map(r => r.error)
+        }
+      }),
       
       // Enhanced metadata for dashboard
       dashboardMetadata: {
@@ -245,6 +335,8 @@ ${productionPromptResult.prompt.split('🔧 PRODUCTION QUALITY ENHANCEMENT:')[1]
         environment: usageLimitCheck.environment,
         limitEnforced: usageLimitCheck.environment === 'production',
         serverSideValidation: true,
+        firebaseIntegrated: Boolean(usageLimitCheck.userId),
+        userId: usageLimitCheck.userId
       },
       
       // User feedback

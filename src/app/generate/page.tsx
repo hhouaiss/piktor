@@ -19,6 +19,7 @@ import {
   getDownloadErrorMessage,
   downloadWithRetry 
 } from "@/lib/download-utils";
+import { getAuthHeaders } from "@/lib/api-client";
 
 export default function GeneratePage() {
   const [state, setState] = useState<ImageGeneratorState>({
@@ -217,10 +218,12 @@ export default function GeneratePage() {
       };
 
       // Use new direct generation approach
+      const authHeaders = getAuthHeaders();
       const response = await fetch('/api/generate-images-direct', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...authHeaders
         },
         body: JSON.stringify(apiPayload),
       });
@@ -278,10 +281,12 @@ export default function GeneratePage() {
 
     try {
       // Use direct generation for regeneration
+      const authHeaders = getAuthHeaders();
       const response = await fetch('/api/generate-images-direct', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...authHeaders
         },
         body: JSON.stringify({
           productConfiguration: state.productConfiguration,

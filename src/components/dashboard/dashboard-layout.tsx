@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trackEvent, trackPageView } from "@/lib/analytics";
+import { useAuth } from "@/components/auth/auth-provider";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -92,6 +93,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const pathname = usePathname();
+  const { user, signOut } = useAuth();
 
   // Track page views for dashboard pages
   useEffect(() => {
@@ -134,13 +136,19 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     setProfileDropdownOpen(!profileDropdownOpen);
   };
 
-  const handleLogout = () => {
-    trackEvent('dashboard_logout', {
-      event_category: 'auth',
-      event_label: 'dashboard_logout'
-    });
-    // TODO: Implement logout logic
-    console.log('Logout clicked');
+  const handleLogout = async () => {
+    try {
+      trackEvent('dashboard_logout', {
+        event_category: 'auth',
+        event_label: 'dashboard_logout'
+      });
+      setProfileDropdownOpen(false);
+      await signOut();
+      // User will be redirected to login by the ProtectedRoute component
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Could show a toast notification here
+    }
   };
 
   return (
@@ -223,8 +231,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               {profileDropdownOpen && (
                 <div className="absolute right-0 mt-2 w-48 bg-white border border-border rounded-lg shadow-lg z-50">
                   <div className="p-3 border-b border-border">
-                    <p className="text-sm font-medium text-foreground">Utilisateur</p>
-                    <p className="text-xs text-muted-foreground">user@example.com</p>
+                    <p className="text-sm font-medium text-foreground">
+                      {user?.displayName || 'Utilisateur'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {user?.email || 'user@example.com'}
+                    </p>
                   </div>
                   <div className="p-1">
                     <Link href="/dashboard/account" className="flex items-center space-x-2 p-2 text-sm hover:bg-muted rounded-md">
