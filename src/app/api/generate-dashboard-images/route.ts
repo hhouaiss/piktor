@@ -7,14 +7,14 @@ import {
   DashboardGenerationSettings
 } from "@/lib/dashboard-prompt-engine";
 import { ContextPreset } from "@/lib/types";
-import { 
+import {
   generateMultipleImagesWithReferences,
   generateMultipleImagesWithGemini,
   getGeminiAspectRatio
 } from "@/lib/gemini-api";
 import { generateProductionPrompt } from "@/lib/production-prompt-engine";
 import { detectEnvironment } from "@/lib/usage-limits";
-import { authService, generationService } from "@/lib/firebase";
+import { authService, generationService, firestoreService } from "@/lib/firebase";
 import type { GenerationRequest, GeneratedImageData } from "@/lib/firebase/generation-service";
 
 // Dashboard-specific generation request interface
@@ -30,51 +30,66 @@ interface DashboardGenerationRequest {
 // Server-side usage limit checking with Firebase integration
 async function checkServerSideUsageLimit(request: NextRequest): Promise<{ allowed: boolean; reason?: string; environment: string; userId?: string }> {
   const environment = detectEnvironment();
-  
-  // Preview branch: unlimited generations
+
+  console.log('[checkServerSideUsageLimit] Starting usage limit check, environment:', environment);
+
+  // Extract user ID from headers for Firebase integration (even in dev/preview)
+  const userId = request.headers.get('x-user-id');
+  const authHeader = request.headers.get('Authorization');
+
+  console.log('[checkServerSideUsageLimit] Extracted headers:', {
+    hasUserId: !!userId,
+    hasAuthHeader: !!authHeader,
+    userId: userId,
+    userIdPrefix: userId ? userId.substring(0, 8) + '...' : 'none'
+  });
+
+  // Preview branch: unlimited generations (but include userId for Firebase)
   if (environment === 'preview') {
-    return { allowed: true, environment };
+    console.log('[checkServerSideUsageLimit] Preview environment detected - unlimited access with Firebase integration');
+    return { allowed: true, environment, userId: userId || undefined };
   }
-  
-  // Development: unlimited generations
+
+  // Development: unlimited generations (but include userId for Firebase)
   if (environment === 'development') {
-    return { allowed: true, environment };
+    console.log('[checkServerSideUsageLimit] Development environment detected - unlimited access with Firebase integration');
+    return { allowed: true, environment, userId: userId || undefined };
   }
   
   // Check for admin override in headers
   const adminHeader = request.headers.get('x-admin-override');
+  console.log('[checkServerSideUsageLimit] Admin override header:', adminHeader);
   if (adminHeader === 'true') {
+    console.log('[checkServerSideUsageLimit] Admin override detected - unlimited access');
     return { allowed: true, reason: 'admin-override', environment };
   }
-  
-  // Check Firebase authentication and credits
+
+  // Check user ID for production environment (already extracted above)
   try {
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader) {
+    if (!userId) {
+      console.warn('[checkServerSideUsageLimit] Missing x-user-id header in request for production environment');
       return { allowed: false, reason: 'Authentication required', environment };
     }
-    
-    // In a real implementation, you would verify the JWT token here
-    // For now, we'll assume the user ID is passed in a header
-    const userId = request.headers.get('x-user-id');
-    if (!userId) {
-      return { allowed: false, reason: 'User ID required', environment };
-    }
-    
+
+    console.log('[checkServerSideUsageLimit] Checking credits for user:', userId);
     // Check if user has sufficient credits
     const hasCredits = await authService.hasCredits(userId, 1);
+    console.log('[checkServerSideUsageLimit] Credits check result:', hasCredits);
+
     if (!hasCredits) {
-      return { 
-        allowed: false, 
-        reason: 'Insufficient credits', 
+      console.warn('[checkServerSideUsageLimit] Insufficient credits for user:', userId);
+      return {
+        allowed: false,
+        reason: 'Insufficient credits',
         environment,
-        userId
+        userId: userId
       };
     }
-    
-    return { allowed: true, environment, userId };
+
+    console.log('[checkServerSideUsageLimit] Usage limit check passed for user:', userId);
+    return { allowed: true, environment, userId: userId };
   } catch (error) {
-    console.error('Error checking usage limits:', error);
+    console.error('[checkServerSideUsageLimit] Error checking usage limits:', error);
     // Fallback to original client-side tracking for backward compatibility
     const clientUsageHeader = request.headers.get('x-usage-count');
     const maxGenerations = 5;
@@ -97,6 +112,23 @@ async function checkServerSideUsageLimit(request: NextRequest): Promise<{ allowe
 export async function POST(request: NextRequest) {
   try {
     console.log('[Dashboard API] Processing dashboard image generation request...');
+
+    // Debug authentication headers
+    const headers = {
+      'x-user-id': request.headers.get('x-user-id'),
+      'authorization': request.headers.get('authorization'),
+      'x-usage-count': request.headers.get('x-usage-count'),
+      'x-admin-override': request.headers.get('x-admin-override')
+    };
+
+    console.log('[Dashboard API] Request headers debug:', {
+      hasUserId: !!headers['x-user-id'],
+      hasAuth: !!headers.authorization,
+      userId: headers['x-user-id'],
+      authPrefix: headers.authorization ? headers.authorization.substring(0, 20) + '...' : 'none',
+      usageCount: headers['x-usage-count'],
+      adminOverride: headers['x-admin-override']
+    });
     
     if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json({ 
@@ -106,9 +138,17 @@ export async function POST(request: NextRequest) {
 
     // Check usage limits first
     const usageLimitCheck = await checkServerSideUsageLimit(request);
+    console.log('[Dashboard API] Usage limit check result:', {
+      allowed: usageLimitCheck.allowed,
+      userId: usageLimitCheck.userId,
+      environment: usageLimitCheck.environment,
+      reason: usageLimitCheck.reason
+    });
+
     if (!usageLimitCheck.allowed) {
-      return NextResponse.json({ 
-        error: "Usage limit exceeded", 
+      console.warn('[Dashboard API] Usage limit check failed:', usageLimitCheck.reason);
+      return NextResponse.json({
+        error: "Usage limit exceeded",
         details: usageLimitCheck.reason,
         environment: usageLimitCheck.environment,
         limitType: 'server-side',
@@ -235,6 +275,8 @@ ${productionPromptResult.prompt.split('🔧 PRODUCTION QUALITY ENHANCEMENT:')[1]
     // Save generated images to Firebase if user is authenticated
     let firebaseResults = [];
     if (usageLimitCheck.userId) {
+      console.log('[Dashboard API] Attempting Firebase save for user:', usageLimitCheck.userId);
+      
       try {
         const generationRequest: GenerationRequest = {
           userId: usageLimitCheck.userId,
@@ -260,19 +302,56 @@ ${productionPromptResult.prompt.split('🔧 PRODUCTION QUALITY ENHANCEMENT:')[1]
           prompt: dashboardPrompt
         }));
         
+        console.log('[Dashboard API] Generation request prepared:', {
+          userId: generationRequest.userId,
+          projectName: generationRequest.projectName,
+          imageDataCount: generatedImageData.length,
+          formats: settings.formats,
+          hasImageData: generatedImageData.map(img => !!img.imageData)
+        });
+        
+        console.log('[Dashboard API] Calling generationService.saveGeneratedImages...');
         firebaseResults = await generationService.saveGeneratedImages(
           generationRequest,
           generatedImageData
         );
         
-        console.log('[Dashboard API] Saved to Firebase:', {
+        console.log('[Dashboard API] Firebase save completed:', {
+          results: firebaseResults.map(r => ({
+            success: r.success,
+            visualId: r.visualId,
+            projectId: r.projectId,
+            error: r.error
+          })),
           successCount: firebaseResults.filter(r => r.success).length,
           totalCount: firebaseResults.length
         });
+        
+        // Log any errors from individual saves
+        const failures = firebaseResults.filter(r => !r.success);
+        if (failures.length > 0) {
+          console.error('[Dashboard API] Some Firebase saves failed:', failures.map(f => f.error));
+        }
+        
       } catch (firebaseError) {
-        console.error('[Dashboard API] Firebase save error:', firebaseError);
-        // Continue without Firebase integration
+        console.error('[Dashboard API] Firebase save error:', {
+          error: firebaseError instanceof Error ? firebaseError.message : 'Unknown Firebase error',
+          stack: firebaseError instanceof Error ? firebaseError.stack : undefined,
+          userId: usageLimitCheck.userId,
+          variations: variations.length
+        });
+        
+        // Continue without Firebase integration but log that we're doing so
+        console.warn('[Dashboard API] Continuing without Firebase integration due to error');
       }
+    } else {
+      console.log('[Dashboard API] Skipping Firebase save - no authenticated user');
+      console.log('[Dashboard API] Request headers debug:', {
+        'x-user-id': request.headers.get('x-user-id'),
+        'Authorization': request.headers.get('Authorization') ? 'present' : 'missing',
+        'content-type': request.headers.get('content-type'),
+        'user-agent': request.headers.get('user-agent') ? 'present' : 'missing'
+      });
     }
     
     // Build comprehensive response
@@ -281,16 +360,69 @@ ${productionPromptResult.prompt.split('🔧 PRODUCTION QUALITY ENHANCEMENT:')[1]
       productName: productProfile.productName,
       productCategory: productProfile.productCategory,
       settings: settings,
-      variations: variations.map((variation, index) => ({
-        ...variation,
-        format: settings.formats[index] || settings.formats[0],
-        prompt: index === 0 ? dashboardPrompt : `${dashboardPrompt} (Format: ${settings.formats[index] || 'primary'})`,
-        // Add Firebase data if available
-        ...(firebaseResults[index]?.success && {
-          firebaseVisualId: firebaseResults[index].visualId,
-          firebaseProjectId: firebaseResults[index].projectId,
-          savedToLibrary: true
-        })
+      variations: await Promise.all(variations.map(async (variation, index) => {
+        // Get Firebase Storage URL if image was saved successfully
+        let finalImageUrl = variation.url; // Default to data URL from Gemini
+        let urlSource = 'data_url_fallback';
+
+        console.log(`[Dashboard API] Processing variation ${index + 1}:`, {
+          hasFirebaseResult: !!firebaseResults[index]?.success,
+          firebaseVisualId: firebaseResults[index]?.visualId,
+          originalUrlType: variation.url?.startsWith('data:') ? 'data_url' : 'other'
+        });
+
+        if (firebaseResults[index]?.success) {
+          console.log(`[Dashboard API] Retrieving Firebase Storage URL for variation ${index + 1}:`, firebaseResults[index].visualId);
+          try {
+            // Add a small delay to ensure Firestore consistency
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            const visual = await firestoreService.getVisual(firebaseResults[index].visualId);
+            console.log(`[Dashboard API] Retrieved visual ${index + 1} from Firestore:`, {
+              visualExists: !!visual,
+              visualId: visual?.id,
+              hasOriginalImageUrl: !!visual?.originalImageUrl,
+              originalImageUrl: visual?.originalImageUrl ? visual.originalImageUrl.substring(0, 100) + '...' : 'none'
+            });
+
+            if (visual?.originalImageUrl) {
+              finalImageUrl = visual.originalImageUrl;
+              urlSource = 'firebase_storage';
+              console.log(`[Dashboard API] Using Firebase Storage URL for variation ${index + 1}:`, finalImageUrl.substring(0, 100) + '...');
+            } else {
+              console.warn(`[Dashboard API] No originalImageUrl found for variation ${index + 1}, using data URL fallback`);
+            }
+          } catch (error) {
+            console.error(`[Dashboard API] Failed to retrieve Firebase Storage URL for variation ${index + 1}:`, {
+              error: error instanceof Error ? error.message : 'Unknown error',
+              visualId: firebaseResults[index].visualId
+            });
+            console.warn(`[Dashboard API] Falling back to data URL for variation ${index + 1} due to Firebase retrieval error`);
+          }
+        } else {
+          console.log(`[Dashboard API] No successful Firebase save for variation ${index + 1}, using data URL`);
+        }
+
+        console.log(`[Dashboard API] Final URL for variation ${index + 1}:`, {
+          isDataUrl: finalImageUrl.startsWith('data:'),
+          isFirebaseUrl: finalImageUrl.includes('firebasestorage.googleapis.com'),
+          urlSource,
+          urlPrefix: finalImageUrl.substring(0, 100) + '...'
+        });
+
+        return {
+          ...variation,
+          url: finalImageUrl,
+          format: settings.formats[index] || settings.formats[0],
+          prompt: index === 0 ? dashboardPrompt : `${dashboardPrompt} (Format: ${settings.formats[index] || 'primary'})`,
+          urlSource, // Add metadata about URL source
+          // Add Firebase data if available
+          ...(firebaseResults[index]?.success && {
+            firebaseVisualId: firebaseResults[index].visualId,
+            firebaseProjectId: firebaseResults[index].projectId,
+            savedToLibrary: true
+          })
+        };
       })),
       
       // Firebase integration metadata

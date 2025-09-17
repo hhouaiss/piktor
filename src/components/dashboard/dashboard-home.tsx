@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -16,95 +16,39 @@ import {
   BarChart3,
   Calendar,
   Zap,
-  Crown
+  Crown,
+  Loader2,
+  AlertCircle,
+  RefreshCw
 } from "lucide-react";
 import { trackEvent } from "@/lib/analytics";
+import { useAuth } from "@/components/auth/auth-provider";
+import { useDashboardStats, useRecentProjects, useActivityTracker } from "@/lib/firebase/realtime-service";
+import { runFirebaseDiagnostic, logFirebaseDiagnostic } from "@/lib/debug-firebase";
+import { debugAuthState } from "@/lib/api-client";
+import type { DashboardStats, RecentProject } from "@/lib/firebase";
 
-interface ProjectStats {
-  totalVisuals: number;
-  thisMonth: number;
-  downloads: number;
-  views: number;
-  creditsUsed: number;
-  creditsRemaining: number;
-}
 
-interface RecentProject {
-  id: string;
-  name: string;
-  thumbnail: string;
-  createdAt: string;
-  format: string;
-  downloads: number;
-}
-
-// Mock data - replace with real API calls
-const mockStats: ProjectStats = {
-  totalVisuals: 48,
-  thisMonth: 12,
-  downloads: 156,
-  views: 342,
-  creditsUsed: 23,
-  creditsRemaining: 27
-};
-
-const mockRecentProjects: RecentProject[] = [
-  {
-    id: "1",
-    name: "Canapé Moderne Salon",
-    thumbnail: "/api/placeholder/300/200",
-    createdAt: "2024-09-10",
-    format: "Instagram",
-    downloads: 8
-  },
-  {
-    id: "2", 
-    name: "Chaise Design Bureau",
-    thumbnail: "/api/placeholder/300/200",
-    createdAt: "2024-09-09",
-    format: "E-commerce",
-    downloads: 12
-  },
-  {
-    id: "3",
-    name: "Table Basse Rustique",
-    thumbnail: "/api/placeholder/300/200", 
-    createdAt: "2024-09-08",
-    format: "Print",
-    downloads: 5
-  }
-];
 
 export function DashboardHome() {
-  const [stats] = useState<ProjectStats>(mockStats);
-  const [recentProjects] = useState<RecentProject[]>(mockRecentProjects);
+  const { user: authUser } = useAuth();
+  const { stats, loading: statsLoading, error: statsError, refreshStats } = useDashboardStats(authUser?.id || null);
+  const { projects: recentProjects, loading: projectsLoading, error: projectsError, refreshProjects } = useRecentProjects(authUser?.id || null, 3);
+  const { trackView } = useActivityTracker(authUser?.id || null);
+
+  const loading = statsLoading || projectsLoading;
+  const error = statsError || projectsError;
+  const user = authUser;
 
   useEffect(() => {
-    // Track dashboard home view
-    trackEvent('dashboard_home_viewed', {
-      event_category: 'dashboard',
-      event_label: 'home_page_view'
-    });
-
-    // TODO: Load real data from API
-    loadDashboardData();
-  }, []);
-
-  const loadDashboardData = async () => {
-    try {
-      // TODO: Replace with actual API calls
-      // const [statsResponse, projectsResponse] = await Promise.all([
-      //   fetch('/api/dashboard/stats'),
-      //   fetch('/api/dashboard/recent-projects')
-      // ]);
-      
-      // Mock loading delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-    } catch (error) {
-      console.error('Error loading dashboard data:', error);
+    if (user) {
+      // Track dashboard home view
+      trackEvent('dashboard_home_viewed', {
+        event_category: 'dashboard',
+        event_label: 'home_page_view'
+      });
     }
-  };
+  }, [user]);
 
   const handleCreateNewVisual = () => {
     trackEvent('dashboard_create_new_clicked', {
@@ -122,6 +66,16 @@ export function DashboardHome() {
         project_name: project.name
       }
     });
+    
+    // Track view activity
+    if (project.visualsCount > 0) {
+      trackView('', project.id);
+    }
+  };
+
+  const handleRefresh = () => {
+    refreshStats();
+    refreshProjects();
   };
 
   const formatDate = (dateString: string) => {
@@ -132,29 +86,111 @@ export function DashboardHome() {
     });
   };
 
+  // Loading state
+  if (loading) {
+    return (
+      <div className="space-y-8">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
+            <p className="text-muted-foreground">Chargement de votre tableau de bord...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error || !user) {
+    return (
+      <div className="space-y-8">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <AlertCircle className="w-8 h-8 text-destructive mx-auto mb-4" />
+            <p className="text-muted-foreground mb-4">
+              {error || 'Vous devez être connecté pour accéder au tableau de bord'}
+            </p>
+            <Button asChild>
+              <Link href="/auth/signin">
+                Se connecter
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show default state if no stats yet
+  const displayStats = stats || {
+    totalVisuals: 0,
+    thisMonth: 0,
+    downloads: 0,
+    views: 0,
+    creditsUsed: 0,
+    creditsRemaining: 50,
+    projects: 0
+  };
+
   return (
     <div className="space-y-8">
       {/* Welcome Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground">
-            Bonjour ! 👋
+            Bonjour {user?.displayName || 'Utilisateur'} ! 👋
           </h1>
           <p className="text-muted-foreground mt-1">
             Prêt à créer de nouveaux visuels exceptionnels pour votre marque ?
           </p>
         </div>
-        <Button
-          asChild
-          size="lg"
-          className="bg-gradient-ocean-deep hover:opacity-90 text-white shadow-lg w-full md:w-auto"
-          onClick={handleCreateNewVisual}
-        >
-          <Link href="/dashboard/create">
-            <Plus className="w-5 h-5 mr-2" />
-            Créer un nouveau visuel
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            asChild
+            size="lg"
+            className="bg-gradient-ocean-deep hover:opacity-90 text-white shadow-lg w-full md:w-auto"
+            onClick={handleCreateNewVisual}
+          >
+            <Link href="/dashboard/create">
+              <Plus className="w-5 h-5 mr-2" />
+              Créer un nouveau visuel
+            </Link>
+          </Button>
+          
+          {/* Debug Buttons - Remove in production */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={async () => {
+                  const diagnostic = runFirebaseDiagnostic([]);
+                  logFirebaseDiagnostic(diagnostic);
+
+                  // Also debug API client auth state
+                  const { debugAuthState } = await import('@/lib/api-client');
+                  const authDebug = await debugAuthState();
+                  console.log('🔐 API Client Auth State:', authDebug);
+                }}
+                className="text-sm"
+              >
+                🔍 Debug Firebase
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={async () => {
+                  const authDebug = await debugAuthState();
+                  console.log('🔐 Auth State Debug:', authDebug);
+                  alert(`Auth Debug: ${JSON.stringify(authDebug, null, 2)}`);
+                }}
+                className="text-sm"
+              >
+                🔐 Debug Auth
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -163,9 +199,9 @@ export function DashboardHome() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Visuels créés</p>
-              <p className="text-2xl font-bold text-foreground">{stats.totalVisuals}</p>
+              <p className="text-2xl font-bold text-foreground">{displayStats.totalVisuals}</p>
               <p className="text-xs text-success-600">
-                +{stats.thisMonth} ce mois-ci
+                +{displayStats.thisMonth} ce mois-ci
               </p>
             </div>
             <div className="h-12 w-12 bg-ocean-blue-100 rounded-lg flex items-center justify-center">
@@ -178,7 +214,7 @@ export function DashboardHome() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Téléchargements</p>
-              <p className="text-2xl font-bold text-foreground">{stats.downloads}</p>
+              <p className="text-2xl font-bold text-foreground">{displayStats.downloads}</p>
               <p className="text-xs text-muted-foreground flex items-center">
                 <TrendingUp className="h-3 w-3 mr-1" />
                 +12% vs mois dernier
@@ -194,7 +230,7 @@ export function DashboardHome() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Vues totales</p>
-              <p className="text-2xl font-bold text-foreground">{stats.views}</p>
+              <p className="text-2xl font-bold text-foreground">{displayStats.views}</p>
               <p className="text-xs text-muted-foreground">Sur tous vos visuels</p>
             </div>
             <div className="h-12 w-12 bg-sophisticated-gray-100 rounded-lg flex items-center justify-center">
@@ -207,7 +243,7 @@ export function DashboardHome() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Crédits restants</p>
-              <p className="text-2xl font-bold text-primary">{stats.creditsRemaining}</p>
+              <p className="text-2xl font-bold text-primary">{displayStats.creditsRemaining}</p>
               <p className="text-xs text-muted-foreground">sur 50 ce mois-ci</p>
             </div>
             <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center">
@@ -256,7 +292,9 @@ export function DashboardHome() {
                         <Calendar className="h-3 w-3 mr-1" />
                         {formatDate(project.createdAt)}
                       </span>
-                      <span className="text-sm text-muted-foreground">{project.format}</span>
+                      <span className="text-sm text-muted-foreground">
+                        {Array.isArray(project.format) ? project.format.join(', ') : project.format}
+                      </span>
                     </div>
                   </div>
                   <div className="flex items-center space-x-2 text-sm text-muted-foreground">
@@ -342,12 +380,12 @@ export function DashboardHome() {
               <div>
                 <div className="flex justify-between text-sm mb-2">
                   <span className="text-muted-foreground">Crédits utilisés</span>
-                  <span className="font-medium">{stats.creditsUsed}/50</span>
+                  <span className="font-medium">{displayStats.creditsUsed}/{displayStats.creditsUsed + displayStats.creditsRemaining}</span>
                 </div>
                 <div className="w-full bg-sophisticated-gray-200 rounded-full h-2">
                   <div 
                     className="bg-primary h-2 rounded-full transition-all duration-500"
-                    style={{ width: `${(stats.creditsUsed / 50) * 100}%` }}
+                    style={{ width: `${(displayStats.creditsUsed / (displayStats.creditsUsed + displayStats.creditsRemaining)) * 100}%` }}
                   ></div>
                 </div>
               </div>
