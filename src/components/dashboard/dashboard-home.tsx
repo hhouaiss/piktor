@@ -5,12 +5,12 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { 
-  Plus, 
-  Sparkles, 
-  TrendingUp, 
-  Download, 
-  Eye, 
+import {
+  Plus,
+  Sparkles,
+  TrendingUp,
+  Download,
+  Eye,
   Clock,
   ArrowRight,
   BarChart3,
@@ -18,22 +18,21 @@ import {
   Zap,
   Crown,
   Loader2,
-  AlertCircle,
-  RefreshCw
+  AlertCircle
 } from "lucide-react";
 import { trackEvent } from "@/lib/analytics";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useDashboardStats, useRecentProjects, useActivityTracker } from "@/lib/firebase/realtime-service";
-import { runFirebaseDiagnostic, logFirebaseDiagnostic } from "@/lib/debug-firebase";
+import { debugFirebaseIntegration, checkLibraryImageUrls } from "@/lib/debug-firebase";
 import { debugAuthState } from "@/lib/api-client";
-import type { DashboardStats, RecentProject } from "@/lib/firebase";
+import type { RecentProject } from "@/lib/firebase";
 
 
 
 export function DashboardHome() {
   const { user: authUser } = useAuth();
-  const { stats, loading: statsLoading, error: statsError, refreshStats } = useDashboardStats(authUser?.id || null);
-  const { projects: recentProjects, loading: projectsLoading, error: projectsError, refreshProjects } = useRecentProjects(authUser?.id || null, 3);
+  const { stats, loading: statsLoading, error: statsError } = useDashboardStats(authUser?.id || null);
+  const { projects: recentProjects, loading: projectsLoading, error: projectsError } = useRecentProjects(authUser?.id || null, 3);
   const { trackView } = useActivityTracker(authUser?.id || null);
 
   const loading = statsLoading || projectsLoading;
@@ -73,10 +72,6 @@ export function DashboardHome() {
     }
   };
 
-  const handleRefresh = () => {
-    refreshStats();
-    refreshProjects();
-  };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -164,8 +159,8 @@ export function DashboardHome() {
                 variant="outline"
                 size="lg"
                 onClick={async () => {
-                  const diagnostic = runFirebaseDiagnostic([]);
-                  logFirebaseDiagnostic(diagnostic);
+                  await debugFirebaseIntegration();
+                  await checkLibraryImageUrls();
 
                   // Also debug API client auth state
                   const { debugAuthState } = await import('@/lib/api-client');
@@ -269,39 +264,47 @@ export function DashboardHome() {
 
           <div className="space-y-4">
             {recentProjects.map((project) => (
-              <Card key={project.id} className="p-4 hover:shadow-md transition-shadow cursor-pointer"
-                    onClick={() => handleViewProject(project)}>
-                <div className="flex items-center space-x-4">
-                  <div className="w-16 h-16 bg-sophisticated-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
-                    <Image 
-                      src={project.thumbnail} 
-                      alt={project.name}
-                      fill
-                      className="object-cover"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                        e.currentTarget.nextElementSibling!.classList.remove('hidden');
-                      }}
-                    />
-                    <Sparkles className="h-6 w-6 text-sophisticated-gray-400 hidden" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-foreground truncate">{project.name}</h3>
-                    <div className="flex items-center space-x-4 mt-1">
-                      <span className="text-sm text-muted-foreground flex items-center">
-                        <Calendar className="h-3 w-3 mr-1" />
-                        {formatDate(project.createdAt)}
-                      </span>
-                      <span className="text-sm text-muted-foreground">
-                        {Array.isArray(project.format) ? project.format.join(', ') : project.format}
-                      </span>
+              <Card key={project.id} className="p-4 hover:shadow-md transition-shadow">
+                <Link
+                  href={`/dashboard/library?project=${project.id}`}
+                  className="block cursor-pointer"
+                  onClick={() => handleViewProject(project)}
+                >
+                  <div className="flex items-center space-x-4">
+                    <div className="w-16 h-16 bg-sophisticated-gray-100 rounded-lg flex items-center justify-center overflow-hidden relative">
+                      <Image
+                        src={project.thumbnail}
+                        alt={project.name}
+                        fill
+                        className="object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.nextElementSibling!.classList.remove('hidden');
+                        }}
+                      />
+                      <Sparkles className="h-6 w-6 text-sophisticated-gray-400 hidden" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-foreground truncate">{project.name}</h3>
+                      <div className="flex items-center space-x-4 mt-1">
+                        <span className="text-sm text-muted-foreground flex items-center">
+                          <Calendar className="h-3 w-3 mr-1" />
+                          {formatDate(project.createdAt)}
+                        </span>
+                        <span className="text-sm text-muted-foreground">
+                          {Array.isArray(project.format) ? project.format.join(', ') : project.format}
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {project.visualsCount} visuel{project.visualsCount > 1 ? 's' : ''}
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                      <Download className="h-4 w-4" />
+                      <span>{project.downloads}</span>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                    <Download className="h-4 w-4" />
-                    <span>{project.downloads}</span>
-                  </div>
-                </div>
+                </Link>
               </Card>
             ))}
           </div>

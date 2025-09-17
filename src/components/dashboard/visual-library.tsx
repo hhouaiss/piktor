@@ -1,14 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ImageModal } from "@/components/ui/image-modal";
-import { 
-  Search, 
+import {
+  Search,
   Download,
   Eye,
   Trash2,
@@ -17,97 +18,28 @@ import {
   List,
   Plus,
   Star,
-  Images
+  Images,
+  Loader2,
+  AlertCircle,
+  RefreshCw
 } from "lucide-react";
 import { trackEvent, trackImageGeneration } from "@/lib/analytics";
+import { authService, firestoreService } from "@/lib/firebase";
+import type { Visual, VisualFilters, VisualSort, PaginationOptions } from "@/lib/firebase";
 import Link from "next/link";
 
-interface Visual {
-  id: string;
-  name: string;
-  thumbnail: string;
-  fullSizeUrl: string;
-  format: string;
-  createdAt: string;
-  downloads: number;
-  views: number;
-  tags: string[];
-  isFavorite: boolean;
-  projectName: string;
-  style: string;
-  environment: string;
-}
 
-const mockVisuals: Visual[] = [
-  {
-    id: "1",
-    name: "Canapé Moderne - Instagram Post",
-    thumbnail: "/api/placeholder/300/300",
-    fullSizeUrl: "/api/placeholder/1080/1080",
-    format: "Instagram Post",
-    createdAt: "2024-09-10",
-    downloads: 8,
-    views: 24,
-    tags: ["moderne", "salon", "canapé"],
-    isFavorite: true,
-    projectName: "Canapé Moderne Salon",
-    style: "Moderne",
-    environment: "Salon"
-  },
-  {
-    id: "2", 
-    name: "Canapé Moderne - E-commerce",
-    thumbnail: "/api/placeholder/300/300",
-    fullSizeUrl: "/api/placeholder/800/600",
-    format: "E-commerce",
-    createdAt: "2024-09-10",
-    downloads: 12,
-    views: 31,
-    tags: ["moderne", "salon", "canapé"],
-    isFavorite: false,
-    projectName: "Canapé Moderne Salon",
-    style: "Moderne",
-    environment: "Salon"
-  },
-  {
-    id: "3",
-    name: "Chaise Design - Instagram Story",
-    thumbnail: "/api/placeholder/300/533",
-    fullSizeUrl: "/api/placeholder/1080/1920",
-    format: "Instagram Story",
-    createdAt: "2024-09-09",
-    downloads: 5,
-    views: 18,
-    tags: ["design", "bureau", "chaise"],
-    isFavorite: false,
-    projectName: "Chaise Design Bureau",
-    style: "Moderne",
-    environment: "Bureau"
-  },
-  {
-    id: "4",
-    name: "Table Basse - Print",
-    thumbnail: "/api/placeholder/300/400",
-    fullSizeUrl: "/api/placeholder/2480/3508",
-    format: "Print A4",
-    createdAt: "2024-09-08",
-    downloads: 3,
-    views: 12,
-    tags: ["rustique", "salon", "table"],
-    isFavorite: true,
-    projectName: "Table Basse Rustique",
-    style: "Rustique", 
-    environment: "Salon"
-  }
-];
 
 type ViewMode = "grid" | "list";
 type SortBy = "date" | "name" | "downloads" | "views";
 type SortOrder = "asc" | "desc";
 
 export function VisualLibrary() {
-  const [visuals, setVisuals] = useState<Visual[]>(mockVisuals);
-  const [filteredVisuals, setFilteredVisuals] = useState<Visual[]>(mockVisuals);
+  const searchParams = useSearchParams();
+  const projectFilter = searchParams.get('project');
+
+  const [visuals, setVisuals] = useState<Visual[]>([]);
+  const [filteredVisuals, setFilteredVisuals] = useState<Visual[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFormat, setSelectedFormat] = useState<string>("all");
   const [selectedTag, setSelectedTag] = useState<string>("all");
@@ -115,67 +47,141 @@ export function VisualLibrary() {
   const [sortBy, setSortBy] = useState<SortBy>("date");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
   const [selectedVisual, setSelectedVisual] = useState<Visual | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [user, setUser] = useState<any>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   // Get unique formats and tags for filters
   const availableFormats = Array.from(new Set(visuals.map(v => v.format)));
   const availableTags = Array.from(new Set(visuals.flatMap(v => v.tags)));
 
   useEffect(() => {
-    trackEvent('library_viewed', {
-      event_category: 'dashboard',
-      event_label: 'library_page_view',
-      custom_parameters: {
-        total_visuals: visuals.length
-      }
-    });
-  }, [visuals.length]);
-
-  useEffect(() => {
-    let filtered = [...visuals];
-
-    // Apply search filter
-    if (searchQuery) {
-      filtered = filtered.filter(visual => 
-        visual.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        visual.projectName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        visual.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-      );
-    }
-
-    // Apply format filter
-    if (selectedFormat !== "all") {
-      filtered = filtered.filter(visual => visual.format === selectedFormat);
-    }
-
-    // Apply tag filter
-    if (selectedTag !== "all") {
-      filtered = filtered.filter(visual => visual.tags.includes(selectedTag));
-    }
-
-    // Apply sorting
-    filtered.sort((a, b) => {
-      let comparison = 0;
+    // Check authentication and load data
+    const currentUser = authService.getCurrentUser();
+    if (currentUser) {
+      setUser(currentUser);
+      loadVisuals(currentUser.uid);
+    } else {
+      // Listen for auth state changes
+      const unsubscribe = authService.onAuthStateChange((firebaseUser) => {
+        if (firebaseUser) {
+          setUser(firebaseUser);
+          loadVisuals(firebaseUser.uid);
+        } else {
+          setLoading(false);
+          setError('Utilisateur non authentifié');
+        }
+      });
       
-      switch (sortBy) {
-        case "name":
-          comparison = a.name.localeCompare(b.name);
-          break;
-        case "date":
-          comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-          break;
-        case "downloads":
-          comparison = a.downloads - b.downloads;
-          break;
-        case "views":
-          comparison = a.views - b.views;
-          break;
+      return () => unsubscribe();
+    }
+  }, []);
+
+  const loadVisuals = useCallback(async (userId: string, append: boolean = false) => {
+    try {
+      if (!append) {
+        setLoading(true);
+        setError(null);
+      } else {
+        setLoadingMore(true);
       }
 
-      return sortOrder === "desc" ? -comparison : comparison;
-    });
+      console.log('[VisualLibrary] Loading visuals for user:', userId, {
+        projectFilter,
+        selectedFormat,
+        selectedTag,
+        searchQuery,
+        sortBy,
+        sortOrder,
+        append
+      });
 
-    setFilteredVisuals(filtered);
-  }, [visuals, searchQuery, selectedFormat, selectedTag, sortBy, sortOrder]);
+      // Build filters
+      const filters: VisualFilters = {};
+      if (projectFilter) filters.projectId = projectFilter;
+      if (selectedFormat !== "all") filters.format = selectedFormat;
+      if (selectedTag !== "all") filters.tags = [selectedTag];
+      if (searchQuery) filters.search = searchQuery;
+
+      console.log('[VisualLibrary] Applied filters:', filters);
+
+      // Build sort
+      const sort: VisualSort = {
+        field: sortBy === "date" ? "createdAt" : sortBy as any,
+        direction: sortOrder
+      };
+
+      // Build pagination
+      const pagination: PaginationOptions = {
+        limit: 20,
+        startAfter: append ? visuals[visuals.length - 1] : undefined
+      };
+
+      const result = await firestoreService.getUserVisuals(userId, filters, sort, pagination);
+
+      console.log('[VisualLibrary] Loaded visuals:', {
+        count: result.data.length,
+        hasMore: result.hasMore,
+        firstVisual: result.data[0] ? {
+          id: result.data[0].id,
+          name: result.data[0].name,
+          hasOriginalImageUrl: !!result.data[0].originalImageUrl,
+          hasThumnailUrl: !!result.data[0].thumbnailUrl
+        } : null
+      });
+
+      if (append) {
+        setVisuals(prev => [...prev, ...result.data]);
+      } else {
+        setVisuals(result.data);
+      }
+
+      setHasMore(result.hasMore);
+
+      // Track library viewed event
+      if (!append) {
+        trackEvent('library_viewed', {
+          event_category: 'dashboard',
+          event_label: 'library_page_view',
+          custom_parameters: {
+            total_visuals: result.data.length,
+            projectFilter: projectFilter || 'none'
+          }
+        });
+      }
+    } catch (error) {
+      console.error('[VisualLibrary] Error loading visuals:', error);
+      setError('Erreur lors du chargement de la bibliothèque');
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }, [projectFilter, selectedFormat, selectedTag, searchQuery, sortBy, sortOrder, visuals]);
+
+  // Re-filter visuals when filters change
+  useEffect(() => {
+    if (user) {
+      loadVisuals(user.uid);
+    }
+  }, [selectedFormat, selectedTag, sortBy, sortOrder]);
+
+  // Handle search with debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (user && searchQuery !== undefined) {
+        loadVisuals(user.uid);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Set filtered visuals to all visuals (filtering is now done server-side)
+  useEffect(() => {
+    setFilteredVisuals(visuals);
+  }, [visuals]);
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
@@ -199,61 +205,101 @@ export function VisualLibrary() {
     });
   };
 
-  const handleVisualClick = (visual: Visual) => {
+  const handleVisualClick = async (visual: Visual) => {
     setSelectedVisual(visual);
+    
+    // Increment view count
+    try {
+      await firestoreService.incrementVisualStats(visual.id, { views: 1 });
+      
+      // Update local state
+      setVisuals(prev => prev.map(v => 
+        v.id === visual.id ? { ...v, views: v.views + 1 } : v
+      ));
+    } catch (error) {
+      console.error('Error incrementing view count:', error);
+    }
     
     trackImageGeneration.imageViewed({
       imageIndex: visuals.indexOf(visual),
-      productType: visual.projectName
+      productType: visual.name
     });
   };
 
-  const handleDownload = (visual: Visual) => {
-    // TODO: Implement actual download
-    console.log('Downloading:', visual);
-    
-    trackImageGeneration.imageDownloaded({
-      imageIndex: visuals.indexOf(visual),
-      productType: visual.projectName,
-      filename: visual.name
-    });
-    
-    // Update download count
-    setVisuals(prev => prev.map(v => 
-      v.id === visual.id ? { ...v, downloads: v.downloads + 1 } : v
-    ));
-  };
-
-  const handleToggleFavorite = (visual: Visual) => {
-    setVisuals(prev => prev.map(v => 
-      v.id === visual.id ? { ...v, isFavorite: !v.isFavorite } : v
-    ));
-
-    trackEvent('library_favorite_toggled', {
-      event_category: 'dashboard',
-      event_label: visual.isFavorite ? 'unfavorited' : 'favorited',
-      custom_parameters: {
-        visual_id: visual.id
-      }
-    });
-  };
-
-  const handleDeleteVisual = (visual: Visual) => {
-    if (confirm(`Êtes-vous sûr de vouloir supprimer "${visual.name}" ?`)) {
-      setVisuals(prev => prev.filter(v => v.id !== visual.id));
+  const handleDownload = async (visual: Visual) => {
+    try {
+      // Increment download count in Firebase
+      await firestoreService.incrementVisualStats(visual.id, { downloads: 1 });
       
-      trackEvent('library_visual_deleted', {
+      // Track download analytics
+      trackImageGeneration.imageDownloaded({
+        imageIndex: visuals.indexOf(visual),
+        productType: visual.name,
+        filename: visual.name
+      });
+      
+      // Update local state
+      setVisuals(prev => prev.map(v => 
+        v.id === visual.id ? { ...v, downloads: v.downloads + 1 } : v
+      ));
+
+      // Create download link
+      const link = document.createElement('a');
+      link.href = visual.originalImageUrl;
+      link.download = `${visual.name}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Error downloading image:', error);
+    }
+  };
+
+  const handleToggleFavorite = async (visual: Visual) => {
+    try {
+      const newFavoriteStatus = await firestoreService.toggleVisualFavorite(visual.id);
+      
+      // Update local state
+      setVisuals(prev => prev.map(v => 
+        v.id === visual.id ? { ...v, isFavorite: newFavoriteStatus } : v
+      ));
+
+      trackEvent('library_favorite_toggled', {
         event_category: 'dashboard',
-        event_label: 'visual_deleted',
+        event_label: newFavoriteStatus ? 'favorited' : 'unfavorited',
         custom_parameters: {
           visual_id: visual.id
         }
       });
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
     }
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+  const handleDeleteVisual = async (visual: Visual) => {
+    if (confirm(`Êtes-vous sûr de vouloir supprimer "${visual.name}" ?`)) {
+      try {
+        await firestoreService.deleteVisual(visual.id);
+        
+        // Update local state
+        setVisuals(prev => prev.filter(v => v.id !== visual.id));
+        
+        trackEvent('library_visual_deleted', {
+          event_category: 'dashboard',
+          event_label: 'visual_deleted',
+          custom_parameters: {
+            visual_id: visual.id
+          }
+        });
+      } catch (error) {
+        console.error('Error deleting visual:', error);
+        alert('Erreur lors de la suppression');
+      }
+    }
+  };
+
+  const formatDate = (dateString: string | Date) => {
+    const date = typeof dateString === 'string' ? new Date(dateString) : dateString.toDate ? dateString.toDate() : dateString;
     return date.toLocaleDateString('fr-FR', { 
       day: 'numeric', 
       month: 'short',
@@ -261,13 +307,64 @@ export function VisualLibrary() {
     });
   };
 
+  const loadMoreVisuals = () => {
+    if (user && hasMore && !loadingMore) {
+      loadVisuals(user.uid, true);
+    }
+  };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
+            <p className="text-muted-foreground">Chargement de votre bibliothèque...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error || !user) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <AlertCircle className="w-8 h-8 text-destructive mx-auto mb-4" />
+            <p className="text-muted-foreground mb-4">
+              {error || 'Vous devez être connecté pour accéder à la bibliothèque'}
+            </p>
+            <div className="flex gap-2 justify-center">
+              {error && (
+                <Button variant="outline" onClick={() => user && loadVisuals(user.uid)}>
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Réessayer
+                </Button>
+              )}
+              {!user && (
+                <Button asChild>
+                  <Link href="/auth/signin">
+                    Se connecter
+                  </Link>
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const renderGridView = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
       {filteredVisuals.map((visual) => (
         <Card key={visual.id} className="group overflow-hidden hover:shadow-lg transition-shadow">
           <div className="relative aspect-square bg-sophisticated-gray-100 overflow-hidden">
             <Image
-              src={visual.thumbnail}
+              src={visual.thumbnailUrl || visual.originalImageUrl}
               alt={visual.name}
               fill
               className="object-cover cursor-pointer transition-transform group-hover:scale-105"
@@ -314,7 +411,7 @@ export function VisualLibrary() {
             {/* Format badge */}
             <div className="absolute top-2 left-2">
               <span className="bg-black/70 text-white text-xs px-2 py-1 rounded">
-                {visual.format}
+                {Array.isArray(visual.format) ? visual.format[0] : visual.format}
               </span>
             </div>
           </div>
@@ -376,7 +473,7 @@ export function VisualLibrary() {
           <div className="flex items-center space-x-4">
             <div className="w-20 h-20 bg-sophisticated-gray-100 rounded-lg overflow-hidden flex-shrink-0">
               <Image
-                src={visual.thumbnail}
+                src={visual.thumbnailUrl || visual.originalImageUrl}
                 alt={visual.name}
                 fill
                 className="object-cover cursor-pointer"
@@ -398,7 +495,7 @@ export function VisualLibrary() {
               </div>
               
               <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mb-2">
-                <span>{visual.format}</span>
+                <span>{Array.isArray(visual.format) ? visual.format.join(', ') : visual.format}</span>
                 <span className="flex items-center">
                   <Calendar className="w-3 h-3 mr-1" />
                   {formatDate(visual.createdAt)}
@@ -448,19 +545,52 @@ export function VisualLibrary() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground">
-            Bibliothèque de visuels
+            {projectFilter ? 'Visuels du projet' : 'Bibliothèque de visuels'}
           </h1>
           <p className="text-muted-foreground mt-1">
             {filteredVisuals.length} visuel(s) • {visuals.reduce((sum, v) => sum + v.downloads, 0)} téléchargements
+            {projectFilter && (
+              <span className="ml-2 px-2 py-1 bg-primary/10 text-primary rounded text-xs">
+                Filtré par projet
+              </span>
+            )}
           </p>
         </div>
-        
-        <Button asChild size="lg" className="bg-gradient-ocean-deep hover:opacity-90 text-white">
-          <Link href="/dashboard/create">
-            <Plus className="w-5 h-5 mr-2" />
-            Créer un nouveau visuel
-          </Link>
-        </Button>
+
+        <div className="flex gap-2">
+          {projectFilter && (
+            <Button variant="outline" asChild>
+              <Link href="/dashboard/library">
+                Voir tous les visuels
+              </Link>
+            </Button>
+          )}
+
+          {/* Debug Button - Remove in production */}
+          {process.env.NODE_ENV === 'development' && (
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={async () => {
+                if (user) {
+                  console.log('[VisualLibrary] Manual debug refresh');
+                  await loadVisuals(user.uid);
+                  console.log('[VisualLibrary] Debug refresh completed. Current visuals:', visuals.length);
+                }
+              }}
+              className="text-sm"
+            >
+              🔍 Debug Refresh
+            </Button>
+          )}
+
+          <Button asChild size="lg" className="bg-gradient-ocean-deep hover:opacity-90 text-white">
+            <Link href="/dashboard/create">
+              <Plus className="w-5 h-5 mr-2" />
+              Créer un nouveau visuel
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Filters and Controls */}
@@ -569,6 +699,24 @@ export function VisualLibrary() {
       ) : (
         <>
           {viewMode === "grid" ? renderGridView() : renderListView()}
+          
+          {/* Load More Button */}
+          {hasMore && (
+            <div className="flex justify-center mt-8">
+              <Button 
+                variant="outline" 
+                onClick={loadMoreVisuals}
+                disabled={loadingMore}
+              >
+                {loadingMore ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Plus className="w-4 h-4 mr-2" />
+                )}
+                {loadingMore ? 'Chargement...' : 'Charger plus'}
+              </Button>
+            </div>
+          )}
         </>
       )}
 
@@ -577,7 +725,7 @@ export function VisualLibrary() {
         <ImageModal
           isOpen={true}
           onClose={() => setSelectedVisual(null)}
-          imageUrl={selectedVisual.fullSizeUrl}
+          imageUrl={selectedVisual.originalImageUrl}
           imageAlt={selectedVisual.name}
           onDownload={() => handleDownload(selectedVisual)}
         />
