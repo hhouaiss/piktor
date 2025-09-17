@@ -85,14 +85,14 @@ class SimpleServerFirestoreService {
     if (!userDoc.exists()) {
       const defaultUserData: FirestoreUser = {
         email: userData.email || '',
-        displayName: userData.displayName || null,
-        photoURL: userData.photoURL || null,
+        displayName: userData.displayName || undefined,
+        photoURL: userData.photoURL || undefined,
         createdAt: serverTimestamp() as any,
         updatedAt: serverTimestamp() as any,
         usage: {
           creditsUsed: 0,
           creditsTotal: 50, // Default free tier
-          resetDate: this.getNextMonthDate()
+          resetDate: serverTimestamp() as any
         },
         preferences: {
           language: 'fr',
@@ -155,9 +155,9 @@ class SimpleServerFirestoreService {
     const project: FirestoreProject = {
       userId,
       name: projectData.name || 'Nouveau Projet',
-      description: projectData.description || null,
+      description: projectData.description || undefined,
       category: projectData.category || 'product',
-      productInfo: projectData.productInfo || null,
+      productInfo: projectData.productInfo || undefined,
       defaultStyle: projectData.defaultStyle || 'modern',
       defaultEnvironment: projectData.defaultEnvironment || 'neutral',
       preferredFormats: projectData.preferredFormats || ['instagram_post'],
@@ -459,8 +459,8 @@ class SimpleServerFirestoreService {
   /**
    * Get recent projects for dashboard
    */
-  async getRecentProjects(userId: string, limit: number = 5): Promise<RecentProject[]> {
-    const projectsResult = await this.getUserProjects(userId, { limit });
+  async getRecentProjects(userId: string, limitCount: number = 5): Promise<RecentProject[]> {
+    const projectsResult = await this.getUserProjects(userId, { limit: limitCount });
     const recentProjects: RecentProject[] = [];
 
     for (const project of projectsResult.data) {

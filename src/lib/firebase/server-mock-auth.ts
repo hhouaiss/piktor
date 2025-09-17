@@ -57,6 +57,13 @@ class MockAuthFirestoreService {
   private async initializeAuth(): Promise<void> {
     if (this.authInitialized) return;
 
+    // Skip auth initialization during build time
+    if (process.env.NODE_ENV === 'production' && !process.env.VERCEL_ENV) {
+      console.log('Skipping Firebase auth during build time');
+      this.authInitialized = true;
+      return;
+    }
+
     try {
       // Sign in anonymously to get authentication context
       await signInAnonymously(auth);
@@ -65,6 +72,7 @@ class MockAuthFirestoreService {
     } catch (error) {
       console.error('Failed to initialize Firebase auth:', error);
       // Continue without auth - rules should be permissive
+      this.authInitialized = true; // Mark as initialized to prevent retries
     }
   }
 
@@ -461,28 +469,6 @@ class MockAuthFirestoreService {
     };
   }
 
-  async getUserProjects(userId: string, pagination: PaginationOptions): Promise<PaginatedResult<Project>> {
-    await this.ensureAuth();
-
-    const projectsQuery = query(
-      collection(db, this.PROJECTS_COLLECTION),
-      where('userId', '==', userId),
-      orderBy('createdAt', 'desc'),
-      limit(pagination.limit)
-    );
-
-    const snapshot = await getDocs(projectsQuery);
-    const projects = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    })) as Project[];
-
-    return {
-      data: projects,
-      hasMore: snapshot.docs.length === pagination.limit,
-      total: projects.length
-    };
-  }
 
   async getRecentProjects(userId: string, limitCount: number = 5): Promise<RecentProject[]> {
     const projectsResult = await this.getUserProjects(userId, { limit: limitCount });

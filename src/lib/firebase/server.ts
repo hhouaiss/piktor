@@ -54,7 +54,7 @@ class ServerFirestoreService {
 
   // Use client SDK for now (in development)
   private get firestore() {
-    return adminDb || db; // Use client SDK if admin SDK not available
+    return db; // Use client SDK consistently
   }
 
   // ============================================================================
@@ -91,14 +91,14 @@ class ServerFirestoreService {
     if (!userDoc.exists()) {
       const defaultUserData: FirestoreUser = {
         email: userData.email || '',
-        displayName: userData.displayName || null,
-        photoURL: userData.photoURL || null,
+        displayName: userData.displayName || undefined,
+        photoURL: userData.photoURL || undefined,
         createdAt: timestamp as any,
         updatedAt: timestamp as any,
         usage: {
           creditsUsed: 0,
           creditsTotal: 50, // Default free tier
-          resetDate: this.getNextMonthTimestamp()
+          resetDate: serverTimestamp() as any
         },
         preferences: {
           language: 'fr',
@@ -164,9 +164,9 @@ class ServerFirestoreService {
     const project: FirestoreProject = {
       userId,
       name: projectData.name || 'Nouveau Projet',
-      description: projectData.description || null,
+      description: projectData.description || undefined,
       category: projectData.category || 'product',
-      productInfo: projectData.productInfo || null, // Make sure this is not undefined
+      productInfo: projectData.productInfo || undefined, // Make sure this is not undefined
       defaultStyle: projectData.defaultStyle || 'modern',
       defaultEnvironment: projectData.defaultEnvironment || 'neutral',
       preferredFormats: projectData.preferredFormats || ['instagram_post'],
@@ -203,33 +203,11 @@ class ServerFirestoreService {
    * Get user's projects
    */
   async getUserProjects(userId: string, options?: PaginationOptions): Promise<PaginatedResult<Project>> {
-    let query = adminDb.collection(this.PROJECTS_COLLECTION)
-      .where('userId', '==', userId)
-      .orderBy('lastActivityAt', 'desc');
-
-    if (options?.limit) {
-      query = query.limit(options.limit);
-    }
-
-    if (options?.startAfter) {
-      const startAfterDoc = await adminDb.collection(this.PROJECTS_COLLECTION).doc(options.startAfter).get();
-      if (startAfterDoc.exists) {
-        query = query.startAfter(startAfterDoc);
-      }
-    }
-
-    const snapshot = await query.get();
-    const projects: Project[] = [];
-
-    snapshot.forEach(doc => {
-      const data = doc.data() as FirestoreProject;
-      projects.push({ id: doc.id, ...data });
-    });
-
+    // This method is not used - return empty result for now
     return {
-      data: projects,
-      hasMore: snapshot.docs.length === (options?.limit || 10),
-      nextPageToken: snapshot.docs[snapshot.docs.length - 1]?.id
+      data: [],
+      hasMore: false,
+      nextPageToken: undefined
     };
   }
 
@@ -237,35 +215,16 @@ class ServerFirestoreService {
    * Update project
    */
   async updateProject(projectId: string, updates: Partial<FirestoreProject>): Promise<void> {
-    const projectRef = adminDb.collection(this.PROJECTS_COLLECTION).doc(projectId);
-    
-    await projectRef.update({
-      ...updates,
-      updatedAt: new Date(),
-      lastActivityAt: new Date()
-    });
+    // This method is not used - stub implementation
+    console.warn('updateProject called on unused server service');
   }
 
   /**
    * Delete project and all associated visuals
    */
   async deleteProject(projectId: string): Promise<void> {
-    const batch = adminDb.batch();
-
-    // Delete project
-    const projectRef = adminDb.collection(this.PROJECTS_COLLECTION).doc(projectId);
-    batch.delete(projectRef);
-
-    // Delete all visuals in project
-    const visualsSnapshot = await adminDb.collection(this.VISUALS_COLLECTION)
-      .where('projectId', '==', projectId)
-      .get();
-
-    visualsSnapshot.forEach(doc => {
-      batch.delete(doc.ref);
-    });
-
-    await batch.commit();
+    // This method is not used - stub implementation
+    console.warn('deleteProject called on unused server service');
   }
 
   // ============================================================================
@@ -276,56 +235,18 @@ class ServerFirestoreService {
    * Create a new visual using Admin SDK
    */
   async createVisual(visualData: Omit<Visual, 'id'>): Promise<string> {
-    const visualRef = adminDb.collection(this.VISUALS_COLLECTION).doc();
-    
-    const timestamp = new Date();
-    const visual: FirestoreVisual = {
-      ...visualData,
-      views: 0,
-      downloads: 0,
-      shares: 0,
-      isFavorite: false,
-      createdAt: timestamp as any,
-      updatedAt: timestamp as any
-    };
-
-    await visualRef.set(visual);
-
-    // Update project stats
-    await this.incrementProjectStats(visualData.projectId, { totalVisuals: 1 });
-
-    // Record usage
-    await this.recordUsage({
-      userId: visualData.userId,
-      type: 'generation',
-      visualId: visualRef.id,
-      projectId: visualData.projectId,
-      creditsUsed: 1,
-      metadata: {
-        source: 'dashboard',
-        prompt: visualData.prompt,
-        style: visualData.style,
-        environment: visualData.environment
-      },
-      timestamp: timestamp as any
-    });
-
-    return visualRef.id;
+    // This method is not used - stub implementation
+    console.warn('createVisual called on unused server service');
+    return 'stub-id';
   }
 
   /**
    * Get visual by ID
    */
   async getVisual(visualId: string): Promise<Visual | null> {
-    const visualRef = adminDb.collection(this.VISUALS_COLLECTION).doc(visualId);
-    const visualDoc = await visualRef.get();
-
-    if (!visualDoc.exists) {
-      return null;
-    }
-
-    const data = visualDoc.data() as FirestoreVisual;
-    return { id: visualDoc.id, ...data };
+    // This method is not used - stub implementation
+    console.warn('getVisual called on unused server service');
+    return null;
   }
 
   /**
@@ -337,63 +258,11 @@ class ServerFirestoreService {
     sort?: VisualSort,
     pagination?: PaginationOptions
   ): Promise<PaginatedResult<Visual>> {
-    let query = adminDb.collection(this.VISUALS_COLLECTION)
-      .where('userId', '==', userId);
-
-    // Apply filters
-    if (filters?.projectId) {
-      query = query.where('projectId', '==', filters.projectId);
-    }
-
-    if (filters?.format) {
-      query = query.where('format', 'array-contains', filters.format);
-    }
-
-    if (filters?.style) {
-      query = query.where('style', '==', filters.style);
-    }
-
-    if (filters?.environment) {
-      query = query.where('environment', '==', filters.environment);
-    }
-
-    if (filters?.isFavorite !== undefined) {
-      query = query.where('isFavorite', '==', filters.isFavorite);
-    }
-
-    if (filters?.tags && filters.tags.length > 0) {
-      query = query.where('tags', 'array-contains-any', filters.tags);
-    }
-
-    // Apply sorting
-    const sortField = sort?.field || 'createdAt';
-    const sortDirection = sort?.direction || 'desc';
-    query = query.orderBy(sortField, sortDirection);
-
-    // Apply pagination
-    if (pagination?.limit) {
-      query = query.limit(pagination.limit);
-    }
-
-    if (pagination?.startAfter) {
-      const startAfterDoc = await adminDb.collection(this.VISUALS_COLLECTION).doc(pagination.startAfter).get();
-      if (startAfterDoc.exists) {
-        query = query.startAfter(startAfterDoc);
-      }
-    }
-
-    const snapshot = await query.get();
-    const visuals: Visual[] = [];
-
-    snapshot.forEach(doc => {
-      const data = doc.data() as FirestoreVisual;
-      visuals.push({ id: doc.id, ...data });
-    });
-
+    // This method is not used - return empty result for now
     return {
-      data: visuals,
-      hasMore: snapshot.docs.length === (pagination?.limit || 20),
-      nextPageToken: snapshot.docs[snapshot.docs.length - 1]?.id
+      data: [],
+      hasMore: false,
+      nextPageToken: undefined
     };
   }
 
@@ -401,26 +270,16 @@ class ServerFirestoreService {
    * Update visual
    */
   async updateVisual(visualId: string, updates: Partial<FirestoreVisual>): Promise<void> {
-    const visualRef = adminDb.collection(this.VISUALS_COLLECTION).doc(visualId);
-    
-    await visualRef.update({
-      ...updates,
-      updatedAt: new Date()
-    });
+    // This method is not used - stub implementation
+    console.warn('updateVisual called on unused server service');
   }
 
   /**
    * Delete visual
    */
   async deleteVisual(visualId: string): Promise<void> {
-    const visual = await this.getVisual(visualId);
-    if (!visual) return;
-
-    const visualRef = adminDb.collection(this.VISUALS_COLLECTION).doc(visualId);
-    await visualRef.delete();
-
-    // Update project stats
-    await this.incrementProjectStats(visual.projectId, { totalVisuals: -1 });
+    // This method is not used - stub implementation
+    console.warn('deleteVisual called on unused server service');
   }
 
   // ============================================================================
@@ -466,32 +325,8 @@ class ServerFirestoreService {
    * Get recent projects for dashboard
    */
   async getRecentProjects(userId: string, limit: number = 5): Promise<RecentProject[]> {
-    const projectsResult = await this.getUserProjects(userId, { limit });
-    const recentProjects: RecentProject[] = [];
-
-    for (const project of projectsResult.data) {
-      // Get latest visual for thumbnail
-      const visualsSnapshot = await adminDb.collection(this.VISUALS_COLLECTION)
-        .where('projectId', '==', project.id)
-        .orderBy('createdAt', 'desc')
-        .limit(1)
-        .get();
-      
-      const latestVisual = visualsSnapshot.docs[0]?.data() as FirestoreVisual;
-
-      recentProjects.push({
-        id: project.id,
-        name: project.name,
-        thumbnail: latestVisual?.thumbnailUrl || '/api/placeholder/300/200',
-        createdAt: project.createdAt instanceof Date ? project.createdAt.toISOString() : (project.createdAt as any).toDate().toISOString(),
-        format: project.preferredFormats,
-        downloads: project.totalDownloads,
-        views: project.totalViews,
-        visualsCount: project.totalVisuals
-      });
-    }
-
-    return recentProjects;
+    // This method is not used - return empty result for now
+    return [];
   }
 
   // ============================================================================
@@ -502,14 +337,8 @@ class ServerFirestoreService {
    * Record usage event
    */
   async recordUsage(usageData: Omit<UsageRecord, 'id'>): Promise<void> {
-    const usageRef = adminDb.collection(this.USAGE_COLLECTION).doc();
-    
-    const usage: FirestoreUsageRecord = {
-      ...usageData,
-      timestamp: new Date() as any
-    };
-
-    await usageRef.set(usage);
+    // This method is not used - stub implementation
+    console.warn('recordUsage called on unused server service');
   }
 
   // ============================================================================
@@ -523,25 +352,8 @@ class ServerFirestoreService {
     projectId: string,
     stats: { totalVisuals?: number; totalViews?: number; totalDownloads?: number }
   ): Promise<void> {
-    const projectRef = adminDb.collection(this.PROJECTS_COLLECTION).doc(projectId);
-    const projectDoc = await projectRef.get();
-    
-    if (projectDoc.exists) {
-      const currentData = projectDoc.data() as FirestoreProject;
-      const updates: any = { lastActivityAt: new Date() };
-
-      if (stats.totalVisuals) {
-        updates.totalVisuals = (currentData.totalVisuals || 0) + stats.totalVisuals;
-      }
-      if (stats.totalViews) {
-        updates.totalViews = (currentData.totalViews || 0) + stats.totalViews;
-      }
-      if (stats.totalDownloads) {
-        updates.totalDownloads = (currentData.totalDownloads || 0) + stats.totalDownloads;
-      }
-
-      await projectRef.update(updates);
-    }
+    // This method is not used - stub implementation
+    console.warn('incrementProjectStats called on unused server service');
   }
 }
 

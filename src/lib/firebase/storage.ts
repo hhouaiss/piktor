@@ -142,7 +142,7 @@ class StorageService {
 
     // Get download URL for original with retry logic
     console.log('[StorageService] Getting download URL...');
-    let originalUrl: string;
+    let originalUrl: string = '';
     let fileMetadata: any;
 
     try {
