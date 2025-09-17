@@ -291,9 +291,9 @@ ${productionPromptResult.prompt.split('🔧 PRODUCTION QUALITY ENHANCEMENT:')[1]
             contextPreset: productionSpecs.generationParams.contextPreset,
             lighting: settings.lighting,
             angle: settings.angle,
-            customPrompt: settings.customPrompt
+            ...(settings.customPrompt && { customPrompt: settings.customPrompt })
           },
-          customPrompt: settings.customPrompt
+          ...(settings.customPrompt && { customPrompt: settings.customPrompt })
         };
         
         const generatedImageData: GeneratedImageData[] = variations.map((variation, index) => ({
