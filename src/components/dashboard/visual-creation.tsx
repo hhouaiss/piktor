@@ -32,7 +32,7 @@ import {
   AlertCircle
 } from "lucide-react";
 import { trackEvent, trackImageGeneration } from "@/lib/analytics";
-import { authenticatedPost, getAuthHeaders } from "@/lib/api-client";
+import { authenticatedPost } from "@/lib/api-client";
 import { ProductSpecs, GeneratedImage as GeneratedImageType } from "@/components/image-generator/types";
 import { validateImageUrl, generateSafeFilename, getDownloadErrorMessage, downloadWithRetry } from "@/lib/download-utils";
 import { cn } from "@/lib/utils";

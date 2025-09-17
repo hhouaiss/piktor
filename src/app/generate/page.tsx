@@ -218,7 +218,7 @@ export default function GeneratePage() {
       };
 
       // Use new direct generation approach
-      const authHeaders = getAuthHeaders();
+      const authHeaders = await getAuthHeaders();
       const response = await fetch('/api/generate-images-direct', {
         method: 'POST',
         headers: {
@@ -281,7 +281,7 @@ export default function GeneratePage() {
 
     try {
       // Use direct generation for regeneration
-      const authHeaders = getAuthHeaders();
+      const authHeaders = await getAuthHeaders();
       const response = await fetch('/api/generate-images-direct', {
         method: 'POST',
         headers: {

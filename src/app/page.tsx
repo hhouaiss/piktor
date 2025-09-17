@@ -222,7 +222,7 @@ function HomeContent() {
         }
       };
 
-      const authHeaders = getAuthHeaders();
+      const authHeaders = await getAuthHeaders();
       const response = await fetch('/api/generate-images-direct', {
         method: 'POST',
         headers: {

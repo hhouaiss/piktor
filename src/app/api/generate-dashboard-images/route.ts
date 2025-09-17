@@ -46,13 +46,11 @@ async function checkServerSideUsageLimit(request: NextRequest): Promise<{ allowe
 
   // Preview branch: unlimited generations (but include userId for Firebase)
   if (environment === 'preview') {
-    console.log('[checkServerSideUsageLimit] Preview environment detected - unlimited access with Firebase integration');
     return { allowed: true, environment, userId: userId || undefined };
   }
 
   // Development: unlimited generations (but include userId for Firebase)
   if (environment === 'development') {
-    console.log('[checkServerSideUsageLimit] Development environment detected - unlimited access with Firebase integration');
     return { allowed: true, environment, userId: userId || undefined };
   }
   
@@ -273,7 +271,7 @@ ${productionPromptResult.prompt.split('🔧 PRODUCTION QUALITY ENHANCEMENT:')[1]
     }
 
     // Save generated images to Firebase if user is authenticated
-    let firebaseResults = [];
+    let firebaseResults: Array<{success: boolean, visualId?: string, projectId?: string, error?: string}> = [];
     if (usageLimitCheck.userId) {
       console.log('[Dashboard API] Attempting Firebase save for user:', usageLimitCheck.userId);
       
@@ -296,11 +294,13 @@ ${productionPromptResult.prompt.split('🔧 PRODUCTION QUALITY ENHANCEMENT:')[1]
           ...(settings.customPrompt && { customPrompt: settings.customPrompt })
         };
         
-        const generatedImageData: GeneratedImageData[] = variations.map((variation, index) => ({
-          imageData: variation.imageData,
-          format: settings.formats[index] || settings.formats[0],
-          prompt: dashboardPrompt
-        }));
+        const generatedImageData: GeneratedImageData[] = variations
+          .filter((variation) => variation.imageData)
+          .map((variation, index) => ({
+            imageData: variation.imageData!,
+            format: settings.formats[index] || settings.formats[0],
+            prompt: dashboardPrompt
+          }));
         
         console.log('[Dashboard API] Generation request prepared:', {
           userId: generationRequest.userId,
@@ -362,7 +362,7 @@ ${productionPromptResult.prompt.split('🔧 PRODUCTION QUALITY ENHANCEMENT:')[1]
       settings: settings,
       variations: await Promise.all(variations.map(async (variation, index) => {
         // Get Firebase Storage URL if image was saved successfully
-        let finalImageUrl = variation.url; // Default to data URL from Gemini
+        let finalImageUrl = variation.url || ''; // Default to data URL from Gemini
         let urlSource = 'data_url_fallback';
 
         console.log(`[Dashboard API] Processing variation ${index + 1}:`, {
@@ -377,20 +377,23 @@ ${productionPromptResult.prompt.split('🔧 PRODUCTION QUALITY ENHANCEMENT:')[1]
             // Add a small delay to ensure Firestore consistency
             await new Promise(resolve => setTimeout(resolve, 100));
 
-            const visual = await firestoreService.getVisual(firebaseResults[index].visualId);
-            console.log(`[Dashboard API] Retrieved visual ${index + 1} from Firestore:`, {
-              visualExists: !!visual,
-              visualId: visual?.id,
-              hasOriginalImageUrl: !!visual?.originalImageUrl,
-              originalImageUrl: visual?.originalImageUrl ? visual.originalImageUrl.substring(0, 100) + '...' : 'none'
-            });
+            const visualId = firebaseResults[index].visualId;
+            if (visualId) {
+              const visual = await firestoreService.getVisual(visualId);
+              console.log(`[Dashboard API] Retrieved visual ${index + 1} from Firestore:`, {
+                visualExists: !!visual,
+                visualId: visual?.id,
+                hasOriginalImageUrl: !!visual?.originalImageUrl,
+                originalImageUrl: visual?.originalImageUrl ? visual.originalImageUrl.substring(0, 100) + '...' : 'none'
+              });
 
-            if (visual?.originalImageUrl) {
-              finalImageUrl = visual.originalImageUrl;
-              urlSource = 'firebase_storage';
-              console.log(`[Dashboard API] Using Firebase Storage URL for variation ${index + 1}:`, finalImageUrl.substring(0, 100) + '...');
-            } else {
-              console.warn(`[Dashboard API] No originalImageUrl found for variation ${index + 1}, using data URL fallback`);
+              if (visual?.originalImageUrl) {
+                finalImageUrl = visual.originalImageUrl;
+                urlSource = 'firebase_storage';
+                console.log(`[Dashboard API] Using Firebase Storage URL for variation ${index + 1}:`, finalImageUrl.substring(0, 100) + '...');
+              } else {
+                console.warn(`[Dashboard API] No originalImageUrl found for variation ${index + 1}, using data URL fallback`);
+              }
             }
           } catch (error) {
             console.error(`[Dashboard API] Failed to retrieve Firebase Storage URL for variation ${index + 1}:`, {

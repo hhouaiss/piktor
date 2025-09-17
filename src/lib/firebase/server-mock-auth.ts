@@ -1,34 +1,38 @@
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  query,
-  where,
-  orderBy,
-  limit,
-  startAfter,
-  serverTimestamp,
-  onSnapshot,
-  writeBatch,
-  increment,
-  arrayUnion,
-  arrayRemove,
-  Timestamp,
-  type DocumentSnapshot,
-  type QuerySnapshot,
-  type QueryConstraint
-} from 'firebase/firestore';
+/**
+ * Server-side Firebase service with mock authentication
+ * 
+ * This service uses the regular Firebase Client SDK but simulates
+ * authentication for server-side operations in development.
+ */
 
-import { db } from './config';
+import { db, auth } from './config';
+import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import { 
+  collection, 
+  doc, 
+  getDoc, 
+  getDocs, 
+  setDoc, 
+  updateDoc, 
+  deleteDoc, 
+  addDoc,
+  query, 
+  where, 
+  orderBy, 
+  limit, 
+  startAfter, 
+  writeBatch,
+  serverTimestamp,
+  Timestamp,
+  increment
+} from 'firebase/firestore';
 import type {
+  User,
   Visual,
   Project,
   UsageRecord,
   UserStats,
+  FirestoreUser,
   FirestoreVisual,
   FirestoreProject,
   FirestoreUsageRecord,
@@ -41,7 +45,34 @@ import type {
   RecentProject
 } from './types';
 
-class FirestoreService {
+class MockAuthFirestoreService {
+  private authInitialized = false;
+  private authPromise: Promise<void>;
+
+  constructor() {
+    this.authPromise = this.initializeAuth();
+  }
+
+  // Initialize anonymous authentication for server-side operations
+  private async initializeAuth(): Promise<void> {
+    if (this.authInitialized) return;
+
+    try {
+      // Sign in anonymously to get authentication context
+      await signInAnonymously(auth);
+      this.authInitialized = true;
+      console.log('🔥 Firebase authenticated for server-side operations');
+    } catch (error) {
+      console.error('Failed to initialize Firebase auth:', error);
+      // Continue without auth - rules should be permissive
+    }
+  }
+
+  // Ensure auth is initialized before any operation
+  private async ensureAuth(): Promise<void> {
+    await this.authPromise;
+  }
+
   // Collections
   private readonly USERS_COLLECTION = 'users';
   private readonly PROJECTS_COLLECTION = 'projects';
@@ -50,21 +81,100 @@ class FirestoreService {
   private readonly STATS_COLLECTION = 'user_stats';
 
   // ============================================================================
+  // USER OPERATIONS
+  // ============================================================================
+
+  async getUserData(userId: string): Promise<User> {
+    await this.ensureAuth();
+    
+    const userRef = doc(db, this.USERS_COLLECTION, userId);
+    const userDoc = await getDoc(userRef);
+
+    if (!userDoc.exists()) {
+      throw new Error('User document not found');
+    }
+
+    const userData = userDoc.data() as FirestoreUser;
+    return {
+      id: userId,
+      ...userData
+    };
+  }
+
+  async ensureUserDocument(userId: string, userData: Partial<FirestoreUser>): Promise<void> {
+    await this.ensureAuth();
+    
+    const userRef = doc(db, this.USERS_COLLECTION, userId);
+    const userDoc = await getDoc(userRef);
+
+    if (!userDoc.exists()) {
+      const defaultUserData: FirestoreUser = {
+        email: userData.email || '',
+        displayName: userData.displayName || undefined,
+        photoURL: userData.photoURL || undefined,
+        createdAt: serverTimestamp() as any,
+        updatedAt: serverTimestamp() as any,
+        usage: {
+          creditsUsed: 0,
+          creditsTotal: 50,
+          resetDate: serverTimestamp() as any
+        },
+        preferences: {
+          language: 'fr',
+          notifications: true,
+          theme: 'auto'
+        },
+        ...userData
+      };
+
+      await setDoc(userRef, defaultUserData);
+    } else {
+      await updateDoc(userRef, {
+        updatedAt: serverTimestamp(),
+        ...userData
+      });
+    }
+  }
+
+  private getNextMonthDate(): Date {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  }
+
+  async hasCredits(userId: string, creditsNeeded: number = 1): Promise<boolean> {
+    const userData = await this.getUserData(userId);
+    return (userData.usage.creditsTotal - userData.usage.creditsUsed) >= creditsNeeded;
+  }
+
+  async useCredits(userId: string, creditsUsed: number): Promise<void> {
+    const userRef = doc(db, this.USERS_COLLECTION, userId);
+    const userData = await this.getUserData(userId);
+    
+    const newCreditsUsed = userData.usage.creditsUsed + creditsUsed;
+    
+    if (newCreditsUsed > userData.usage.creditsTotal) {
+      throw new Error('Insufficient credits');
+    }
+
+    await updateDoc(userRef, {
+      'usage.creditsUsed': newCreditsUsed,
+      updatedAt: serverTimestamp()
+    });
+  }
+
+  // ============================================================================
   // PROJECT OPERATIONS
   // ============================================================================
 
-  /**
-   * Create a new project
-   */
   async createProject(userId: string, projectData: Partial<Project>): Promise<string> {
-    const projectRef = collection(db, this.PROJECTS_COLLECTION);
-
+    await this.ensureAuth();
+    
     const project: FirestoreProject = {
       userId,
       name: projectData.name || 'Nouveau Projet',
-      ...(projectData.description && { description: projectData.description }),
+      description: projectData.description || undefined,
       category: projectData.category || 'product',
-      ...(projectData.productInfo && { productInfo: projectData.productInfo }),
+      productInfo: projectData.productInfo || undefined,
       defaultStyle: projectData.defaultStyle || 'modern',
       defaultEnvironment: projectData.defaultEnvironment || 'neutral',
       preferredFormats: projectData.preferredFormats || ['instagram_post'],
@@ -73,19 +183,18 @@ class FirestoreService {
       totalVisuals: 0,
       totalViews: 0,
       totalDownloads: 0,
-      createdAt: serverTimestamp() as Timestamp,
-      updatedAt: serverTimestamp() as Timestamp,
-      lastActivityAt: serverTimestamp() as Timestamp
+      createdAt: serverTimestamp() as any,
+      updatedAt: serverTimestamp() as any,
+      lastActivityAt: serverTimestamp() as any
     };
 
-    const docRef = await addDoc(projectRef, project);
+    const docRef = await addDoc(collection(db, this.PROJECTS_COLLECTION), project);
     return docRef.id;
   }
 
-  /**
-   * Get project by ID
-   */
   async getProject(projectId: string): Promise<Project | null> {
+    await this.ensureAuth();
+    
     const projectRef = doc(db, this.PROJECTS_COLLECTION, projectId);
     const projectDoc = await getDoc(projectRef);
 
@@ -97,10 +206,9 @@ class FirestoreService {
     return { id: projectDoc.id, ...data };
   }
 
-  /**
-   * Get user's projects
-   */
   async getUserProjects(userId: string, options?: PaginationOptions): Promise<PaginatedResult<Project>> {
+    await this.ensureAuth();
+    
     let q = query(
       collection(db, this.PROJECTS_COLLECTION),
       where('userId', '==', userId),
@@ -112,7 +220,10 @@ class FirestoreService {
     }
 
     if (options?.startAfter) {
-      q = query(q, startAfter(options.startAfter));
+      const startAfterDoc = await getDoc(doc(db, this.PROJECTS_COLLECTION, options.startAfter));
+      if (startAfterDoc.exists()) {
+        q = query(q, startAfter(startAfterDoc));
+      }
     }
 
     const snapshot = await getDocs(q);
@@ -130,10 +241,9 @@ class FirestoreService {
     };
   }
 
-  /**
-   * Update project
-   */
   async updateProject(projectId: string, updates: Partial<FirestoreProject>): Promise<void> {
+    await this.ensureAuth();
+    
     const projectRef = doc(db, this.PROJECTS_COLLECTION, projectId);
     
     await updateDoc(projectRef, {
@@ -143,10 +253,9 @@ class FirestoreService {
     });
   }
 
-  /**
-   * Delete project and all associated visuals
-   */
   async deleteProject(projectId: string): Promise<void> {
+    await this.ensureAuth();
+    
     const batch = writeBatch(db);
 
     // Delete project
@@ -171,11 +280,8 @@ class FirestoreService {
   // VISUAL OPERATIONS
   // ============================================================================
 
-  /**
-   * Create a new visual
-   */
   async createVisual(visualData: Omit<Visual, 'id'>): Promise<string> {
-    const visualRef = collection(db, this.VISUALS_COLLECTION);
+    await this.ensureAuth();
     
     const visual: FirestoreVisual = {
       ...visualData,
@@ -183,11 +289,11 @@ class FirestoreService {
       downloads: 0,
       shares: 0,
       isFavorite: false,
-      createdAt: serverTimestamp() as Timestamp,
-      updatedAt: serverTimestamp() as Timestamp
+      createdAt: serverTimestamp() as any,
+      updatedAt: serverTimestamp() as any
     };
 
-    const docRef = await addDoc(visualRef, visual);
+    const docRef = await addDoc(collection(db, this.VISUALS_COLLECTION), visual);
 
     // Update project stats
     await this.incrementProjectStats(visualData.projectId, { totalVisuals: 1 });
@@ -205,16 +311,15 @@ class FirestoreService {
         style: visualData.style,
         environment: visualData.environment
       },
-      timestamp: serverTimestamp() as Timestamp
+      timestamp: serverTimestamp() as any
     });
 
     return docRef.id;
   }
 
-  /**
-   * Get visual by ID
-   */
   async getVisual(visualId: string): Promise<Visual | null> {
+    await this.ensureAuth();
+    
     const visualRef = doc(db, this.VISUALS_COLLECTION, visualId);
     const visualDoc = await getDoc(visualRef);
 
@@ -226,56 +331,59 @@ class FirestoreService {
     return { id: visualDoc.id, ...data };
   }
 
-  /**
-   * Get user's visuals with filters and pagination
-   */
   async getUserVisuals(
     userId: string,
     filters?: VisualFilters,
     sort?: VisualSort,
     pagination?: PaginationOptions
   ): Promise<PaginatedResult<Visual>> {
-    const constraints: QueryConstraint[] = [where('userId', '==', userId)];
+    await this.ensureAuth();
+    
+    let q = query(
+      collection(db, this.VISUALS_COLLECTION),
+      where('userId', '==', userId)
+    );
 
     // Apply filters
     if (filters?.projectId) {
-      constraints.push(where('projectId', '==', filters.projectId));
+      q = query(q, where('projectId', '==', filters.projectId));
     }
 
     if (filters?.format) {
-      constraints.push(where('format', 'array-contains', filters.format));
+      q = query(q, where('format', 'array-contains', filters.format));
     }
 
     if (filters?.style) {
-      constraints.push(where('style', '==', filters.style));
+      q = query(q, where('style', '==', filters.style));
     }
 
     if (filters?.environment) {
-      constraints.push(where('environment', '==', filters.environment));
+      q = query(q, where('environment', '==', filters.environment));
     }
 
     if (filters?.isFavorite !== undefined) {
-      constraints.push(where('isFavorite', '==', filters.isFavorite));
+      q = query(q, where('isFavorite', '==', filters.isFavorite));
     }
 
     if (filters?.tags && filters.tags.length > 0) {
-      constraints.push(where('tags', 'array-contains-any', filters.tags));
+      q = query(q, where('tags', 'array-contains-any', filters.tags));
     }
 
     // Apply sorting
     const sortField = sort?.field || 'createdAt';
     const sortDirection = sort?.direction || 'desc';
-    constraints.push(orderBy(sortField, sortDirection));
+    q = query(q, orderBy(sortField, sortDirection));
 
     // Apply pagination
     if (pagination?.limit) {
-      constraints.push(limit(pagination.limit));
+      q = query(q, limit(pagination.limit));
     }
 
-    let q = query(collection(db, this.VISUALS_COLLECTION), ...constraints);
-
     if (pagination?.startAfter) {
-      q = query(q, startAfter(pagination.startAfter));
+      const startAfterDoc = await getDoc(doc(db, this.VISUALS_COLLECTION, pagination.startAfter));
+      if (startAfterDoc.exists()) {
+        q = query(q, startAfter(startAfterDoc));
+      }
     }
 
     const snapshot = await getDocs(q);
@@ -293,10 +401,9 @@ class FirestoreService {
     };
   }
 
-  /**
-   * Update visual
-   */
   async updateVisual(visualId: string, updates: Partial<FirestoreVisual>): Promise<void> {
+    await this.ensureAuth();
+    
     const visualRef = doc(db, this.VISUALS_COLLECTION, visualId);
     
     await updateDoc(visualRef, {
@@ -305,10 +412,9 @@ class FirestoreService {
     });
   }
 
-  /**
-   * Delete visual
-   */
   async deleteVisual(visualId: string): Promise<void> {
+    await this.ensureAuth();
+    
     const visual = await this.getVisual(visualId);
     if (!visual) return;
 
@@ -319,58 +425,10 @@ class FirestoreService {
     await this.incrementProjectStats(visual.projectId, { totalVisuals: -1 });
   }
 
-  /**
-   * Toggle visual favorite status
-   */
-  async toggleVisualFavorite(visualId: string): Promise<boolean> {
-    const visual = await this.getVisual(visualId);
-    if (!visual) throw new Error('Visual not found');
-
-    const newFavoriteStatus = !visual.isFavorite;
-    await this.updateVisual(visualId, { isFavorite: newFavoriteStatus });
-
-    return newFavoriteStatus;
-  }
-
-  /**
-   * Increment visual stats (views, downloads, shares)
-   */
-  async incrementVisualStats(
-    visualId: string,
-    stats: { views?: number; downloads?: number; shares?: number }
-  ): Promise<void> {
-    const visualRef = doc(db, this.VISUALS_COLLECTION, visualId);
-    const updates: any = { lastViewedAt: serverTimestamp() };
-
-    if (stats.views) updates.views = increment(stats.views);
-    if (stats.downloads) updates.downloads = increment(stats.downloads);
-    if (stats.shares) updates.shares = increment(stats.shares);
-
-    await updateDoc(visualRef, updates);
-
-    // Record usage for downloads
-    if (stats.downloads) {
-      const visual = await this.getVisual(visualId);
-      if (visual) {
-        await this.recordUsage({
-          userId: visual.userId,
-          type: 'download',
-          visualId,
-          projectId: visual.projectId,
-          metadata: { source: 'dashboard' },
-          timestamp: serverTimestamp() as Timestamp
-        });
-      }
-    }
-  }
-
   // ============================================================================
   // DASHBOARD STATS
   // ============================================================================
 
-  /**
-   * Get dashboard stats for user
-   */
   async getDashboardStats(userId: string): Promise<DashboardStats> {
     // Get user's projects and visuals
     const [projectsResult, visualsResult] = await Promise.all([
@@ -384,29 +442,48 @@ class FirestoreService {
     // Calculate this month's visuals
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const thisMonthVisuals = visuals.filter(v => 
-      v.createdAt.toDate() >= startOfMonth
-    );
+    const thisMonthVisuals = visuals.filter(v => {
+      const createdAt = v.createdAt instanceof Date ? v.createdAt : (v.createdAt as any).toDate();
+      return createdAt >= startOfMonth;
+    });
 
     // Get user data for credits
-    const userRef = doc(db, this.USERS_COLLECTION, userId);
-    const userDoc = await getDoc(userRef);
-    const userData = userDoc.data();
+    const userData = await this.getUserData(userId);
 
     return {
       totalVisuals: visuals.length,
       thisMonth: thisMonthVisuals.length,
       downloads: visuals.reduce((sum, v) => sum + v.downloads, 0),
       views: visuals.reduce((sum, v) => sum + v.views, 0),
-      creditsUsed: userData?.usage?.creditsUsed || 0,
-      creditsRemaining: (userData?.usage?.creditsTotal || 50) - (userData?.usage?.creditsUsed || 0),
+      creditsUsed: userData.usage.creditsUsed || 0,
+      creditsRemaining: (userData.usage.creditsTotal || 50) - (userData.usage.creditsUsed || 0),
       projects: projects.length
     };
   }
 
-  /**
-   * Get recent projects for dashboard
-   */
+  async getUserProjects(userId: string, pagination: PaginationOptions): Promise<PaginatedResult<Project>> {
+    await this.ensureAuth();
+
+    const projectsQuery = query(
+      collection(db, this.PROJECTS_COLLECTION),
+      where('userId', '==', userId),
+      orderBy('createdAt', 'desc'),
+      limit(pagination.limit)
+    );
+
+    const snapshot = await getDocs(projectsQuery);
+    const projects = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as Project[];
+
+    return {
+      data: projects,
+      hasMore: snapshot.docs.length === pagination.limit,
+      total: projects.length
+    };
+  }
+
   async getRecentProjects(userId: string, limitCount: number = 5): Promise<RecentProject[]> {
     const projectsResult = await this.getUserProjects(userId, { limit: limitCount });
     const recentProjects: RecentProject[] = [];
@@ -427,7 +504,7 @@ class FirestoreService {
         id: project.id,
         name: project.name,
         thumbnail: latestVisual?.thumbnailUrl || '/api/placeholder/300/200',
-        createdAt: project.createdAt.toDate().toISOString(),
+        createdAt: project.createdAt instanceof Date ? project.createdAt.toISOString() : (project.createdAt as any).toDate().toISOString(),
         format: project.preferredFormats,
         downloads: project.totalDownloads,
         views: project.totalViews,
@@ -442,103 +519,21 @@ class FirestoreService {
   // USAGE TRACKING
   // ============================================================================
 
-  /**
-   * Record usage event
-   */
   async recordUsage(usageData: Omit<UsageRecord, 'id'>): Promise<void> {
-    const usageRef = collection(db, this.USAGE_COLLECTION);
+    await this.ensureAuth();
     
     const usage: FirestoreUsageRecord = {
       ...usageData,
-      timestamp: serverTimestamp() as Timestamp
+      timestamp: serverTimestamp() as any
     };
 
-    await addDoc(usageRef, usage);
-  }
-
-  /**
-   * Get usage statistics for user
-   */
-  async getUserUsageStats(
-    userId: string,
-    period: string = 'monthly'
-  ): Promise<UserStats | null> {
-    const statsRef = doc(db, this.STATS_COLLECTION, `${userId}_${period}`);
-    const statsDoc = await getDoc(statsRef);
-
-    if (!statsDoc.exists()) {
-      return null;
-    }
-
-    const data = statsDoc.data() as FirestoreUserStats;
-    return { ...data, userId, period };
-  }
-
-  // ============================================================================
-  // REAL-TIME SUBSCRIPTIONS
-  // ============================================================================
-
-  /**
-   * Subscribe to user's visuals in real-time
-   */
-  subscribeToUserVisuals(
-    userId: string,
-    callback: (visuals: Visual[]) => void,
-    filters?: VisualFilters
-  ): () => void {
-    const constraints: QueryConstraint[] = [
-      where('userId', '==', userId),
-      orderBy('createdAt', 'desc'),
-      limit(50)
-    ];
-
-    // Apply basic filters
-    if (filters?.projectId) {
-      constraints.push(where('projectId', '==', filters.projectId));
-    }
-
-    const q = query(collection(db, this.VISUALS_COLLECTION), ...constraints);
-
-    return onSnapshot(q, (snapshot) => {
-      const visuals: Visual[] = [];
-      snapshot.forEach(doc => {
-        const data = doc.data() as FirestoreVisual;
-        visuals.push({ id: doc.id, ...data });
-      });
-      callback(visuals);
-    });
-  }
-
-  /**
-   * Subscribe to user's projects in real-time
-   */
-  subscribeToUserProjects(
-    userId: string,
-    callback: (projects: Project[]) => void
-  ): () => void {
-    const q = query(
-      collection(db, this.PROJECTS_COLLECTION),
-      where('userId', '==', userId),
-      orderBy('lastActivityAt', 'desc')
-    );
-
-    return onSnapshot(q, (snapshot) => {
-      const projects: Project[] = [];
-      snapshot.forEach(doc => {
-        const data = doc.data() as FirestoreProject;
-        projects.push({ id: doc.id, ...data });
-      });
-      callback(projects);
-    });
+    await addDoc(collection(db, this.USAGE_COLLECTION), usage);
   }
 
   // ============================================================================
   // HELPER METHODS
   // ============================================================================
 
-  /**
-   * Increment project statistics
-   */
   private async incrementProjectStats(
     projectId: string,
     stats: { totalVisuals?: number; totalViews?: number; totalDownloads?: number }
@@ -546,60 +541,19 @@ class FirestoreService {
     const projectRef = doc(db, this.PROJECTS_COLLECTION, projectId);
     const updates: any = { lastActivityAt: serverTimestamp() };
 
-    if (stats.totalVisuals) updates.totalVisuals = increment(stats.totalVisuals);
-    if (stats.totalViews) updates.totalViews = increment(stats.totalViews);
-    if (stats.totalDownloads) updates.totalDownloads = increment(stats.totalDownloads);
+    if (stats.totalVisuals) {
+      updates.totalVisuals = increment(stats.totalVisuals);
+    }
+    if (stats.totalViews) {
+      updates.totalViews = increment(stats.totalViews);
+    }
+    if (stats.totalDownloads) {
+      updates.totalDownloads = increment(stats.totalDownloads);
+    }
 
     await updateDoc(projectRef, updates);
   }
-
-  /**
-   * Search visuals by text
-   */
-  async searchVisuals(
-    userId: string,
-    searchTerm: string,
-    limit: number = 20
-  ): Promise<Visual[]> {
-    // Firestore doesn't support full-text search natively
-    // This is a basic implementation - consider using Algolia or similar for production
-    const allVisuals = await this.getUserVisuals(userId, undefined, undefined, { limit: 1000 });
-    
-    const searchLower = searchTerm.toLowerCase();
-    return allVisuals.data.filter(visual =>
-      visual.name.toLowerCase().includes(searchLower) ||
-      visual.description?.toLowerCase().includes(searchLower) ||
-      visual.prompt.toLowerCase().includes(searchLower) ||
-      visual.tags.some(tag => tag.toLowerCase().includes(searchLower))
-    ).slice(0, limit);
-  }
-
-  /**
-   * Get trending visuals (most viewed in last 7 days)
-   */
-  async getTrendingVisuals(userId: string, maxResults: number = 10): Promise<Visual[]> {
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-    const q = query(
-      collection(db, this.VISUALS_COLLECTION),
-      where('userId', '==', userId),
-      where('lastViewedAt', '>=', Timestamp.fromDate(sevenDaysAgo)),
-      orderBy('views', 'desc'),
-      limit(maxResults)
-    );
-
-    const snapshot = await getDocs(q);
-    const visuals: Visual[] = [];
-
-    snapshot.forEach(doc => {
-      const data = doc.data() as FirestoreVisual;
-      visuals.push({ id: doc.id, ...data });
-    });
-
-    return visuals;
-  }
 }
 
-export const firestoreService = new FirestoreService();
-export default firestoreService;
+export const serverFirestoreService = new MockAuthFirestoreService();
+export default serverFirestoreService;

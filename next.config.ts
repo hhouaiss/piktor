@@ -16,6 +16,20 @@ const nextConfig: NextConfig = {
     
     // Add domains if you're using external image sources
     domains: [],
+
+    // Configure remote patterns for external image sources
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'firebasestorage.googleapis.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'piktor-app.firebasestorage.app',
+        pathname: '/**',
+      }
+    ],
     
     // Optimize gallery images specifically
     unoptimized: false,

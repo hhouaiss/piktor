@@ -23,8 +23,6 @@ import {
 import { trackEvent } from "@/lib/analytics";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useDashboardStats, useRecentProjects, useActivityTracker } from "@/lib/firebase/realtime-service";
-import { debugFirebaseIntegration, checkLibraryImageUrls } from "@/lib/debug-firebase";
-import { debugAuthState } from "@/lib/api-client";
 import type { RecentProject } from "@/lib/firebase";
 
 
@@ -151,40 +149,6 @@ export function DashboardHome() {
               Créer un nouveau visuel
             </Link>
           </Button>
-          
-          {/* Debug Buttons - Remove in production */}
-          {process.env.NODE_ENV === 'development' && (
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={async () => {
-                  await debugFirebaseIntegration();
-                  await checkLibraryImageUrls();
-
-                  // Also debug API client auth state
-                  const { debugAuthState } = await import('@/lib/api-client');
-                  const authDebug = await debugAuthState();
-                  console.log('🔐 API Client Auth State:', authDebug);
-                }}
-                className="text-sm"
-              >
-                🔍 Debug Firebase
-              </Button>
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={async () => {
-                  const authDebug = await debugAuthState();
-                  console.log('🔐 Auth State Debug:', authDebug);
-                  alert(`Auth Debug: ${JSON.stringify(authDebug, null, 2)}`);
-                }}
-                className="text-sm"
-              >
-                🔐 Debug Auth
-              </Button>
-            </div>
-          )}
         </div>
       </div>
 

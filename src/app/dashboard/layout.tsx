@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import { DashboardLayout } from "@/components/dashboard/dashboard-layout";
-import { AuthWrapper } from "@/components/dashboard/auth-wrapper";
+import { ProtectedRoute } from "@/components/auth/protected-route";
 
 export const metadata: Metadata = {
   title: "Tableau de bord | Piktor",
@@ -13,8 +13,8 @@ export default function Layout({
   children: React.ReactNode;
 }) {
   return (
-    <AuthWrapper>
+    <ProtectedRoute requireAuth={true}>
       <DashboardLayout>{children}</DashboardLayout>
-    </AuthWrapper>
+    </ProtectedRoute>
   );
 }

@@ -1,0 +1,32 @@
+rules_version = '2';
+
+// Firebase Storage Security Rules for Piktor App
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Temporary: Allow all access for testing (REMOVE IN PRODUCTION)
+    // TODO: Implement more restrictive rules for production
+    match /{allPaths=**} {
+      allow read, write: if true;
+    }
+    
+    // More specific rules for production (commented out for now)
+    /*
+    // User-specific storage paths
+    match /users/{userId}/{allPaths=**} {
+      // Users can read and write to their own directories
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Public visuals (if needed later)
+    match /public/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    
+    // Temp files - allow authenticated users to read/write with cleanup
+    match /temp/{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+    */
+  }
+}

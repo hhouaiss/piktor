@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateMultipleImagesWithGemini, getGeminiAspectRatio, base64ToDataUrl } from "@/lib/gemini-api";
-import { generationService } from "@/lib/firebase";
+import { generationService, firestoreService } from "@/lib/firebase";
 import type { GenerationRequest, GeneratedImageData } from "@/lib/firebase/generation-service";
 
 interface PromptData {
@@ -118,54 +118,37 @@ export async function POST(request: NextRequest) {
     // Generate detailed prompt based on the configuration
     const detailedPrompt = generateDetailedPrompt(promptData);
     
-    // Gemini API handles comprehensive prompts well
-    console.log(`Prompt length: ${detailedPrompt.length} characters`);
-
     // Generate image using Gemini 2.5 Flash Image
-    console.log("Generating image with Gemini 2.5 Flash Image:", detailedPrompt.substring(0, 200) + "...");
-    console.log("Prompt length:", detailedPrompt.length);
     // Map aspectRatio to contextPreset for getGeminiAspectRatio function
-    const contextPreset = promptData.output.type === 'packshot' ? 'packshot' : 
+    const contextPreset = promptData.output.type === 'packshot' ? 'packshot' :
                          promptData.output.type === 'lifestyle' ? 'lifestyle' : 'social_media_square';
-    console.log("Aspect ratio:", getGeminiAspectRatio(contextPreset));
     
     const response = await generateMultipleImagesWithGemini({
       prompt: detailedPrompt,
       aspectRatio: getGeminiAspectRatio(contextPreset),
     }, 1, contextPreset);
     
-    console.log("Gemini API response received successfully");
-    console.log("Response structure:", {
-      hasResults: !!response,
-      resultsLength: response?.length,
-      firstResult: response?.[0] ? Object.keys(response[0]) : 'no first result'
-    });
-    
     const firstResult = response?.[0];
-    
+
     if (!firstResult?.imageData) {
-      console.error("No image data found in response:", response);
-      console.error("First result details:", firstResult);
+      console.error("No image data returned from Gemini API");
       throw new Error("No image data returned from Gemini API");
     }
-    
+
     const generatedImageUrl = base64ToDataUrl(firstResult.imageData);
-    console.log("Generated image URL:", generatedImageUrl);
 
     // Save to Firebase if user is authenticated
     let firebaseResult = null;
-    let userId = request.headers.get('x-user-id');
     
-    // If no user ID in header, try to get from authorization (for future JWT implementation)
-    if (!userId) {
-      const authHeader = request.headers.get('authorization');
-      // For now, we'll skip if no user ID - future JWT implementation will extract userId from token
-    }
-    
+    // Get user ID from request headers (set by client-side authentication)
+    const userId = request.headers.get('x-user-id');
+
+
     if (userId) {
+      
       try {
         const generationRequest: GenerationRequest = {
-          userId,
+          userId: userId,
           projectName: `${promptData.product.name} - ${promptData.output.type}`,
           prompt: detailedPrompt,
           style: promptData.product.style,
@@ -188,7 +171,6 @@ export async function POST(request: NextRequest) {
           format: promptData.output.type,
           prompt: detailedPrompt
         }];
-        
         const results = await generationService.saveGeneratedImages(
           generationRequest,
           generatedImageData
@@ -200,18 +182,49 @@ export async function POST(request: NextRequest) {
             projectId: results[0].projectId,
             savedToLibrary: true
           };
+        } else {
+          console.error('Firebase save failed:', results[0]?.error || 'No results returned');
         }
         
-        console.log('Saved to Firebase:', firebaseResult);
       } catch (firebaseError) {
-        console.error('Firebase save error:', firebaseError);
-        // Continue without Firebase integration
+        console.error('Firebase save error:', firebaseError instanceof Error ? firebaseError.message : 'Unknown Firebase error');
+      }
+    }
+
+    // Determine final image URL with proper Firebase Storage URL retrieval
+    let finalImageUrl = generatedImageUrl; // Default fallback
+
+    if (firebaseResult?.visualId) {
+      // Wait for Firestore eventual consistency
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Retry logic for Firestore retrieval
+      let retries = 3;
+      let savedVisual = null;
+
+      while (retries > 0) {
+        if (retries < 3) {
+          await new Promise(resolve => setTimeout(resolve, (4 - retries) * 200));
+        }
+
+        try {
+          savedVisual = await firestoreService.getVisual(firebaseResult.visualId);
+
+          if (savedVisual?.originalImageUrl && !savedVisual.originalImageUrl.startsWith('data:')) {
+            finalImageUrl = savedVisual.originalImageUrl;
+            break;
+          }
+        } catch (error) {
+          console.error('Firestore retrieval failed:', error);
+        }
+
+        retries--;
       }
     }
 
     return NextResponse.json({
       success: true,
-      imageUrl: generatedImageUrl,
+      imageUrl: finalImageUrl,
       prompt: detailedPrompt,
       metadata: {
         model: "gemini-2.5-flash-image-preview",
@@ -219,10 +232,14 @@ export async function POST(request: NextRequest) {
         originalImageName: image.name,
         promptData: promptData,
         analysisData: analysisDataStr ? JSON.parse(analysisDataStr) : null,
+        urlSource: finalImageUrl === generatedImageUrl ? 'data_url_fallback' : 'firebase_storage'
       },
       // Firebase integration data
       ...(firebaseResult && {
-        firebase: firebaseResult
+        firebase: {
+          ...firebaseResult,
+          storageUrlRetrieved: finalImageUrl !== generatedImageUrl
+        }
       })
     });
 

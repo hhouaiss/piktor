@@ -54,7 +54,7 @@ export function VisualLibrary() {
   const [loadingMore, setLoadingMore] = useState(false);
 
   // Get unique formats and tags for filters
-  const availableFormats = Array.from(new Set(visuals.map(v => v.format)));
+  const availableFormats = Array.from(new Set(visuals.flatMap(v => Array.isArray(v.format) ? v.format : [v.format])));
   const availableTags = Array.from(new Set(visuals.flatMap(v => v.tags)));
 
   useEffect(() => {
@@ -88,15 +88,6 @@ export function VisualLibrary() {
         setLoadingMore(true);
       }
 
-      console.log('[VisualLibrary] Loading visuals for user:', userId, {
-        projectFilter,
-        selectedFormat,
-        selectedTag,
-        searchQuery,
-        sortBy,
-        sortOrder,
-        append
-      });
 
       // Build filters
       const filters: VisualFilters = {};
@@ -105,7 +96,6 @@ export function VisualLibrary() {
       if (selectedTag !== "all") filters.tags = [selectedTag];
       if (searchQuery) filters.search = searchQuery;
 
-      console.log('[VisualLibrary] Applied filters:', filters);
 
       // Build sort
       const sort: VisualSort = {
@@ -121,16 +111,7 @@ export function VisualLibrary() {
 
       const result = await firestoreService.getUserVisuals(userId, filters, sort, pagination);
 
-      console.log('[VisualLibrary] Loaded visuals:', {
-        count: result.data.length,
-        hasMore: result.hasMore,
-        firstVisual: result.data[0] ? {
-          id: result.data[0].id,
-          name: result.data[0].name,
-          hasOriginalImageUrl: !!result.data[0].originalImageUrl,
-          hasThumnailUrl: !!result.data[0].thumbnailUrl
-        } : null
-      });
+
 
       if (append) {
         setVisuals(prev => [...prev, ...result.data]);
@@ -152,7 +133,7 @@ export function VisualLibrary() {
         });
       }
     } catch (error) {
-      console.error('[VisualLibrary] Error loading visuals:', error);
+      console.error('Error loading visuals:', error);
       setError('Erreur lors du chargement de la bibliothèque');
     } finally {
       setLoading(false);
@@ -298,10 +279,10 @@ export function VisualLibrary() {
     }
   };
 
-  const formatDate = (dateString: string | Date) => {
+  const formatDate = (dateString: string | Date | any) => {
     const date = typeof dateString === 'string' ? new Date(dateString) : dateString.toDate ? dateString.toDate() : dateString;
-    return date.toLocaleDateString('fr-FR', { 
-      day: 'numeric', 
+    return date.toLocaleDateString('fr-FR', {
+      day: 'numeric',
       month: 'short',
       year: 'numeric'
     });
@@ -566,23 +547,6 @@ export function VisualLibrary() {
             </Button>
           )}
 
-          {/* Debug Button - Remove in production */}
-          {process.env.NODE_ENV === 'development' && (
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={async () => {
-                if (user) {
-                  console.log('[VisualLibrary] Manual debug refresh');
-                  await loadVisuals(user.uid);
-                  console.log('[VisualLibrary] Debug refresh completed. Current visuals:', visuals.length);
-                }
-              }}
-              className="text-sm"
-            >
-              🔍 Debug Refresh
-            </Button>
-          )}
 
           <Button asChild size="lg" className="bg-gradient-ocean-deep hover:opacity-90 text-white">
             <Link href="/dashboard/create">
