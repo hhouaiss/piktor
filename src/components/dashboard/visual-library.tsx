@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ImageModal } from "@/components/ui/image-modal";
+import { FullscreenImageViewer } from "@/components/ui/fullscreen-image-viewer";
 import {
   Search,
   Download,
@@ -48,6 +49,7 @@ export function VisualLibrary() {
   const [sortBy, setSortBy] = useState<SortBy>("date");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
   const [selectedVisual, setSelectedVisual] = useState<Visual | null>(null);
+  const [fullscreenVisual, setFullscreenVisual] = useState<Visual | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
@@ -187,21 +189,22 @@ export function VisualLibrary() {
     });
   };
 
-  const handleVisualClick = async (visual: Visual) => {
-    setSelectedVisual(visual);
-    
+
+  const handleFullscreenView = async (visual: Visual) => {
+    setFullscreenVisual(visual);
+
     // Increment view count
     try {
       await firestoreService.incrementVisualStats(visual.id, { views: 1 });
-      
+
       // Update local state
-      setVisuals(prev => prev.map(v => 
+      setVisuals(prev => prev.map(v =>
         v.id === visual.id ? { ...v, views: v.views + 1 } : v
       ));
     } catch (error) {
       console.error('Error incrementing view count:', error);
     }
-    
+
     trackImageGeneration.imageViewed({
       imageIndex: visuals.indexOf(visual),
       productType: visual.name
@@ -390,7 +393,7 @@ export function VisualLibrary() {
               alt={visual.name}
               fill
               className="object-cover cursor-pointer transition-transform group-hover:scale-105"
-              onClick={() => handleVisualClick(visual)}
+              onClick={() => handleFullscreenView(visual)}
               placeholder="blur"
               blurDataURL={getPlaceholderUrl('small')}
               onError={(e) => {
@@ -406,10 +409,11 @@ export function VisualLibrary() {
             
             {/* Overlay with actions */}
             <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-2">
-              <Button 
-                size="sm" 
+              <Button
+                size="sm"
                 variant="secondary"
-                onClick={() => handleVisualClick(visual)}
+                onClick={() => handleFullscreenView(visual)}
+                title="View in full screen"
               >
                 <Eye className="w-4 h-4" />
               </Button>
@@ -507,7 +511,7 @@ export function VisualLibrary() {
                 width={80}
                 height={80}
                 className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
-                onClick={() => handleVisualClick(visual)}
+                onClick={() => handleFullscreenView(visual)}
                 placeholder="blur"
                 blurDataURL={getPlaceholderUrl('small')}
                 onError={(e) => {
@@ -537,8 +541,8 @@ export function VisualLibrary() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleVisualClick(visual)}
-                    title="Voir l'image"
+                    onClick={() => handleFullscreenView(visual)}
+                    title="View in full screen"
                   >
                     <Eye className="w-4 h-4" />
                   </Button>
@@ -773,6 +777,16 @@ export function VisualLibrary() {
             </div>
           )}
         </>
+      )}
+
+      {/* Full-screen Image Viewer */}
+      {fullscreenVisual && (
+        <FullscreenImageViewer
+          isOpen={true}
+          onClose={() => setFullscreenVisual(null)}
+          imageUrl={fullscreenVisual.originalImageUrl}
+          imageAlt={fullscreenVisual.name}
+        />
       )}
 
       {/* Image Modal */}
