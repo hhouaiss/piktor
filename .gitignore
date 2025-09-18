@@ -48,3 +48,4 @@ firestore.rules
 storage.rules
 FIREBASE_SECURITY_DOCUMENTATION.md
 firebase-debug.log
+SECURITY_CHECKLIST.md
