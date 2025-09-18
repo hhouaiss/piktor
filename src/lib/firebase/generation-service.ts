@@ -1,4 +1,4 @@
-import { authService } from './auth';
+import { serverFirestoreService } from './server-hybrid';
 import { firestoreService } from './firestore';
 import { storageService } from './storage';
 import type { Visual, Project } from './types';
@@ -49,12 +49,12 @@ class GenerationService {
     const results: GenerationResult[] = [];
     
     // Ensure user is authenticated
-    const currentUser = authService.getCurrentUser();
-    const userId = request.userId || currentUser?.uid;
+    // Use the provided userId from the request
+    const userId = request.userId;
     
     console.log('[GenerationService] Auth check:', {
       requestUserId: request.userId,
-      currentUserId: currentUser?.uid,
+      currentUserId: undefined,
       finalUserId: userId
     });
     
@@ -67,7 +67,7 @@ class GenerationService {
     // Check if user has sufficient credits
     try {
       console.log('[GenerationService] Checking credits for user:', userId);
-      const hasCredits = await authService.hasCredits(userId, generatedImages.length);
+      const hasCredits = await serverFirestoreService.hasCredits(userId, generatedImages.length);
       console.log('[GenerationService] Credits check result:', { hasCredits, creditsNeeded: generatedImages.length });
       
       if (!hasCredits) {
@@ -141,7 +141,7 @@ class GenerationService {
       if (successfulGenerations > 0) {
         try {
           console.log('[GenerationService] Using credits:', successfulGenerations);
-          await authService.useCredits(userId, successfulGenerations);
+          await serverFirestoreService.useCredits(userId, successfulGenerations);
           console.log('[GenerationService] Credits used successfully');
         } catch (error) {
           console.error('[GenerationService] Failed to use credits:', error);

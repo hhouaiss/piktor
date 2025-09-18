@@ -25,23 +25,40 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { useDashboardStats, useRecentProjects, useActivityTracker } from "@/lib/firebase/realtime-service";
 import type { RecentProject } from "@/lib/firebase";
 import { debugUserData } from "@/lib/debug-firebase";
+import { testFirebaseConnection } from "@/lib/firebase/test-connection";
+import { getPlaceholderUrl } from "@/lib/image-placeholders";
 
 
 
 export function DashboardHome() {
-  const { user: authUser } = useAuth();
+  const { user: authUser, loading: authLoading, firebaseUser } = useAuth();
   const { stats, loading: statsLoading, error: statsError } = useDashboardStats(authUser?.id || null);
   const { projects: recentProjects, loading: projectsLoading, error: projectsError } = useRecentProjects(authUser?.id || null, 3);
   const { trackView } = useActivityTracker(authUser?.id || null);
 
-  const loading = statsLoading || projectsLoading;
+  const loading = authLoading || statsLoading || projectsLoading;
   const error = statsError || projectsError;
   const user = authUser;
 
   useEffect(() => {
-    if (user) {
+    // Debug authentication state
+    console.log('[DashboardHome] Auth state:', {
+      authLoading,
+      hasUser: !!user,
+      hasFirebaseUser: !!firebaseUser,
+      userId: user?.id,
+      firebaseUid: firebaseUser?.uid
+    });
+
+    // Only run these effects once when we have a stable auth state
+    if (!authLoading && firebaseUser && user) {
       // Debug user data
       debugUserData(user, 'DashboardHome');
+
+      // Test Firebase connection (development only)
+      if (process.env.NODE_ENV === 'development') {
+        testFirebaseConnection();
+      }
 
       // Track dashboard home view
       trackEvent('dashboard_home_viewed', {
@@ -49,7 +66,7 @@ export function DashboardHome() {
         event_label: 'home_page_view'
       });
     }
-  }, [user]);
+  }, [authLoading, !!firebaseUser, !!user]); // Fixed dependencies to prevent infinite loops
 
   const handleCreateNewVisual = () => {
     trackEvent('dashboard_create_new_clicked', {
@@ -97,15 +114,15 @@ export function DashboardHome() {
     );
   }
 
-  // Error state
-  if (error || !user) {
+  // Error state - only for auth errors, not permission errors
+  if (!user && !authLoading) {
     return (
       <div className="space-y-8">
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
             <AlertCircle className="w-8 h-8 text-destructive mx-auto mb-4" />
             <p className="text-muted-foreground mb-4">
-              {error || 'Vous devez être connecté pour accéder au tableau de bord'}
+              Vous devez être connecté pour accéder au tableau de bord
             </p>
             <Button asChild>
               <Link href="/auth/signin">
@@ -117,6 +134,9 @@ export function DashboardHome() {
       </div>
     );
   }
+
+  // Handle permission errors gracefully - show dashboard with default data
+  const hasPermissionError = error?.includes?.('Permission denied') || statsError?.includes?.('Permission denied') || projectsError?.includes?.('Permission denied');
 
   // Show default state if no stats yet
   const displayStats = stats || {
@@ -143,6 +163,23 @@ export function DashboardHome() {
 
   return (
     <div className="space-y-8">
+      {/* Permission Error Notice - Show but don't block the UI */}
+      {hasPermissionError && (
+        <Card className="p-4 bg-yellow-50 border-yellow-200">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-yellow-600" />
+            <div>
+              <p className="text-sm font-medium text-yellow-800">
+                Configuration en cours...
+              </p>
+              <p className="text-xs text-yellow-700">
+                Votre compte est en cours de configuration. Certaines données peuvent ne pas encore être disponibles.
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
+
       {/* Welcome Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -257,9 +294,15 @@ export function DashboardHome() {
                         alt={project.name}
                         fill
                         className="object-cover"
+                        placeholder="blur"
+                        blurDataURL={getPlaceholderUrl('small')}
                         onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                          e.currentTarget.nextElementSibling!.classList.remove('hidden');
+                          // Fallback to placeholder without causing additional requests
+                          const target = e.currentTarget as HTMLImageElement;
+                          target.src = getPlaceholderUrl('small');
+                          target.style.display = 'block';
+                          // Ensure we don't trigger the error again
+                          target.onerror = null;
                         }}
                       />
                       <Sparkles className="h-6 w-6 text-sophisticated-gray-400 hidden" />

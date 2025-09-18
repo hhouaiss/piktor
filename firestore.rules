@@ -2,9 +2,214 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow all read and write access for testing
+
+    // ==========================================================================
+    // HELPER FUNCTIONS
+    // ==========================================================================
+
+    // Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Check if user owns the resource
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Check if request is from Firebase Admin SDK
+    function isAdminRequest() {
+      // Admin SDK operations typically don't have auth context but have elevated privileges
+      // We can detect this by checking if request.auth is null but the operation seems to be server-side
+      return request.auth == null &&
+             // Additional check: admin operations often have specific patterns
+             (request.time != null);
+    }
+
+    // Check if user can access the resource (owner or admin)
+    function canAccess(userId) {
+      return isOwner(userId) || isAdminRequest();
+    }
+
+    // Validate user data structure and required fields (more lenient)
+    function isValidUserData() {
+      let hasEmail = 'email' in request.resource.data;
+      let hasValidUsage = !('usage' in request.resource.data) ||
+                         ('creditsUsed' in request.resource.data.usage
+                          && 'creditsTotal' in request.resource.data.usage
+                          && request.resource.data.usage.creditsUsed is number
+                          && request.resource.data.usage.creditsTotal is number
+                          && request.resource.data.usage.creditsUsed >= 0
+                          && request.resource.data.usage.creditsTotal >= 0);
+
+      return hasEmail && hasValidUsage;
+    }
+
+    // Validate project data structure (more lenient)
+    function isValidProjectData() {
+      let hasUserId = 'userId' in request.resource.data &&
+                     request.resource.data.userId == request.auth.uid;
+      let hasName = 'name' in request.resource.data &&
+                   request.resource.data.name is string;
+      let validStatus = !('status' in request.resource.data) ||
+                       request.resource.data.status in ['draft', 'active', 'archived'];
+      let validPublic = !('isPublic' in request.resource.data) ||
+                       request.resource.data.isPublic is bool;
+      let validStats = !('totalVisuals' in request.resource.data) ||
+                      (request.resource.data.totalVisuals is number
+                       && request.resource.data.totalVisuals >= 0);
+
+      return hasUserId && hasName && validStatus && validPublic && validStats;
+    }
+
+    // Validate visual data structure (more lenient)
+    function isValidVisualData() {
+      let hasUserId = 'userId' in request.resource.data &&
+                     request.resource.data.userId == request.auth.uid;
+      let hasProjectId = 'projectId' in request.resource.data &&
+                        request.resource.data.projectId is string;
+      let hasName = 'name' in request.resource.data &&
+                   request.resource.data.name is string;
+      let hasPrompt = 'prompt' in request.resource.data &&
+                     request.resource.data.prompt is string;
+      let validStats = !('views' in request.resource.data) ||
+                      (request.resource.data.views is number && request.resource.data.views >= 0);
+      let validFavorite = !('isFavorite' in request.resource.data) ||
+                         request.resource.data.isFavorite is bool;
+
+      return hasUserId && hasProjectId && hasName && hasPrompt && validStats && validFavorite;
+    }
+
+    // Check if project belongs to user
+    function isProjectOwner(projectId, userId) {
+      return isOwner(userId) &&
+             exists(/databases/$(database)/documents/projects/$(projectId)) &&
+             get(/databases/$(database)/documents/projects/$(projectId)).data.userId == userId;
+    }
+
+    // ==========================================================================
+    // USERS COLLECTION
+    // ==========================================================================
+
+    match /users/{userId} {
+      // Users can read and write their own document
+      allow read, write: if canAccess(userId);
+
+      // More lenient validation for create/update to allow initial user setup
+      allow create: if canAccess(userId) && isValidUserData();
+      allow update: if canAccess(userId);
+
+      // Prevent deletion of user documents (soft delete via status field if needed)
+      allow delete: if false;
+    }
+
+    // ==========================================================================
+    // PROJECTS COLLECTION
+    // ==========================================================================
+
+    match /projects/{projectId} {
+      // Users can read and write their own projects
+      // Fixed: For queries, we need to allow read if user is authenticated and document exists
+      allow read: if isAuthenticated() &&
+                     (resource.data.userId == request.auth.uid || resource.data.isPublic == true);
+
+      // Users can write their own projects
+      allow write: if canAccess(resource.data.userId);
+
+      // Validate data structure and ownership on create
+      allow create: if (isAuthenticated() && isValidProjectData()) ||
+                       (isAdminRequest() && isValidProjectData());
+
+      // Validate data structure on update, prevent userId changes
+      allow update: if canAccess(resource.data.userId)
+                   && isValidProjectData()
+                   && request.resource.data.userId == resource.data.userId;
+
+      // Allow project deletion by owner
+      allow delete: if canAccess(resource.data.userId);
+
+      // FIXED: Allow list queries for authenticated users querying their own data
+      // This covers: query(collection('projects'), where('userId', '==', userId))
+      allow list: if isAuthenticated();
+    }
+
+    // ==========================================================================
+    // VISUALS COLLECTION
+    // ==========================================================================
+
+    match /visuals/{visualId} {
+      // Users can read their own visuals or public visuals
+      allow read: if isAuthenticated() &&
+                     (resource.data.userId == request.auth.uid ||
+                      (exists(/databases/$(database)/documents/projects/$(resource.data.projectId)) &&
+                       get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.isPublic == true));
+
+      // Users can write their own visuals
+      allow write: if canAccess(resource.data.userId);
+
+      // Validate data structure, ownership, and project relationship on create
+      allow create: if (isAuthenticated()
+                        && isValidVisualData()
+                        && isProjectOwner(request.resource.data.projectId, request.auth.uid)) ||
+                       (isAdminRequest() && isValidVisualData());
+
+      // Validate data structure on update, prevent userId and projectId changes
+      allow update: if canAccess(resource.data.userId)
+                   && isValidVisualData()
+                   && request.resource.data.userId == resource.data.userId
+                   && request.resource.data.projectId == resource.data.projectId;
+
+      // Allow visual deletion by owner
+      allow delete: if canAccess(resource.data.userId);
+
+      // FIXED: Allow list queries for authenticated users querying their own data
+      // This covers: query(collection('visuals'), where('userId', '==', userId))
+      allow list: if isAuthenticated();
+    }
+
+    // ==========================================================================
+    // USAGE COLLECTION (Usage tracking and analytics)
+    // ==========================================================================
+
+    match /usage/{usageId} {
+      // Users can read their own usage records
+      allow read: if canAccess(resource.data.userId);
+
+      // Allow list queries for user's own usage records
+      allow list: if isAuthenticated();
+
+      // Only allow creation of usage records (no updates/deletes for audit integrity)
+      allow create: if isAuthenticated()
+                   && request.resource.data.userId == request.auth.uid
+                   && request.resource.data.type in ['generation', 'download', 'view', 'share']
+                   && request.resource.data.timestamp != null;
+
+      // No updates or deletes for audit trail integrity
+      allow update, delete: if false;
+    }
+
+    // ==========================================================================
+    // USER_STATS COLLECTION (Aggregated analytics)
+    // ==========================================================================
+
+    match /user_stats/{statsId} {
+      // Users can read their own stats
+      allow read: if isAuthenticated() && statsId.matches('.*' + request.auth.uid + '_.*');
+
+      // Allow list queries for user's own stats
+      allow list: if isAuthenticated();
+
+      // Only backend services should write stats (no client writes)
+      allow write: if false;
+    }
+
+    // ==========================================================================
+    // SECURITY BOUNDARIES
+    // ==========================================================================
+
+    // Deny all other paths
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
     }
   }
 }

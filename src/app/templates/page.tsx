@@ -1,6 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { getPlaceholderUrl } from "@/lib/image-placeholders";
 
 const templates = [
   {
@@ -10,7 +11,7 @@ const templates = [
     category: "Packshot",
     aesthetic: "modern, minimal, clean",
     keywords: ["white background", "soft lighting", "professional"],
-    preview: "/api/placeholder/300/200",
+    preview: getPlaceholderUrl('thumbnail'),
   },
   {
     id: 2,
@@ -19,7 +20,7 @@ const templates = [
     category: "Lifestyle",
     aesthetic: "cozy, warm, inviting",
     keywords: ["home setting", "warm lighting", "plants"],
-    preview: "/api/placeholder/300/200",
+    preview: getPlaceholderUrl('thumbnail'),
   },
   {
     id: 3,
@@ -28,7 +29,7 @@ const templates = [
     category: "Instagram",
     aesthetic: "trendy, bright, engaging",
     keywords: ["square format", "bright colors", "social media"],
-    preview: "/api/placeholder/300/200",
+    preview: getPlaceholderUrl('thumbnail'),
   },
   {
     id: 4,
@@ -37,7 +38,7 @@ const templates = [
     category: "Lifestyle",
     aesthetic: "professional, formal, executive",
     keywords: ["office setting", "business", "formal"],
-    preview: "/api/placeholder/300/200",
+    preview: getPlaceholderUrl('thumbnail'),
   },
   {
     id: 5,
@@ -46,7 +47,7 @@ const templates = [
     category: "Lifestyle",
     aesthetic: "scandinavian, bright, airy",
     keywords: ["light wood", "bright space", "nordic"],
-    preview: "/api/placeholder/300/200",
+    preview: getPlaceholderUrl('thumbnail'),
   },
   {
     id: 6,
@@ -55,7 +56,7 @@ const templates = [
     category: "Packshot",
     aesthetic: "commercial, detailed, high-quality",
     keywords: ["high contrast", "detailed", "commercial"],
-    preview: "/api/placeholder/300/200",
+    preview: getPlaceholderUrl('thumbnail'),
   },
 ];
 

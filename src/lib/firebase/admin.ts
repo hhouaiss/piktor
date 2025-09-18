@@ -13,42 +13,33 @@ function initializeFirebaseAdmin() {
   const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'piktor-app';
   
   try {
-    // For development - use application default or emulator
-    if (process.env.NODE_ENV === 'development') {
-      // Check if running with emulator
-      if (process.env.FIRESTORE_EMULATOR_HOST) {
-        console.log('🔥 Using Firebase Admin SDK with emulator');
-        return initializeApp({
-          projectId: projectId
-        });
-      }
-      
-      // Try to use default credentials for development
-      console.log('🔥 Using Firebase Admin SDK with default credentials');
+    // Check if running with emulator first
+    if (process.env.FIRESTORE_EMULATOR_HOST) {
+      console.log('🔥 Using Firebase Admin SDK with emulator');
       return initializeApp({
-        credential: applicationDefault(),
         projectId: projectId
       });
-    } else {
-      // Production - use environment variables
-      if (process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_CLIENT_EMAIL) {
-        console.log('🔥 Using Firebase Admin SDK with service account');
-        return initializeApp({
-          credential: cert({
-            projectId: projectId,
-            clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-            privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-          }),
-          projectId: projectId
-        });
-      } else {
-        console.log('🔥 Using Firebase Admin SDK with default credentials (production)');
-        return initializeApp({
-          credential: applicationDefault(),
-          projectId: projectId
-        });
-      }
     }
+
+    // Use service account credentials if available (both dev and production)
+    if (process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_CLIENT_EMAIL) {
+      console.log('🔥 Using Firebase Admin SDK with service account credentials');
+      return initializeApp({
+        credential: cert({
+          projectId: projectId,
+          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+          privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+        }),
+        projectId: projectId
+      });
+    }
+
+    // Fallback to default credentials if no service account
+    console.log('🔥 Using Firebase Admin SDK with default credentials');
+    return initializeApp({
+      credential: applicationDefault(),
+      projectId: projectId
+    });
   } catch (error) {
     console.error('Failed to initialize Firebase Admin:', error);
     return null;

@@ -5,7 +5,7 @@ export { default as app, auth, db, storage, analytics } from './config';
 export { authService } from './auth';
 export { firestoreService } from './firestore';
 export { storageService } from './storage';
-export { generationService } from './generation-service';
+// Note: generationService excluded from client exports to avoid server-side imports
 
 // Export real-time hooks
 export {

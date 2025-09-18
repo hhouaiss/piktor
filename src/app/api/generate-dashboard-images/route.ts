@@ -14,7 +14,8 @@ import {
 } from "@/lib/gemini-api";
 import { generateProductionPrompt } from "@/lib/production-prompt-engine";
 import { detectEnvironment } from "@/lib/usage-limits";
-import { authService, generationService, firestoreService } from "@/lib/firebase";
+import { authService, firestoreService } from "@/lib/firebase";
+import { generationService } from "@/lib/firebase/generation-service";
 import type { GenerationRequest, GeneratedImageData } from "@/lib/firebase/generation-service";
 
 // Dashboard-specific generation request interface

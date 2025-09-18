@@ -7,7 +7,8 @@
 
 import { db, auth } from './config';
 import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
-import { 
+import { getPlaceholderUrl } from '../image-placeholders';
+import {
   collection, 
   doc, 
   getDoc, 
@@ -489,7 +490,7 @@ class MockAuthFirestoreService {
       recentProjects.push({
         id: project.id,
         name: project.name,
-        thumbnail: latestVisual?.thumbnailUrl || '/api/placeholder/300/200',
+        thumbnail: latestVisual?.thumbnailUrl || getPlaceholderUrl('thumbnail'),
         createdAt: project.createdAt instanceof Date ? project.createdAt.toISOString() : (project.createdAt as any).toDate().toISOString(),
         format: project.preferredFormats,
         downloads: project.totalDownloads,

@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { generatePlaceholderDataUrl } from "@/lib/image-placeholders";
 import { 
   BookOpen,
   Search,
@@ -54,7 +55,7 @@ const tutorials: Tutorial[] = [
     category: "Démarrage",
     duration: "4 min",
     difficulty: "débutant",
-    thumbnail: "/api/placeholder/400/225",
+    thumbnail: generatePlaceholderDataUrl(400, 225),
     url: "#",
     isPopular: true
   },
@@ -66,7 +67,7 @@ const tutorials: Tutorial[] = [
     category: "Photo",
     duration: "8 min",
     difficulty: "débutant",
-    thumbnail: "/api/placeholder/400/225",
+    thumbnail: generatePlaceholderDataUrl(400, 225),
     url: "#"
   },
   {
@@ -77,7 +78,7 @@ const tutorials: Tutorial[] = [
     category: "Design",
     duration: "12 min",
     difficulty: "intermédiaire",
-    thumbnail: "/api/placeholder/400/225",
+    thumbnail: generatePlaceholderDataUrl(400, 225),
     url: "#"
   },
   {
@@ -88,7 +89,7 @@ const tutorials: Tutorial[] = [
     category: "Marketing",
     duration: "15 min",
     difficulty: "intermédiaire",
-    thumbnail: "/api/placeholder/400/225",
+    thumbnail: generatePlaceholderDataUrl(400, 225),
     url: "#",
     isPopular: true
   },
@@ -100,7 +101,7 @@ const tutorials: Tutorial[] = [
     category: "Avancé",
     duration: "6 min",
     difficulty: "avancé",
-    thumbnail: "/api/placeholder/400/225",
+    thumbnail: generatePlaceholderDataUrl(400, 225),
     url: "#"
   },
   {
@@ -111,7 +112,7 @@ const tutorials: Tutorial[] = [
     category: "Organisation",
     duration: "7 min",
     difficulty: "débutant",
-    thumbnail: "/api/placeholder/400/225",
+    thumbnail: generatePlaceholderDataUrl(400, 225),
     url: "#"
   }
 ];

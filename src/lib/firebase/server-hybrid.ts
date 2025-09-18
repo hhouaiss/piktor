@@ -40,19 +40,28 @@ class HybridFirestoreService {
 
   async getUserData(userId: string): Promise<User> {
     if (isAdminAvailable && adminDb) {
-      // Use Admin SDK
-      const userRef = adminDb.collection(this.USERS_COLLECTION).doc(userId);
-      const userDoc = await userRef.get();
+      try {
+        // Use Admin SDK
+        const userRef = adminDb.collection(this.USERS_COLLECTION).doc(userId);
+        const userDoc = await userRef.get();
 
-      if (!userDoc.exists) {
-        throw new Error('User document not found');
+        if (!userDoc.exists) {
+          throw new Error('User document not found');
+        }
+
+        const userData = userDoc.data() as FirestoreUser;
+        return {
+          id: userId,
+          ...userData
+        };
+      } catch (error: any) {
+        // If admin SDK fails due to credentials, fall back to client SDK
+        if (error?.message?.includes('default credentials') || error?.message?.includes('authentication')) {
+          console.log('Admin SDK credentials failed, falling back to client SDK');
+          return clientService.getUserData(userId);
+        }
+        throw error;
       }
-
-      const userData = userDoc.data() as FirestoreUser;
-      return {
-        id: userId,
-        ...userData
-      };
     } else {
       // Fallback to client SDK
       return clientService.getUserData(userId);
@@ -112,20 +121,29 @@ class HybridFirestoreService {
 
   async useCredits(userId: string, creditsUsed: number): Promise<void> {
     if (isAdminAvailable && adminDb) {
-      // Use Admin SDK
-      const userRef = adminDb.collection(this.USERS_COLLECTION).doc(userId);
-      const userData = await this.getUserData(userId);
-      
-      const newCreditsUsed = userData.usage.creditsUsed + creditsUsed;
+      try {
+        // Use Admin SDK
+        const userRef = adminDb.collection(this.USERS_COLLECTION).doc(userId);
+        const userData = await this.getUserData(userId);
+
+        const newCreditsUsed = userData.usage.creditsUsed + creditsUsed;
       
       if (newCreditsUsed > userData.usage.creditsTotal) {
         throw new Error('Insufficient credits');
       }
 
-      await userRef.update({
-        'usage.creditsUsed': newCreditsUsed,
-        updatedAt: new Date()
-      });
+        await userRef.update({
+          'usage.creditsUsed': newCreditsUsed,
+          updatedAt: new Date()
+        });
+      } catch (error: any) {
+        // If admin SDK fails due to credentials, fall back to client SDK
+        if (error?.message?.includes('default credentials') || error?.message?.includes('authentication')) {
+          console.log('Admin SDK credentials failed, falling back to client SDK for useCredits');
+          return clientService.useCredits(userId, creditsUsed);
+        }
+        throw error;
+      }
     } else {
       // Fallback to client SDK
       return clientService.useCredits(userId, creditsUsed);

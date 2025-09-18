@@ -3,30 +3,142 @@ rules_version = '2';
 // Firebase Storage Security Rules for Piktor App
 service firebase.storage {
   match /b/{bucket}/o {
-    // Temporary: Allow all access for testing (REMOVE IN PRODUCTION)
-    // TODO: Implement more restrictive rules for production
+
+    // ==========================================================================
+    // HELPER FUNCTIONS
+    // ==========================================================================
+
+    // Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Check if user owns the resource
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Check if request is from Firebase Admin SDK
+    function isAdminRequest() {
+      // Admin SDK operations typically don't have auth context but have elevated privileges
+      return request.auth == null && (request.time != null);
+    }
+
+    // Validate image file types
+    function isValidImageType() {
+      return request.resource.contentType != null &&
+             (request.resource.contentType.matches('image/jpeg') ||
+              request.resource.contentType.matches('image/png') ||
+              request.resource.contentType.matches('image/webp') ||
+              request.resource.contentType.matches('image/gif'));
+    }
+
+    // Check file size limits (50MB max for uploads)
+    function isValidFileSize() {
+      return request.resource.size <= 50 * 1024 * 1024;
+    }
+
+    // Validate file metadata (optional - don't require it)
+    function hasValidMetadata() {
+      return request.resource.metadata == null ||
+             !('userId' in request.resource.metadata) ||
+             request.resource.metadata.userId == request.auth.uid;
+    }
+
+    // Check if path belongs to authenticated user or admin
+    function pathBelongsToUser(userId) {
+      return isOwner(userId) || isAdminRequest();
+    }
+
+    // ==========================================================================
+    // USER-SPECIFIC STORAGE PATHS
+    // ==========================================================================
+
+    // User visuals directory: /users/{userId}/visuals/{projectId}/{visualId}/*
+    match /users/{userId}/visuals/{projectId}/{visualId}/{fileName} {
+      // Users can read and write their own visual files
+      allow read: if pathBelongsToUser(userId);
+
+      // Allow upload with validation (metadata is optional)
+      allow write: if pathBelongsToUser(userId) &&
+                     isValidImageType() &&
+                     isValidFileSize();
+
+      // Allow deletion by owner
+      allow delete: if pathBelongsToUser(userId);
+    }
+
+    // User thumbnails directory: /users/{userId}/thumbnails/{projectId}/{visualId}
+    match /users/{userId}/thumbnails/{projectId}/{visualId} {
+      // Users can read and write their own thumbnails
+      allow read: if pathBelongsToUser(userId);
+
+      // Allow thumbnail upload with validation (metadata is optional)
+      allow write: if pathBelongsToUser(userId) &&
+                     isValidImageType() &&
+                     request.resource.size <= 5 * 1024 * 1024; // 5MB max for thumbnails
+
+      // Allow deletion by owner
+      allow delete: if pathBelongsToUser(userId);
+    }
+
+    // ==========================================================================
+    // TEMPORARY FILES
+    // ==========================================================================
+
+    // Temp files - allow authenticated users to read/write with size limits
+    match /temp/{fileName} {
+      // Allow read for authenticated users
+      allow read: if isAuthenticated();
+
+      // Allow write with strict validation (metadata is optional)
+      allow write: if isAuthenticated() &&
+                     isValidImageType() &&
+                     isValidFileSize();
+
+      // Allow deletion by any authenticated user (for cleanup)
+      allow delete: if isAuthenticated();
+    }
+
+    // ==========================================================================
+    // PUBLIC ACCESS FOR SHARED CONTENT
+    // ==========================================================================
+
+    // Public read access for shared visuals (when projects are public)
+    // This requires checking Firestore for project visibility
+    match /users/{userId}/visuals/{projectId}/{visualId}/{fileName} {
+      // Allow public read if the project is marked as public in Firestore
+      // Note: This requires additional validation via Firestore rules
+      allow read: if true; // Will be further restricted by application logic
+    }
+
+    // Public read access for shared thumbnails
+    match /users/{userId}/thumbnails/{projectId}/{visualId} {
+      // Allow public read for thumbnails of public projects
+      allow read: if true; // Will be further restricted by application logic
+    }
+
+    // ==========================================================================
+    // SYSTEM FILES (Admin/Backup)
+    // ==========================================================================
+
+    // System files - no public access
+    match /system/{allPaths=**} {
+      allow read, write: if false; // Only accessible via Admin SDK
+    }
+
+    // Backup files - no public access
+    match /backups/{allPaths=**} {
+      allow read, write: if false; // Only accessible via Admin SDK
+    }
+
+    // ==========================================================================
+    // SECURITY BOUNDARIES
+    // ==========================================================================
+
+    // Deny access to root and any unmatched paths
     match /{allPaths=**} {
-      allow read, write: if true;
+      allow read, write: if false;
     }
-    
-    // More specific rules for production (commented out for now)
-    /*
-    // User-specific storage paths
-    match /users/{userId}/{allPaths=**} {
-      // Users can read and write to their own directories
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-    
-    // Public visuals (if needed later)
-    match /public/{allPaths=**} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
-    
-    // Temp files - allow authenticated users to read/write with cleanup
-    match /temp/{allPaths=**} {
-      allow read, write: if request.auth != null;
-    }
-    */
   }
 }

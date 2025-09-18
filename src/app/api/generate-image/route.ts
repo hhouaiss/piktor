@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateMultipleImagesWithGemini, getGeminiAspectRatio, base64ToDataUrl } from "@/lib/gemini-api";
-import { generationService, firestoreService } from "@/lib/firebase";
+import { firestoreService } from "@/lib/firebase";
+import { generationService } from "@/lib/firebase/generation-service";
 import type { GenerationRequest, GeneratedImageData } from "@/lib/firebase/generation-service";
 
 interface PromptData {

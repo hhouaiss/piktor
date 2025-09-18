@@ -21,11 +21,25 @@ export function useDashboardStats(userId: string | null) {
 
     try {
       setError(null);
+      setLoading(true);
+
+      // Add a small delay to ensure auth state is fully propagated
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       const dashboardStats = await firestoreService.getDashboardStats(userId);
       setStats(dashboardStats);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading dashboard stats:', error);
-      setError('Erreur lors du chargement des statistiques');
+
+      // Handle specific permission errors with better user messaging
+      if (error?.code === 'permission-denied' || error?.message?.includes('Missing or insufficient permissions')) {
+        console.log('Permission denied - user may not be fully authenticated yet');
+        setError('Permission denied - user may not be fully authenticated yet');
+        // Remove automatic retry to prevent infinite loop
+        // The dashboard will handle this gracefully with fallback UI
+      } else {
+        setError('Erreur lors du chargement des statistiques');
+      }
     } finally {
       setLoading(false);
     }
@@ -33,11 +47,10 @@ export function useDashboardStats(userId: string | null) {
 
   useEffect(() => {
     refreshStats();
-    
-    // Set up periodic refresh every 30 seconds
-    const interval = setInterval(refreshStats, 30000);
-    
-    return () => clearInterval(interval);
+
+    // Only set up periodic refresh in development or when user is actively interacting
+    // Removed automatic 30-second refresh to prevent unnecessary load
+    // The stats will refresh when the user navigates back to the dashboard
   }, [refreshStats]);
 
   return { stats, loading, error, refreshStats };
@@ -60,11 +73,25 @@ export function useRecentProjects(userId: string | null, limit: number = 5) {
 
     try {
       setError(null);
+      setLoading(true);
+
+      // Add a small delay to ensure auth state is fully propagated
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       const recentProjects = await firestoreService.getRecentProjects(userId, limit);
       setProjects(recentProjects);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading recent projects:', error);
-      setError('Erreur lors du chargement des projets récents');
+
+      // Handle specific permission errors with better user messaging
+      if (error?.code === 'permission-denied' || error?.message?.includes('Missing or insufficient permissions')) {
+        console.log('Permission denied - user may not be fully authenticated yet');
+        setError('Permission denied - user may not be fully authenticated yet');
+        // Remove automatic retry to prevent infinite loop
+        // The dashboard will handle this gracefully with fallback UI
+      } else {
+        setError('Erreur lors du chargement des projets récents');
+      }
     } finally {
       setLoading(false);
     }

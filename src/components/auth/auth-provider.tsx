@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User as FirebaseUser } from 'firebase/auth';
+import { Timestamp } from 'firebase/firestore';
 import { authService } from '@/lib/firebase';
 import type { User } from '@/lib/firebase';
 
@@ -43,8 +44,47 @@ export function AuthProvider({ children }: AuthProviderProps) {
           setUser(userData);
         } catch (error) {
           console.error('Error fetching user data:', error);
-          setError('Erreur lors du chargement des données utilisateur');
-          setUser(null);
+
+          // Check if it's a permission error or missing user document
+          if ((error as any)?.code === 'permission-denied' || (error as any)?.message?.includes('Missing or insufficient permissions') || (error as any)?.message?.includes('User document not found')) {
+            console.log('User document not found or permission denied, creating fallback user');
+
+            // Create a fallback user from Firebase Auth data
+            const now = Timestamp.now();
+            const fallbackUser: User = {
+              id: firebaseUser.uid,
+              email: firebaseUser.email || '',
+              displayName: firebaseUser.displayName || undefined,
+              photoURL: firebaseUser.photoURL || undefined,
+              createdAt: now,
+              updatedAt: now,
+              usage: {
+                creditsUsed: 0,
+                creditsTotal: 50,
+                resetDate: now
+              },
+              preferences: {
+                language: 'fr',
+                notifications: true,
+                theme: 'auto'
+              }
+            };
+
+            setUser(fallbackUser);
+            setError(null); // Clear error since we have a fallback
+
+            // Try to create the user document in the background
+            try {
+              await authService.createUserDocument();
+              console.log('Successfully created user document in background');
+            } catch (createError) {
+              console.error('Failed to create user document in background:', createError);
+              // Don't show error to user, they can still use the app
+            }
+          } else {
+            setError('Erreur lors du chargement des données utilisateur');
+            setUser(null);
+          }
         }
       } else {
         setUser(null);

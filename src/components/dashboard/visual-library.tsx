@@ -26,6 +26,7 @@ import {
 import { trackEvent, trackImageGeneration } from "@/lib/analytics";
 import { authService, firestoreService } from "@/lib/firebase";
 import type { Visual, VisualFilters, VisualSort, PaginationOptions } from "@/lib/firebase";
+import { getPlaceholderUrl } from "@/lib/image-placeholders";
 import Link from "next/link";
 
 
@@ -390,9 +391,15 @@ export function VisualLibrary() {
               fill
               className="object-cover cursor-pointer transition-transform group-hover:scale-105"
               onClick={() => handleVisualClick(visual)}
+              placeholder="blur"
+              blurDataURL={getPlaceholderUrl('small')}
               onError={(e) => {
-                e.currentTarget.style.display = 'none';
-                e.currentTarget.nextElementSibling!.classList.remove('hidden');
+                // Fallback to placeholder without causing additional requests
+                const target = e.currentTarget as HTMLImageElement;
+                target.src = getPlaceholderUrl('small');
+                target.style.display = 'block';
+                // Ensure we don't trigger the error again
+                target.onerror = null;
               }}
             />
             <Images className="absolute inset-0 w-16 h-16 m-auto text-sophisticated-gray-400 hidden" />
@@ -501,10 +508,15 @@ export function VisualLibrary() {
                 height={80}
                 className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
                 onClick={() => handleVisualClick(visual)}
+                placeholder="blur"
+                blurDataURL={getPlaceholderUrl('small')}
                 onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                  const fallback = e.currentTarget.parentElement?.querySelector('.fallback-icon');
-                  if (fallback) fallback.classList.remove('hidden');
+                  // Fallback to placeholder without causing additional requests
+                  const target = e.currentTarget as HTMLImageElement;
+                  target.src = getPlaceholderUrl('small');
+                  target.style.display = 'block';
+                  // Ensure we don't trigger the error again
+                  target.onerror = null;
                 }}
               />
               <Images className="fallback-icon w-8 h-8 absolute inset-0 m-auto text-sophisticated-gray-400 hidden" />

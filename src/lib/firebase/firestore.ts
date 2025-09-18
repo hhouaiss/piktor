@@ -24,6 +24,7 @@ import {
 } from 'firebase/firestore';
 
 import { db } from './config';
+import { getPlaceholderUrl } from '../image-placeholders';
 import type {
   Visual,
   Project,
@@ -426,7 +427,7 @@ class FirestoreService {
       recentProjects.push({
         id: project.id,
         name: project.name,
-        thumbnail: latestVisual?.thumbnailUrl || '/api/placeholder/300/200',
+        thumbnail: latestVisual?.thumbnailUrl || getPlaceholderUrl('thumbnail'),
         createdAt: project.createdAt.toDate().toISOString(),
         format: project.preferredFormats,
         downloads: project.totalDownloads,

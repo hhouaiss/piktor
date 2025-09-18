@@ -42,3 +42,9 @@ next-env.d.ts
 
 # large original gallery images (backup)
 public/gallery-original-backup/
+
+# firebase
+firestore.rules
+storage.rules
+FIREBASE_SECURITY_DOCUMENTATION.md
+firebase-debug.log
