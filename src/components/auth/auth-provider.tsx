@@ -54,8 +54,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
             const fallbackUser: User = {
               id: firebaseUser.uid,
               email: firebaseUser.email || '',
-              displayName: firebaseUser.displayName || undefined,
-              photoURL: firebaseUser.photoURL || undefined,
               createdAt: now,
               updatedAt: now,
               usage: {
@@ -69,6 +67,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 theme: 'auto'
               }
             };
+
+            // Only add displayName and photoURL if they exist (avoid undefined)
+            if (firebaseUser.displayName) {
+              fallbackUser.displayName = firebaseUser.displayName;
+            }
+            if (firebaseUser.photoURL) {
+              fallbackUser.photoURL = firebaseUser.photoURL;
+            }
 
             setUser(fallbackUser);
             setError(null); // Clear error since we have a fallback

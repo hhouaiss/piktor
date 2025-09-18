@@ -43,8 +43,6 @@ class AuthService {
     if (!userDoc.exists()) {
       const userData: FirestoreUser = {
         email: firebaseUser.email!,
-        displayName: firebaseUser.displayName || undefined,
-        photoURL: firebaseUser.photoURL || undefined,
         createdAt: serverTimestamp() as any,
         updatedAt: serverTimestamp() as any,
         usage: {
@@ -59,6 +57,14 @@ class AuthService {
         }
       };
 
+      // Only add displayName and photoURL if they exist
+      if (firebaseUser.displayName) {
+        userData.displayName = firebaseUser.displayName;
+      }
+      if (firebaseUser.photoURL) {
+        userData.photoURL = firebaseUser.photoURL;
+      }
+
       await setDoc(userRef, userData);
       console.log('Created new user document for:', firebaseUser.email);
     } else {
@@ -70,11 +76,15 @@ class AuthService {
 
       // Sync displayName and photoURL from Firebase Auth if they've changed
       if (firebaseUser.displayName !== existingData.displayName) {
-        updatedData.displayName = firebaseUser.displayName || undefined;
+        if (firebaseUser.displayName) {
+          updatedData.displayName = firebaseUser.displayName;
+        }
         console.log('Syncing displayName:', firebaseUser.displayName);
       }
       if (firebaseUser.photoURL !== existingData.photoURL) {
-        updatedData.photoURL = firebaseUser.photoURL || undefined;
+        if (firebaseUser.photoURL) {
+          updatedData.photoURL = firebaseUser.photoURL;
+        }
         console.log('Syncing photoURL:', firebaseUser.photoURL);
       }
 
