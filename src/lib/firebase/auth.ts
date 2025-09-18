@@ -60,11 +60,25 @@ class AuthService {
       };
 
       await setDoc(userRef, userData);
+      console.log('Created new user document for:', firebaseUser.email);
     } else {
-      // Update last activity
-      await setDoc(userRef, {
-        updatedAt: serverTimestamp()
-      }, { merge: true });
+      // Update last activity and sync Firebase Auth data
+      const existingData = userDoc.data() as FirestoreUser;
+      const updatedData: Partial<FirestoreUser> = {
+        updatedAt: serverTimestamp() as any
+      };
+
+      // Sync displayName and photoURL from Firebase Auth if they've changed
+      if (firebaseUser.displayName !== existingData.displayName) {
+        updatedData.displayName = firebaseUser.displayName || undefined;
+        console.log('Syncing displayName:', firebaseUser.displayName);
+      }
+      if (firebaseUser.photoURL !== existingData.photoURL) {
+        updatedData.photoURL = firebaseUser.photoURL || undefined;
+        console.log('Syncing photoURL:', firebaseUser.photoURL);
+      }
+
+      await setDoc(userRef, updatedData, { merge: true });
     }
   }
 

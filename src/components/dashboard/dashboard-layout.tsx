@@ -151,6 +151,31 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   };
 
+  // Helper functions for user display
+  const getDisplayName = () => {
+    if (user?.displayName) {
+      return user.displayName;
+    }
+    if (user?.email) {
+      // Extract name from email (part before @)
+      return user.email.split('@')[0];
+    }
+    return 'Utilisateur';
+  };
+
+  const getUserInitials = () => {
+    if (user?.displayName) {
+      const names = user.displayName.split(' ');
+      return names.length > 1
+        ? `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase()
+        : names[0][0].toUpperCase();
+    }
+    if (user?.email) {
+      return user.email[0].toUpperCase();
+    }
+    return 'U';
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Top Bar */}
@@ -223,7 +248,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 onClick={handleProfileDropdownClick}
               >
                 <div className="w-7 h-7 bg-gradient-ocean-deep rounded-full flex items-center justify-center">
-                  <span className="text-white text-xs font-medium">U</span>
+                  <span className="text-white text-xs font-medium">{getUserInitials()}</span>
                 </div>
                 <ChevronDown className="h-3 w-3 text-muted-foreground" />
               </Button>
@@ -232,10 +257,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 <div className="absolute right-0 mt-2 w-48 bg-white border border-border rounded-lg shadow-lg z-50">
                   <div className="p-3 border-b border-border">
                     <p className="text-sm font-medium text-foreground">
-                      {user?.displayName || 'Utilisateur'}
+                      {getDisplayName()}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {user?.email || 'user@example.com'}
+                      {user?.email || 'Non renseigné'}
                     </p>
                   </div>
                   <div className="p-1">
@@ -275,8 +300,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   href={item.href}
                   onClick={() => handleSidebarItemClick(item)}
                   className={cn(
-                    "flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 hover:bg-sidebar-accent group",
-                    isActive && "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm",
+                    "flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 group",
+                    isActive
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
+                      : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                     sidebarCollapsed && "justify-center"
                   )}
                   title={sidebarCollapsed ? item.label : ""}
@@ -337,8 +364,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                       href={item.href}
                       onClick={() => handleSidebarItemClick(item)}
                       className={cn(
-                        "flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 hover:bg-sidebar-accent",
-                        isActive && "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
+                        "flex items-center space-x-3 p-3 rounded-lg transition-all duration-200",
+                        isActive
+                          ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
+                          : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                       )}
                     >
                       <Icon className={cn(

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { 
+import {
   User,
   Crown,
   CreditCard,
@@ -16,20 +16,17 @@ import {
   AlertTriangle,
   Edit,
   Save,
-  X
+  X,
+  Loader2
 } from "lucide-react";
 import { trackEvent } from "@/lib/analytics";
+import { useAuth } from "@/components/auth/auth-provider";
 
 interface UserProfile {
-  firstName: string;
-  lastName: string;
+  displayName: string;
   email: string;
-  company: string;
-  phone: string;
-  address: string;
-  city: string;
-  postalCode: string;
-  country: string;
+  company?: string;
+  phone?: string;
 }
 
 interface Subscription {
@@ -50,27 +47,6 @@ interface BillingHistory {
   invoice: string;
 }
 
-const mockProfile: UserProfile = {
-  firstName: "Jean",
-  lastName: "Dupont",
-  email: "jean.dupont@example.com",
-  company: "Meubles Design SARL",
-  phone: "+33 1 23 45 67 89",
-  address: "123 Rue de la Paix",
-  city: "Paris",
-  postalCode: "75001",
-  country: "France"
-};
-
-const mockSubscription: Subscription = {
-  plan: "pro",
-  status: "active",
-  currentPeriodEnd: "2024-10-15",
-  creditsTotal: 200,
-  creditsUsed: 47,
-  billingCycle: "monthly",
-  nextBillingAmount: 49
-};
 
 const mockBillingHistory: BillingHistory[] = [
   {
@@ -118,12 +94,41 @@ const planFeatures = {
 };
 
 export function AccountPage() {
-  const [profile, setProfile] = useState<UserProfile>(mockProfile);
-  const [subscription] = useState<Subscription>(mockSubscription);
-  const [billingHistory] = useState<BillingHistory[]>(mockBillingHistory);
+  const { user, loading: authLoading, updateProfile } = useAuth();
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [editedProfile, setEditedProfile] = useState<UserProfile>(mockProfile);
+  const [editedProfile, setEditedProfile] = useState<UserProfile>({
+    displayName: '',
+    email: '',
+    company: '',
+    phone: ''
+  });
+
+  // Initialize profile data from Firebase user
+  useEffect(() => {
+    if (user) {
+      const profile: UserProfile = {
+        displayName: user.displayName || '',
+        email: user.email || '',
+        company: '',
+        phone: ''
+      };
+      setEditedProfile(profile);
+    }
+  }, [user]);
+
+  // Mock subscription data for now (until billing is implemented)
+  const subscription: Subscription = {
+    plan: "pro",
+    status: "active",
+    currentPeriodEnd: "2024-10-15",
+    creditsTotal: user?.usage?.creditsTotal || 50,
+    creditsUsed: user?.usage?.creditsUsed || 0,
+    billingCycle: "monthly",
+    nextBillingAmount: 49
+  };
+
+  const [billingHistory] = useState<BillingHistory[]>(mockBillingHistory);
 
   useEffect(() => {
     trackEvent('account_viewed', {
@@ -134,8 +139,7 @@ export function AccountPage() {
 
   const handleProfileEdit = () => {
     setIsEditingProfile(true);
-    setEditedProfile(profile);
-    
+
     trackEvent('profile_edit_started', {
       event_category: 'account',
       event_label: 'edit_profile'
@@ -143,20 +147,22 @@ export function AccountPage() {
   };
 
   const handleProfileSave = async () => {
+    if (!user) return;
+
     setIsSaving(true);
-    
+
     try {
-      // TODO: Save to API
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setProfile(editedProfile);
+      await updateProfile({
+        displayName: editedProfile.displayName
+      });
+
       setIsEditingProfile(false);
-      
+
       trackEvent('profile_saved', {
         event_category: 'account',
         event_label: 'profile_update'
       });
-      
+
     } catch (error) {
       console.error('Error saving profile:', error);
     } finally {
@@ -165,8 +171,15 @@ export function AccountPage() {
   };
 
   const handleProfileCancel = () => {
+    if (user) {
+      setEditedProfile({
+        displayName: user.displayName || '',
+        email: user.email || '',
+        company: '',
+        phone: ''
+      });
+    }
     setIsEditingProfile(false);
-    setEditedProfile(profile);
   };
 
   const handlePlanChange = (newPlan: "starter" | "pro" | "enterprise") => {
@@ -235,6 +248,34 @@ export function AccountPage() {
     }
   };
 
+
+  // Loading state
+  if (authLoading) {
+    return (
+      <div className="max-w-6xl mx-auto space-y-8">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
+            <p className="text-muted-foreground">Chargement de votre compte...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="max-w-6xl mx-auto space-y-8">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <User className="w-8 h-8 text-muted-foreground mx-auto mb-4" />
+            <p className="text-muted-foreground">Vous devez être connecté pour accéder à votre compte.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-6xl mx-auto space-y-8">
       {/* Header */}
@@ -286,22 +327,13 @@ export function AccountPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-3">
-            <Label htmlFor="firstName">Prénom</Label>
+            <Label htmlFor="displayName">Nom d'affichage</Label>
             <Input
-              id="firstName"
-              value={isEditingProfile ? editedProfile.firstName : profile.firstName}
-              onChange={(e) => isEditingProfile && setEditedProfile(prev => ({ ...prev, firstName: e.target.value }))}
+              id="displayName"
+              value={isEditingProfile ? editedProfile.displayName : (user?.displayName || '')}
+              onChange={(e) => isEditingProfile && setEditedProfile(prev => ({ ...prev, displayName: e.target.value }))}
               disabled={!isEditingProfile}
-            />
-          </div>
-
-          <div className="space-y-3">
-            <Label htmlFor="lastName">Nom</Label>
-            <Input
-              id="lastName"
-              value={isEditingProfile ? editedProfile.lastName : profile.lastName}
-              onChange={(e) => isEditingProfile && setEditedProfile(prev => ({ ...prev, lastName: e.target.value }))}
-              disabled={!isEditingProfile}
+              placeholder="Votre nom complet"
             />
           </div>
 
@@ -310,60 +342,55 @@ export function AccountPage() {
             <Input
               id="email"
               type="email"
-              value={isEditingProfile ? editedProfile.email : profile.email}
-              onChange={(e) => isEditingProfile && setEditedProfile(prev => ({ ...prev, email: e.target.value }))}
-              disabled={!isEditingProfile}
+              value={user?.email || ''}
+              disabled={true}
+              className="bg-muted"
             />
+            <p className="text-xs text-muted-foreground">
+              L'adresse email ne peut pas être modifiée
+            </p>
           </div>
 
           <div className="space-y-3">
-            <Label htmlFor="company">Entreprise</Label>
+            <Label htmlFor="company">Entreprise (optionnel)</Label>
             <Input
               id="company"
-              value={isEditingProfile ? editedProfile.company : profile.company}
+              value={isEditingProfile ? editedProfile.company : ''}
               onChange={(e) => isEditingProfile && setEditedProfile(prev => ({ ...prev, company: e.target.value }))}
               disabled={!isEditingProfile}
+              placeholder="Nom de votre entreprise"
             />
           </div>
 
           <div className="space-y-3">
-            <Label htmlFor="phone">Téléphone</Label>
+            <Label htmlFor="phone">Téléphone (optionnel)</Label>
             <Input
               id="phone"
-              value={isEditingProfile ? editedProfile.phone : profile.phone}
+              value={isEditingProfile ? editedProfile.phone : ''}
               onChange={(e) => isEditingProfile && setEditedProfile(prev => ({ ...prev, phone: e.target.value }))}
               disabled={!isEditingProfile}
+              placeholder="+33 1 23 45 67 89"
             />
           </div>
 
-          <div className="space-y-3">
-            <Label htmlFor="address">Adresse</Label>
-            <Input
-              id="address"
-              value={isEditingProfile ? editedProfile.address : profile.address}
-              onChange={(e) => isEditingProfile && setEditedProfile(prev => ({ ...prev, address: e.target.value }))}
-              disabled={!isEditingProfile}
-            />
-          </div>
-
-          <div className="space-y-3">
-            <Label htmlFor="city">Ville</Label>
-            <Input
-              id="city"
-              value={isEditingProfile ? editedProfile.city : profile.city}
-              onChange={(e) => isEditingProfile && setEditedProfile(prev => ({ ...prev, city: e.target.value }))}
-              disabled={!isEditingProfile}
-            />
-          </div>
-
-          <div className="space-y-3">
-            <Label htmlFor="postalCode">Code postal</Label>
-            <Input
-              id="postalCode"
-              value={isEditingProfile ? editedProfile.postalCode : profile.postalCode}
-              onChange={(e) => isEditingProfile && setEditedProfile(prev => ({ ...prev, postalCode: e.target.value }))}
-              disabled={!isEditingProfile}
-            />
+          <div className="md:col-span-2 mt-4">
+            <div className="bg-muted/50 p-4 rounded-lg">
+              <h4 className="font-medium text-foreground mb-2">Informations de compte</h4>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">ID utilisateur :</span>
+                  <span className="font-mono text-xs">{user?.id}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Membre depuis :</span>
+                  <span>{user?.createdAt ? new Date(user.createdAt.toDate()).toLocaleDateString('fr-FR') : 'Non disponible'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Dernière connexion :</span>
+                  <span>{user?.updatedAt ? new Date(user.updatedAt.toDate()).toLocaleDateString('fr-FR') : 'Non disponible'}</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </Card>

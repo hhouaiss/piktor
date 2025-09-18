@@ -24,6 +24,7 @@ import { trackEvent } from "@/lib/analytics";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useDashboardStats, useRecentProjects, useActivityTracker } from "@/lib/firebase/realtime-service";
 import type { RecentProject } from "@/lib/firebase";
+import { debugUserData } from "@/lib/debug-firebase";
 
 
 
@@ -39,6 +40,9 @@ export function DashboardHome() {
 
   useEffect(() => {
     if (user) {
+      // Debug user data
+      debugUserData(user, 'DashboardHome');
+
       // Track dashboard home view
       trackEvent('dashboard_home_viewed', {
         event_category: 'dashboard',
@@ -125,13 +129,25 @@ export function DashboardHome() {
     projects: 0
   };
 
+  // Helper function to get display name
+  const getDisplayName = () => {
+    if (user?.displayName) {
+      return user.displayName;
+    }
+    if (user?.email) {
+      // Extract name from email (part before @)
+      return user.email.split('@')[0];
+    }
+    return 'Utilisateur';
+  };
+
   return (
     <div className="space-y-8">
       {/* Welcome Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground">
-            Bonjour {user?.displayName || 'Utilisateur'} ! 👋
+            Bonjour {getDisplayName()} ! 👋
           </h1>
           <p className="text-muted-foreground mt-1">
             Prêt à créer de nouveaux visuels exceptionnels pour votre marque ?

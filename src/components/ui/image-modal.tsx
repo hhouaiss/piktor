@@ -48,9 +48,9 @@ export function ImageModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent 
+      <DialogContent
         className={cn(
-          "max-w-4xl max-h-[90vh] w-[90vw] p-0 overflow-hidden",
+          "max-w-6xl max-h-[90vh] w-[95vw] p-0 overflow-hidden",
           className
         )}
       >
@@ -71,7 +71,7 @@ export function ImageModal({
           </Button>
 
           {/* Image container */}
-          <div className="relative w-full" style={{ minHeight: '300px' }}>
+          <div className="relative w-full flex items-center justify-center bg-sophisticated-gray-50" style={{ minHeight: '60vh' }}>
             {!imageLoaded && (
               <div className="absolute inset-0 bg-muted flex items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -80,44 +80,47 @@ export function ImageModal({
             <Image
               src={imageUrl}
               alt={imageAlt}
-              width={1000}
-              height={1000}
+              width={1200}
+              height={800}
               className={cn(
-                "w-full h-auto max-h-[70vh] object-contain transition-opacity",
+                "w-full h-auto max-h-[75vh] object-contain transition-opacity",
                 imageLoaded ? "opacity-100" : "opacity-0"
               )}
               onLoad={() => setImageLoaded(true)}
               unoptimized
+              priority
             />
           </div>
 
           {/* Action buttons */}
           {(onDownload || onEdit) && (
-            <div className="flex items-center justify-center gap-2 p-4 bg-white border-t">
+            <div className="flex items-center justify-center gap-3 p-6 bg-white border-t shadow-sm">
               {onEdit && (
                 <Button
                   variant="outline"
-                  size="sm"
+                  size="default"
                   onClick={handleEdit}
                   disabled={!imageLoaded}
+                  className="min-w-[120px]"
                 >
                   <Edit3 className="h-4 w-4 mr-2" />
-                  Edit
+                  Modifier
                 </Button>
               )}
               {onDownload && (
                 <Button
                   variant="default"
-                  size="sm"
+                  size="default"
                   onClick={handleDownload}
                   disabled={isDownloading || !imageLoaded}
+                  className="min-w-[120px] bg-gradient-ocean-deep hover:opacity-90"
                 >
                   {isDownloading ? (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   ) : (
                     <Download className="h-4 w-4 mr-2" />
                   )}
-                  {isDownloading ? "Downloading..." : "Download"}
+                  {isDownloading ? "Téléchargement..." : "Télécharger"}
                 </Button>
               )}
             </div>

@@ -211,28 +211,68 @@ export function VisualLibrary() {
     try {
       // Increment download count in Firebase
       await firestoreService.incrementVisualStats(visual.id, { downloads: 1 });
-      
+
       // Track download analytics
       trackImageGeneration.imageDownloaded({
         imageIndex: visuals.indexOf(visual),
         productType: visual.name,
         filename: visual.name
       });
-      
+
       // Update local state
-      setVisuals(prev => prev.map(v => 
+      setVisuals(prev => prev.map(v =>
         v.id === visual.id ? { ...v, downloads: v.downloads + 1 } : v
       ));
 
-      // Create download link
+      // Use the download API to handle Firebase Storage URLs properly
+      const filename = `${visual.name}.jpg`;
+      const proxyUrl = `/api/download-image?url=${encodeURIComponent(visual.originalImageUrl)}&filename=${encodeURIComponent(filename)}`;
+
+      const response = await fetch(proxyUrl);
+      if (!response.ok) {
+        let errorMessage = `Download failed: HTTP ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+          if (errorData.details) {
+            errorMessage += ` - ${errorData.details}`;
+          }
+        } catch (jsonError) {
+          console.error('Could not parse error response:', jsonError);
+        }
+        throw new Error(errorMessage);
+      }
+
+      const blob = await response.blob();
+      if (blob.size === 0) {
+        throw new Error('Downloaded file is empty');
+      }
+
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.href = visual.originalImageUrl;
-      link.download = `${visual.name}.jpg`;
+      link.href = url;
+      link.download = filename;
+      link.style.display = 'none';
+
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+
+      // Clean up the object URL
+      window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Error downloading image:', error);
+
+      // Show user-friendly error message
+      const errorMessage = error instanceof Error ? error.message : 'Unknown download error';
+      alert(`Download failed: ${errorMessage}`);
+
+      // Fallback: open image in new tab if available
+      try {
+        window.open(visual.originalImageUrl, '_blank');
+      } catch (fallbackError) {
+        console.error('Fallback download also failed:', fallbackError);
+      }
     }
   };
 
@@ -448,71 +488,110 @@ export function VisualLibrary() {
   );
 
   const renderListView = () => (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {filteredVisuals.map((visual) => (
-        <Card key={visual.id} className="p-4 hover:shadow-md transition-shadow">
-          <div className="flex items-center space-x-4">
-            <div className="w-20 h-20 bg-sophisticated-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+        <Card key={visual.id} className="p-4 hover:shadow-md transition-all duration-200">
+          <div className="flex items-start gap-4">
+            {/* Image thumbnail - fixed size */}
+            <div className="relative w-20 h-20 bg-sophisticated-gray-100 rounded-lg overflow-hidden flex-shrink-0">
               <Image
                 src={visual.thumbnailUrl || visual.originalImageUrl}
                 alt={visual.name}
-                fill
-                className="object-cover cursor-pointer"
+                width={80}
+                height={80}
+                className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
                 onClick={() => handleVisualClick(visual)}
                 onError={(e) => {
                   e.currentTarget.style.display = 'none';
-                  e.currentTarget.nextElementSibling!.classList.remove('hidden');
+                  const fallback = e.currentTarget.parentElement?.querySelector('.fallback-icon');
+                  if (fallback) fallback.classList.remove('hidden');
                 }}
               />
-              <Images className="w-8 h-8 m-auto text-sophisticated-gray-400 hidden" />
+              <Images className="fallback-icon w-8 h-8 absolute inset-0 m-auto text-sophisticated-gray-400 hidden" />
             </div>
 
+            {/* Content - flexible */}
             <div className="flex-1 min-w-0">
-              <div className="flex items-center space-x-2 mb-1">
-                <h3 className="font-medium text-foreground truncate">{visual.name}</h3>
-                {visual.isFavorite && (
-                  <Star className="w-4 h-4 text-warm-gold-500 fill-current flex-shrink-0" />
-                )}
-              </div>
-              
-              <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mb-2">
-                <span>{Array.isArray(visual.format) ? visual.format.join(', ') : visual.format}</span>
-                <span className="flex items-center">
-                  <Calendar className="w-3 h-3 mr-1" />
-                  {formatDate(visual.createdAt)}
-                </span>
-                <span className="flex items-center">
-                  <Eye className="w-3 h-3 mr-1" />
-                  {visual.views} vues
-                </span>
-                <span className="flex items-center">
-                  <Download className="w-3 h-3 mr-1" />
-                  {visual.downloads} téléchargements
-                </span>
+              <div className="flex items-start justify-between mb-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <h3 className="font-medium text-foreground truncate">{visual.name}</h3>
+                  {visual.isFavorite && (
+                    <Star className="w-4 h-4 text-warm-gold-500 fill-current flex-shrink-0" />
+                  )}
+                </div>
+
+                {/* Actions - moved to top right for better mobile layout */}
+                <div className="flex items-center gap-1 flex-shrink-0 ml-4">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleVisualClick(visual)}
+                    title="Voir l'image"
+                  >
+                    <Eye className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDownload(visual)}
+                    title="Télécharger"
+                  >
+                    <Download className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleToggleFavorite(visual)}
+                    title={visual.isFavorite ? "Retirer des favoris" : "Ajouter aux favoris"}
+                  >
+                    <Star className={`w-4 h-4 ${visual.isFavorite ? 'fill-current text-warm-gold-500' : ''}`} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeleteVisual(visual)}
+                    title="Supprimer"
+                  >
+                    <Trash2 className="w-4 h-4 text-destructive" />
+                  </Button>
+                </div>
               </div>
 
+              {/* Metadata */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm text-muted-foreground mb-3">
+                <div className="flex items-center">
+                  <span className="font-medium">Format:</span>
+                  <span className="ml-1 truncate">
+                    {Array.isArray(visual.format) ? visual.format.join(', ') : visual.format}
+                  </span>
+                </div>
+                <div className="flex items-center">
+                  <Calendar className="w-3 h-3 mr-1 flex-shrink-0" />
+                  <span className="truncate">{formatDate(visual.createdAt)}</span>
+                </div>
+                <div className="flex items-center">
+                  <Eye className="w-3 h-3 mr-1 flex-shrink-0" />
+                  <span>{visual.views} vues</span>
+                </div>
+                <div className="flex items-center">
+                  <Download className="w-3 h-3 mr-1 flex-shrink-0" />
+                  <span>{visual.downloads} téléchargements</span>
+                </div>
+              </div>
+
+              {/* Tags */}
               <div className="flex flex-wrap gap-1">
-                {visual.tags.map((tag) => (
-                  <span key={tag} className="bg-muted text-muted-foreground text-xs px-2 py-1 rounded">
+                {visual.tags.slice(0, 4).map((tag) => (
+                  <span key={tag} className="bg-muted text-muted-foreground text-xs px-2 py-1 rounded-md">
                     {tag}
                   </span>
                 ))}
+                {visual.tags.length > 4 && (
+                  <span className="text-xs text-muted-foreground self-center">
+                    +{visual.tags.length - 4} plus
+                  </span>
+                )}
               </div>
-            </div>
-
-            <div className="flex items-center space-x-2 flex-shrink-0">
-              <Button variant="ghost" size="sm" onClick={() => handleVisualClick(visual)}>
-                <Eye className="w-4 h-4" />
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => handleDownload(visual)}>
-                <Download className="w-4 h-4" />
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => handleToggleFavorite(visual)}>
-                <Star className={`w-4 h-4 ${visual.isFavorite ? 'fill-current text-warm-gold-500' : ''}`} />
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => handleDeleteVisual(visual)}>
-                <Trash2 className="w-4 h-4 text-destructive" />
-              </Button>
             </div>
           </div>
         </Card>

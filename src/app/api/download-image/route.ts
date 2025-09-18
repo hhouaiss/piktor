@@ -42,28 +42,32 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Expanded BFL domain validation - be more permissive for different BFL endpoints
+    // Expanded domain validation - support both BFL and Firebase Storage URLs
     const allowedDomains = [
+      // BFL domains
       'delivery-eu1.bfl.ai',
-      'delivery-us1.bfl.ai', 
+      'delivery-us1.bfl.ai',
       'delivery.bfl.ai',
       'cdn.bfl.ai',
       'static.bfl.ai',
       'images.bfl.ai',
-      'assets.bfl.ai'
+      'assets.bfl.ai',
+      // Firebase Storage domains
+      'firebasestorage.googleapis.com',
+      'storage.googleapis.com'
     ];
-    
-    const isValidBFLDomain = allowedDomains.some(domain => 
+
+    const isValidDomain = allowedDomains.some(domain =>
       urlObj.hostname === domain || urlObj.hostname.endsWith(`.${domain}`)
     );
-    
-    if (!isValidBFLDomain) {
+
+    if (!isValidDomain) {
       console.error(`[Download] Invalid domain: ${urlObj.hostname}`);
       console.error(`[Download] Allowed domains: ${allowedDomains.join(', ')}`);
       return NextResponse.json(
-        { 
+        {
           error: 'Invalid image URL domain',
-          details: `Only BFL delivery URLs are allowed. Got: ${urlObj.hostname}`,
+          details: `Only BFL and Firebase Storage URLs are allowed. Got: ${urlObj.hostname}`,
           allowedDomains: allowedDomains
         },
         { status: 400 }
@@ -72,7 +76,7 @@ export async function GET(request: NextRequest) {
 
     console.log(`[Download] Domain validation passed for: ${urlObj.hostname}`);
 
-    // Fetch the image from BFL delivery URL with timeout and retry logic
+    // Fetch the image from allowed URL with timeout and retry logic
     const fetchWithTimeout = async (url: string, timeoutMs: number = 30000) => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -113,12 +117,12 @@ export async function GET(request: NextRequest) {
             console.error(`[Download] Final attempt failed. Status: ${response.status}, Error: ${errorText}`);
             
             return NextResponse.json(
-              { 
-                error: `Failed to fetch image from BFL: ${response.status}`,
+              {
+                error: `Failed to fetch image: ${response.status}`,
                 details: `HTTP ${response.status}: ${response.statusText}`,
                 imageUrl: imageUrl,
                 attempts: attempts,
-                bflError: errorText
+                serverError: errorText
               },
               { status: response.status >= 400 && response.status < 500 ? response.status : 502 }
             );
