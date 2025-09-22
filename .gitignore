@@ -49,3 +49,5 @@ storage.rules
 FIREBASE_SECURITY_DOCUMENTATION.md
 firebase-debug.log
 SECURITY_CHECKLIST.md
+SECURITY_FIXES.md
+.claude/agents/saas-security-advisor.md
