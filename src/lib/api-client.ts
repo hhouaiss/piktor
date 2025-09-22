@@ -9,7 +9,7 @@ export async function getAuthHeaders(): Promise<Record<string, string>> {
   let currentUser = authService.getCurrentUser();
 
   // Fallback to Firebase auth if authService doesn't have user yet
-  if (!currentUser && auth.currentUser) {
+  if (!currentUser && auth && auth.currentUser) {
     currentUser = auth.currentUser;
   }
 
@@ -131,7 +131,7 @@ export async function debugAuthState(): Promise<{
 }> {
   try {
     const authServiceUser = authService.getCurrentUser();
-    const firebaseAuthUser = auth.currentUser;
+    const firebaseAuthUser = auth ? auth.currentUser : null;
 
     const result = {
       hasAuthServiceUser: !!authServiceUser,

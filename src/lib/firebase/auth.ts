@@ -23,9 +23,14 @@ class AuthService {
   }
 
   private initAuthStateListener() {
+    if (!auth) {
+      console.error('[AuthService] Firebase auth not initialized');
+      return;
+    }
+
     this.unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
       this.currentUser = firebaseUser;
-      
+
       if (firebaseUser) {
         // Ensure user document exists in Firestore
         await this.ensureUserDocument(firebaseUser);
@@ -37,6 +42,11 @@ class AuthService {
    * Create or update user document in Firestore
    */
   private async ensureUserDocument(firebaseUser: FirebaseUser): Promise<void> {
+    if (!db) {
+      console.error('[AuthService] Firebase Firestore not initialized');
+      return;
+    }
+
     const userRef = doc(db, 'users', firebaseUser.uid);
     const userDoc = await getDoc(userRef);
 
@@ -102,6 +112,10 @@ class AuthService {
    * Register new user with email and password
    */
   async register(email: string, password: string, displayName?: string): Promise<User> {
+    if (!auth) {
+      throw new Error('Firebase auth not initialized');
+    }
+
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const firebaseUser = userCredential.user;
@@ -122,6 +136,10 @@ class AuthService {
    * Sign in with email and password
    */
   async signIn(email: string, password: string): Promise<User> {
+    if (!auth) {
+      throw new Error('Firebase auth not initialized');
+    }
+
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       return await this.getUserData(userCredential.user.uid);
@@ -134,11 +152,15 @@ class AuthService {
    * Sign in with Google
    */
   async signInWithGoogle(): Promise<User> {
+    if (!auth) {
+      throw new Error('Firebase auth not initialized');
+    }
+
     try {
       const provider = new GoogleAuthProvider();
       provider.addScope('profile');
       provider.addScope('email');
-      
+
       const userCredential = await signInWithPopup(auth, provider);
       await this.ensureUserDocument(userCredential.user);
       
@@ -152,6 +174,10 @@ class AuthService {
    * Sign out current user
    */
   async signOut(): Promise<void> {
+    if (!auth) {
+      throw new Error('Firebase auth not initialized');
+    }
+
     try {
       await signOut(auth);
     } catch (error) {
@@ -163,6 +189,10 @@ class AuthService {
    * Send password reset email
    */
   async resetPassword(email: string): Promise<void> {
+    if (!auth) {
+      throw new Error('Firebase auth not initialized');
+    }
+
     try {
       await sendPasswordResetEmail(auth, email);
     } catch (error) {
@@ -181,6 +211,10 @@ class AuthService {
    * Get user data from Firestore
    */
   async getUserData(userId: string): Promise<User> {
+    if (!db) {
+      throw new Error('Firebase Firestore not initialized');
+    }
+
     const userRef = doc(db, 'users', userId);
     const userDoc = await getDoc(userRef);
 
@@ -216,6 +250,10 @@ class AuthService {
    * Update user profile
    */
   async updateUserProfile(userId: string, updates: Partial<FirestoreUser>): Promise<void> {
+    if (!db) {
+      throw new Error('Firebase Firestore not initialized');
+    }
+
     const userRef = doc(db, 'users', userId);
     await setDoc(userRef, {
       ...updates,
@@ -258,6 +296,10 @@ class AuthService {
    * Use credits for generation
    */
   async useCredits(userId: string, creditsUsed: number): Promise<void> {
+    if (!db) {
+      throw new Error('Firebase Firestore not initialized');
+    }
+
     const userRef = doc(db, 'users', userId);
     const userData = await this.getUserData(userId);
     
@@ -280,6 +322,11 @@ class AuthService {
    * Subscribe to auth state changes
    */
   onAuthStateChange(callback: (user: FirebaseUser | null) => void): () => void {
+    if (!auth) {
+      console.error('[AuthService] Firebase auth not initialized');
+      return () => {}; // Return a no-op function
+    }
+
     return onAuthStateChanged(auth, callback);
   }
 

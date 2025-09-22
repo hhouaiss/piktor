@@ -62,7 +62,7 @@ class SimpleServerFirestoreService {
    * Get user data from Firestore
    */
   async getUserData(userId: string): Promise<User> {
-    const userRef = doc(db, this.USERS_COLLECTION, userId);
+    const userRef = doc(db!, this.USERS_COLLECTION, userId);
     const userDoc = await getDoc(userRef);
 
     if (!userDoc.exists()) {
@@ -80,7 +80,7 @@ class SimpleServerFirestoreService {
    * Create or update user document
    */
   async ensureUserDocument(userId: string, userData: Partial<FirestoreUser>): Promise<void> {
-    const userRef = doc(db, this.USERS_COLLECTION, userId);
+    const userRef = doc(db!, this.USERS_COLLECTION, userId);
     const userDoc = await getDoc(userRef);
 
     if (!userDoc.exists()) {
@@ -130,7 +130,7 @@ class SimpleServerFirestoreService {
    * Use credits for generation
    */
   async useCredits(userId: string, creditsUsed: number): Promise<void> {
-    const userRef = doc(db, this.USERS_COLLECTION, userId);
+    const userRef = doc(db!, this.USERS_COLLECTION, userId);
     const userData = await this.getUserData(userId);
     
     const newCreditsUsed = userData.usage.creditsUsed + creditsUsed;
@@ -172,7 +172,7 @@ class SimpleServerFirestoreService {
       lastActivityAt: serverTimestamp() as any
     };
 
-    const docRef = await addDoc(collection(db, this.PROJECTS_COLLECTION), project);
+    const docRef = await addDoc(collection(db!, this.PROJECTS_COLLECTION), project);
     return docRef.id;
   }
 
@@ -180,7 +180,7 @@ class SimpleServerFirestoreService {
    * Get project by ID
    */
   async getProject(projectId: string): Promise<Project | null> {
-    const projectRef = doc(db, this.PROJECTS_COLLECTION, projectId);
+    const projectRef = doc(db!, this.PROJECTS_COLLECTION, projectId);
     const projectDoc = await getDoc(projectRef);
 
     if (!projectDoc.exists()) {
@@ -196,7 +196,7 @@ class SimpleServerFirestoreService {
    */
   async getUserProjects(userId: string, options?: PaginationOptions): Promise<PaginatedResult<Project>> {
     let q = query(
-      collection(db, this.PROJECTS_COLLECTION),
+      collection(db!, this.PROJECTS_COLLECTION),
       where('userId', '==', userId),
       orderBy('lastActivityAt', 'desc')
     );
@@ -206,7 +206,7 @@ class SimpleServerFirestoreService {
     }
 
     if (options?.startAfter) {
-      const startAfterDoc = await getDoc(doc(db, this.PROJECTS_COLLECTION, options.startAfter));
+      const startAfterDoc = await getDoc(doc(db!, this.PROJECTS_COLLECTION, options.startAfter));
       if (startAfterDoc.exists()) {
         q = query(q, startAfter(startAfterDoc));
       }
@@ -231,7 +231,7 @@ class SimpleServerFirestoreService {
    * Update project
    */
   async updateProject(projectId: string, updates: Partial<FirestoreProject>): Promise<void> {
-    const projectRef = doc(db, this.PROJECTS_COLLECTION, projectId);
+    const projectRef = doc(db!, this.PROJECTS_COLLECTION, projectId);
     
     await updateDoc(projectRef, {
       ...updates,
@@ -244,15 +244,15 @@ class SimpleServerFirestoreService {
    * Delete project and all associated visuals
    */
   async deleteProject(projectId: string): Promise<void> {
-    const batch = writeBatch(db);
+    const batch = writeBatch(db!);
 
     // Delete project
-    const projectRef = doc(db, this.PROJECTS_COLLECTION, projectId);
+    const projectRef = doc(db!, this.PROJECTS_COLLECTION, projectId);
     batch.delete(projectRef);
 
     // Delete all visuals in project
     const visualsQuery = query(
-      collection(db, this.VISUALS_COLLECTION),
+      collection(db!, this.VISUALS_COLLECTION),
       where('projectId', '==', projectId)
     );
     const visualsSnapshot = await getDocs(visualsQuery);
@@ -282,7 +282,7 @@ class SimpleServerFirestoreService {
       updatedAt: serverTimestamp() as any
     };
 
-    const docRef = await addDoc(collection(db, this.VISUALS_COLLECTION), visual);
+    const docRef = await addDoc(collection(db!, this.VISUALS_COLLECTION), visual);
 
     // Update project stats
     await this.incrementProjectStats(visualData.projectId, { totalVisuals: 1 });
@@ -310,7 +310,7 @@ class SimpleServerFirestoreService {
    * Get visual by ID
    */
   async getVisual(visualId: string): Promise<Visual | null> {
-    const visualRef = doc(db, this.VISUALS_COLLECTION, visualId);
+    const visualRef = doc(db!, this.VISUALS_COLLECTION, visualId);
     const visualDoc = await getDoc(visualRef);
 
     if (!visualDoc.exists()) {
@@ -331,7 +331,7 @@ class SimpleServerFirestoreService {
     pagination?: PaginationOptions
   ): Promise<PaginatedResult<Visual>> {
     let q = query(
-      collection(db, this.VISUALS_COLLECTION),
+      collection(db!, this.VISUALS_COLLECTION),
       where('userId', '==', userId)
     );
 
@@ -371,7 +371,7 @@ class SimpleServerFirestoreService {
     }
 
     if (pagination?.startAfter) {
-      const startAfterDoc = await getDoc(doc(db, this.VISUALS_COLLECTION, pagination.startAfter));
+      const startAfterDoc = await getDoc(doc(db!, this.VISUALS_COLLECTION, pagination.startAfter));
       if (startAfterDoc.exists()) {
         q = query(q, startAfter(startAfterDoc));
       }
@@ -396,7 +396,7 @@ class SimpleServerFirestoreService {
    * Update visual
    */
   async updateVisual(visualId: string, updates: Partial<FirestoreVisual>): Promise<void> {
-    const visualRef = doc(db, this.VISUALS_COLLECTION, visualId);
+    const visualRef = doc(db!, this.VISUALS_COLLECTION, visualId);
     
     await updateDoc(visualRef, {
       ...updates,
@@ -411,7 +411,7 @@ class SimpleServerFirestoreService {
     const visual = await this.getVisual(visualId);
     if (!visual) return;
 
-    const visualRef = doc(db, this.VISUALS_COLLECTION, visualId);
+    const visualRef = doc(db!, this.VISUALS_COLLECTION, visualId);
     await deleteDoc(visualRef);
 
     // Update project stats
@@ -467,7 +467,7 @@ class SimpleServerFirestoreService {
     for (const project of projectsResult.data) {
       // Get latest visual for thumbnail
       const visualsQuery = query(
-        collection(db, this.VISUALS_COLLECTION),
+        collection(db!, this.VISUALS_COLLECTION),
         where('projectId', '==', project.id),
         orderBy('createdAt', 'desc'),
         limit(1)
@@ -504,7 +504,7 @@ class SimpleServerFirestoreService {
       timestamp: serverTimestamp() as any
     };
 
-    await addDoc(collection(db, this.USAGE_COLLECTION), usage);
+    await addDoc(collection(db!, this.USAGE_COLLECTION), usage);
   }
 
   // ============================================================================
@@ -518,7 +518,7 @@ class SimpleServerFirestoreService {
     projectId: string,
     stats: { totalVisuals?: number; totalViews?: number; totalDownloads?: number }
   ): Promise<void> {
-    const projectRef = doc(db, this.PROJECTS_COLLECTION, projectId);
+    const projectRef = doc(db!, this.PROJECTS_COLLECTION, projectId);
     const updates: any = { lastActivityAt: serverTimestamp() };
 
     if (stats.totalVisuals) {

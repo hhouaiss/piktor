@@ -10,6 +10,17 @@ export async function testFirebaseConnection() {
   try {
     console.log('[Firebase Test] Starting connection tests...');
 
+    // Check if Firebase services are available
+    if (!auth) {
+      console.error('[Firebase Test] Firebase auth not initialized');
+      return;
+    }
+
+    if (!db) {
+      console.error('[Firebase Test] Firebase Firestore not initialized');
+      return;
+    }
+
     // Check authentication state
     const currentUser = auth.currentUser;
     console.log('[Firebase Test] Auth state:', {
@@ -89,6 +100,12 @@ export async function testFirebaseConnection() {
  */
 export function waitForAuth(): Promise<boolean> {
   return new Promise((resolve) => {
+    if (!auth) {
+      console.error('[Firebase Test] Firebase auth not initialized');
+      resolve(false);
+      return;
+    }
+
     const unsubscribe = auth.onAuthStateChanged((user) => {
       unsubscribe();
       resolve(!!user);

@@ -54,6 +54,9 @@ class ServerFirestoreService {
 
   // Use client SDK for now (in development)
   private get firestore() {
+    if (!db) {
+      throw new Error('Firebase Firestore not initialized');
+    }
     return db; // Use client SDK consistently
   }
 
