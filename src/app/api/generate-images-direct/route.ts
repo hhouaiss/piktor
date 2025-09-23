@@ -265,22 +265,23 @@ export async function POST(request: NextRequest) {
 
         // Update variations with Firebase Storage URLs if successful
         firebaseResults.forEach((result, index) => {
-          if (result.success && result.visual && result.visual.originalImageUrl && variations[index]) {
+          const variation = variations[index];
+          if (result.success && result.visual && result.visual.originalImageUrl && variation) {
             console.log(`[Direct API] Updating variation ${index} with Firebase URL:`, {
-              originalUrl: variations[index].url.substring(0, 50) + '...',
+              originalUrl: variation.url?.substring(0, 50) + '...',
               firebaseUrl: result.visual.originalImageUrl.substring(0, 50) + '...'
             });
 
             // Replace the external URL with Firebase Storage URL
-            variations[index].url = result.visual.originalImageUrl;
-            variations[index].firebaseUrl = result.visual.originalImageUrl;
-            variations[index].visualId = result.visualId;
-            variations[index].projectId = result.projectId;
-            variations[index].savedToFirebase = true;
-          } else if (result.error) {
+            variation.url = result.visual.originalImageUrl;
+            variation.firebaseUrl = result.visual.originalImageUrl;
+            variation.visualId = result.visualId;
+            variation.projectId = result.projectId;
+            variation.savedToFirebase = true;
+          } else if (result.error && variation) {
             console.error(`[Direct API] Failed to save variation ${index} to Firebase:`, result.error);
-            variations[index].savedToFirebase = false;
-            variations[index].firebaseError = result.error;
+            variation.savedToFirebase = false;
+            variation.firebaseError = result.error;
           }
         });
 
