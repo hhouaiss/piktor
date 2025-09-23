@@ -274,14 +274,14 @@ export async function POST(request: NextRequest) {
 
             // Replace the external URL with Firebase Storage URL
             variation.url = result.visual.originalImageUrl;
-            variation.firebaseUrl = result.visual.originalImageUrl;
-            variation.visualId = result.visualId;
-            variation.projectId = result.projectId;
-            variation.savedToFirebase = true;
+            (variation as any).firebaseUrl = result.visual.originalImageUrl;
+            (variation as any).visualId = result.visualId;
+            (variation as any).projectId = result.projectId;
+            (variation as any).savedToFirebase = true;
           } else if (result.error && variation) {
             console.error(`[Direct API] Failed to save variation ${index} to Firebase:`, result.error);
-            variation.savedToFirebase = false;
-            variation.firebaseError = result.error;
+            (variation as any).savedToFirebase = false;
+            (variation as any).firebaseError = result.error;
           }
         });
 
