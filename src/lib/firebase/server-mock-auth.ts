@@ -1,12 +1,11 @@
 /**
  * Server-side Firebase service with mock authentication
- * 
- * This service uses the regular Firebase Client SDK but simulates
- * authentication for server-side operations in development.
+ *
+ * This service uses the regular Firebase Client SDK for server-side operations
+ * without authentication initialization to avoid auth/admin-restricted-operation errors.
  */
 
-import { getFirebaseDb, getFirebaseAuth } from './config';
-import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import { getFirebaseDb } from './config';
 import { getPlaceholderUrl } from '../image-placeholders';
 import {
   collection, 
@@ -47,46 +46,13 @@ import type {
 } from './types';
 
 class MockAuthFirestoreService {
-  private authInitialized = false;
-  private authPromise: Promise<void>;
-
   constructor() {
-    this.authPromise = this.initializeAuth();
+    console.log('🔥 Firebase service initialized for server-side operations (no auth required)');
   }
 
-  // Initialize anonymous authentication for server-side operations
-  private async initializeAuth(): Promise<void> {
-    if (this.authInitialized) return;
-
-    // Skip auth initialization during build time
-    if (process.env.NODE_ENV === 'production' && !process.env.VERCEL_ENV) {
-      console.log('Skipping Firebase auth during build time');
-      this.authInitialized = true;
-      return;
-    }
-
-    try {
-      // Sign in anonymously to get authentication context
-      const auth = getFirebaseAuth();
-      await signInAnonymously(auth);
-      this.authInitialized = true;
-      console.log('🔥 Firebase authenticated for server-side operations');
-    } catch (error) {
-      console.error('Failed to initialize Firebase auth:', error);
-      // Continue without auth - rules should be permissive
-      this.authInitialized = true; // Mark as initialized to prevent retries
-    }
-  }
-
-  // Ensure auth is initialized before any operation
-  private async ensureAuth(): Promise<void> {
-    await this.authPromise;
-  }
-
-  // Ensure both auth and db are available
+  // No auth initialization needed - using permissive Firestore rules
   private async ensureFirebase(): Promise<void> {
-    await this.ensureAuth();
-
+    // Database connection is handled by the config module
   }
 
   // Collections
