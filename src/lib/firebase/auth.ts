@@ -11,7 +11,7 @@ import {
   signInWithPopup
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from './config';
+import { getFirebaseAuth, getFirebaseDb } from './config';
 import type { User, FirestoreUser, FirebaseError } from './types';
 
 class AuthService {
@@ -23,32 +23,46 @@ class AuthService {
   }
 
   private initAuthStateListener() {
-    if (!auth) {
-      console.error('[AuthService] Firebase auth not initialized');
-      return;
+    try {
+      const auth = getFirebaseAuth();
+      this.unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
+        this.currentUser = firebaseUser;
+
+        if (firebaseUser) {
+          // Ensure user document exists in Firestore
+          try {
+            await this.ensureUserDocument(firebaseUser);
+          } catch (error) {
+            console.error('[AuthService] Error ensuring user document:', error);
+            // Don't throw - allow auth to continue working even if Firestore fails
+          }
+        }
+      });
+      console.log('[AuthService] Auth state listener initialized successfully');
+    } catch (error) {
+      console.error('[AuthService] Error setting up auth listener:', error);
+      console.error('[AuthService] This might be due to Firebase configuration issues');
+
+      // Set up a retry mechanism for auth initialization
+      setTimeout(() => {
+        console.log('[AuthService] Retrying auth initialization...');
+        try {
+          this.initAuthStateListener();
+        } catch (retryError) {
+          console.error('[AuthService] Retry failed:', retryError);
+        }
+      }, 2000);
     }
-
-    this.unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
-      this.currentUser = firebaseUser;
-
-      if (firebaseUser) {
-        // Ensure user document exists in Firestore
-        await this.ensureUserDocument(firebaseUser);
-      }
-    });
   }
 
   /**
    * Create or update user document in Firestore
    */
   private async ensureUserDocument(firebaseUser: FirebaseUser): Promise<void> {
-    if (!db) {
-      console.error('[AuthService] Firebase Firestore not initialized');
-      return;
-    }
-
-    const userRef = doc(db, 'users', firebaseUser.uid);
-    const userDoc = await getDoc(userRef);
+    try {
+      const db = getFirebaseDb();
+      const userRef = doc(db, 'users', firebaseUser.uid);
+      const userDoc = await getDoc(userRef);
 
     if (!userDoc.exists()) {
       const userData: FirestoreUser = {
@@ -100,6 +114,9 @@ class AuthService {
 
       await setDoc(userRef, updatedData, { merge: true });
     }
+    } catch (error) {
+      console.error('[AuthService] Error ensuring user document:', error);
+    }
   }
 
   private getNextMonthTimestamp() {
@@ -112,11 +129,8 @@ class AuthService {
    * Register new user with email and password
    */
   async register(email: string, password: string, displayName?: string): Promise<User> {
-    if (!auth) {
-      throw new Error('Firebase auth not initialized');
-    }
-
     try {
+      const auth = getFirebaseAuth();
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const firebaseUser = userCredential.user;
 
@@ -136,11 +150,8 @@ class AuthService {
    * Sign in with email and password
    */
   async signIn(email: string, password: string): Promise<User> {
-    if (!auth) {
-      throw new Error('Firebase auth not initialized');
-    }
-
     try {
+      const auth = getFirebaseAuth();
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       return await this.getUserData(userCredential.user.uid);
     } catch (error) {
@@ -152,11 +163,8 @@ class AuthService {
    * Sign in with Google
    */
   async signInWithGoogle(): Promise<User> {
-    if (!auth) {
-      throw new Error('Firebase auth not initialized');
-    }
-
     try {
+      const auth = getFirebaseAuth();
       const provider = new GoogleAuthProvider();
       provider.addScope('profile');
       provider.addScope('email');
@@ -174,11 +182,8 @@ class AuthService {
    * Sign out current user
    */
   async signOut(): Promise<void> {
-    if (!auth) {
-      throw new Error('Firebase auth not initialized');
-    }
-
     try {
+      const auth = getFirebaseAuth();
       await signOut(auth);
     } catch (error) {
       throw this.handleAuthError(error as AuthError);
@@ -189,11 +194,8 @@ class AuthService {
    * Send password reset email
    */
   async resetPassword(email: string): Promise<void> {
-    if (!auth) {
-      throw new Error('Firebase auth not initialized');
-    }
-
     try {
+      const auth = getFirebaseAuth();
       await sendPasswordResetEmail(auth, email);
     } catch (error) {
       throw this.handleAuthError(error as AuthError);
@@ -211,10 +213,7 @@ class AuthService {
    * Get user data from Firestore
    */
   async getUserData(userId: string): Promise<User> {
-    if (!db) {
-      throw new Error('Firebase Firestore not initialized');
-    }
-
+    const db = getFirebaseDb();
     const userRef = doc(db, 'users', userId);
     const userDoc = await getDoc(userRef);
 
@@ -250,10 +249,7 @@ class AuthService {
    * Update user profile
    */
   async updateUserProfile(userId: string, updates: Partial<FirestoreUser>): Promise<void> {
-    if (!db) {
-      throw new Error('Firebase Firestore not initialized');
-    }
-
+    const db = getFirebaseDb();
     const userRef = doc(db, 'users', userId);
     await setDoc(userRef, {
       ...updates,
@@ -296,10 +292,7 @@ class AuthService {
    * Use credits for generation
    */
   async useCredits(userId: string, creditsUsed: number): Promise<void> {
-    if (!db) {
-      throw new Error('Firebase Firestore not initialized');
-    }
-
+    const db = getFirebaseDb();
     const userRef = doc(db, 'users', userId);
     const userData = await this.getUserData(userId);
     
@@ -322,12 +315,13 @@ class AuthService {
    * Subscribe to auth state changes
    */
   onAuthStateChange(callback: (user: FirebaseUser | null) => void): () => void {
-    if (!auth) {
-      console.error('[AuthService] Firebase auth not initialized');
+    try {
+      const auth = getFirebaseAuth();
+      return onAuthStateChanged(auth, callback);
+    } catch (error) {
+      console.error('[AuthService] Firebase auth not initialized:', error);
       return () => {}; // Return a no-op function
     }
-
-    return onAuthStateChanged(auth, callback);
   }
 
   /**

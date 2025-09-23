@@ -23,7 +23,7 @@ import {
   type QueryConstraint
 } from 'firebase/firestore';
 
-import { db } from './config';
+import { getFirebaseDb } from './config';
 import { getPlaceholderUrl } from '../image-placeholders';
 import type {
   Visual,
@@ -58,11 +58,8 @@ class FirestoreService {
    * Create a new project
    */
   async createProject(userId: string, projectData: Partial<Project>): Promise<string> {
-    if (!db) {
-      throw new Error('Firebase Firestore not initialized');
-    }
 
-    const projectRef = collection(db, this.PROJECTS_COLLECTION);
+    const projectRef = collection(getFirebaseDb(), this.PROJECTS_COLLECTION);
 
     const project: FirestoreProject = {
       userId,
@@ -91,11 +88,8 @@ class FirestoreService {
    * Get project by ID
    */
   async getProject(projectId: string): Promise<Project | null> {
-    if (!db) {
-      throw new Error('Firebase Firestore not initialized');
-    }
 
-    const projectRef = doc(db, this.PROJECTS_COLLECTION, projectId);
+    const projectRef = doc(getFirebaseDb(), this.PROJECTS_COLLECTION, projectId);
     const projectDoc = await getDoc(projectRef);
 
     if (!projectDoc.exists()) {
@@ -110,12 +104,9 @@ class FirestoreService {
    * Get user's projects
    */
   async getUserProjects(userId: string, options?: PaginationOptions): Promise<PaginatedResult<Project>> {
-    if (!db) {
-      throw new Error('Firebase Firestore not initialized');
-    }
 
     let q = query(
-      collection(db, this.PROJECTS_COLLECTION),
+      collection(getFirebaseDb(), this.PROJECTS_COLLECTION),
       where('userId', '==', userId),
       orderBy('lastActivityAt', 'desc')
     );
@@ -147,11 +138,8 @@ class FirestoreService {
    * Update project
    */
   async updateProject(projectId: string, updates: Partial<FirestoreProject>): Promise<void> {
-    if (!db) {
-      throw new Error('Firebase Firestore not initialized');
-    }
 
-    const projectRef = doc(db, this.PROJECTS_COLLECTION, projectId);
+    const projectRef = doc(getFirebaseDb(), this.PROJECTS_COLLECTION, projectId);
     
     await updateDoc(projectRef, {
       ...updates,
@@ -164,19 +152,16 @@ class FirestoreService {
    * Delete project and all associated visuals
    */
   async deleteProject(projectId: string): Promise<void> {
-    if (!db) {
-      throw new Error('Firebase Firestore not initialized');
-    }
 
-    const batch = writeBatch(db);
+    const batch = writeBatch(getFirebaseDb());
 
     // Delete project
-    const projectRef = doc(db, this.PROJECTS_COLLECTION, projectId);
+    const projectRef = doc(getFirebaseDb(), this.PROJECTS_COLLECTION, projectId);
     batch.delete(projectRef);
 
     // Delete all visuals in project
     const visualsQuery = query(
-      collection(db, this.VISUALS_COLLECTION),
+      collection(getFirebaseDb(), this.VISUALS_COLLECTION),
       where('projectId', '==', projectId)
     );
     const visualsSnapshot = await getDocs(visualsQuery);
@@ -196,11 +181,8 @@ class FirestoreService {
    * Create a new visual
    */
   async createVisual(visualData: Omit<Visual, 'id'>): Promise<string> {
-    if (!db) {
-      throw new Error('Firebase Firestore not initialized');
-    }
 
-    const visualRef = collection(db, this.VISUALS_COLLECTION);
+    const visualRef = collection(getFirebaseDb(), this.VISUALS_COLLECTION);
     
     const visual: FirestoreVisual = {
       ...visualData,
@@ -240,11 +222,8 @@ class FirestoreService {
    * Get visual by ID
    */
   async getVisual(visualId: string): Promise<Visual | null> {
-    if (!db) {
-      throw new Error('Firebase Firestore not initialized');
-    }
 
-    const visualRef = doc(db, this.VISUALS_COLLECTION, visualId);
+    const visualRef = doc(getFirebaseDb(), this.VISUALS_COLLECTION, visualId);
     const visualDoc = await getDoc(visualRef);
 
     if (!visualDoc.exists()) {
@@ -264,9 +243,6 @@ class FirestoreService {
     sort?: VisualSort,
     pagination?: PaginationOptions
   ): Promise<PaginatedResult<Visual>> {
-    if (!db) {
-      throw new Error('Firebase Firestore not initialized');
-    }
 
     const constraints: QueryConstraint[] = [where('userId', '==', userId)];
 
@@ -305,7 +281,7 @@ class FirestoreService {
       constraints.push(limit(pagination.limit));
     }
 
-    let q = query(collection(db, this.VISUALS_COLLECTION), ...constraints);
+    let q = query(collection(getFirebaseDb(), this.VISUALS_COLLECTION), ...constraints);
 
     if (pagination?.startAfter) {
       q = query(q, startAfter(pagination.startAfter));
@@ -330,11 +306,8 @@ class FirestoreService {
    * Update visual
    */
   async updateVisual(visualId: string, updates: Partial<FirestoreVisual>): Promise<void> {
-    if (!db) {
-      throw new Error('Firebase Firestore not initialized');
-    }
 
-    const visualRef = doc(db, this.VISUALS_COLLECTION, visualId);
+    const visualRef = doc(getFirebaseDb(), this.VISUALS_COLLECTION, visualId);
     
     await updateDoc(visualRef, {
       ...updates,
@@ -349,11 +322,8 @@ class FirestoreService {
     const visual = await this.getVisual(visualId);
     if (!visual) return;
 
-    if (!db) {
-      throw new Error('Firebase Firestore not initialized');
-    }
 
-    const visualRef = doc(db, this.VISUALS_COLLECTION, visualId);
+    const visualRef = doc(getFirebaseDb(), this.VISUALS_COLLECTION, visualId);
     await deleteDoc(visualRef);
 
     // Update project stats
@@ -380,11 +350,8 @@ class FirestoreService {
     visualId: string,
     stats: { views?: number; downloads?: number; shares?: number }
   ): Promise<void> {
-    if (!db) {
-      throw new Error('Firebase Firestore not initialized');
-    }
 
-    const visualRef = doc(db, this.VISUALS_COLLECTION, visualId);
+    const visualRef = doc(getFirebaseDb(), this.VISUALS_COLLECTION, visualId);
     const updates: any = { lastViewedAt: serverTimestamp() };
 
     if (stats.views) updates.views = increment(stats.views);
@@ -434,11 +401,8 @@ class FirestoreService {
     );
 
     // Get user data for credits
-    if (!db) {
-      throw new Error('Firebase Firestore not initialized');
-    }
 
-    const userRef = doc(db, this.USERS_COLLECTION, userId);
+    const userRef = doc(getFirebaseDb(), this.USERS_COLLECTION, userId);
     const userDoc = await getDoc(userRef);
     const userData = userDoc.data();
 
@@ -460,14 +424,11 @@ class FirestoreService {
     const projectsResult = await this.getUserProjects(userId, { limit: limitCount });
     const recentProjects: RecentProject[] = [];
 
-    if (!db) {
-      throw new Error('Firebase Firestore not initialized');
-    }
 
     for (const project of projectsResult.data) {
       // Get latest visual for thumbnail
       const visualsQuery = query(
-        collection(db, this.VISUALS_COLLECTION),
+        collection(getFirebaseDb(), this.VISUALS_COLLECTION),
         where('projectId', '==', project.id),
         orderBy('createdAt', 'desc'),
         limit(1)
@@ -499,11 +460,8 @@ class FirestoreService {
    * Record usage event
    */
   async recordUsage(usageData: Omit<UsageRecord, 'id'>): Promise<void> {
-    if (!db) {
-      throw new Error('Firebase Firestore not initialized');
-    }
 
-    const usageRef = collection(db, this.USAGE_COLLECTION);
+    const usageRef = collection(getFirebaseDb(), this.USAGE_COLLECTION);
     
     const usage: FirestoreUsageRecord = {
       ...usageData,
@@ -520,11 +478,8 @@ class FirestoreService {
     userId: string,
     period: string = 'monthly'
   ): Promise<UserStats | null> {
-    if (!db) {
-      throw new Error('Firebase Firestore not initialized');
-    }
 
-    const statsRef = doc(db, this.STATS_COLLECTION, `${userId}_${period}`);
+    const statsRef = doc(getFirebaseDb(), this.STATS_COLLECTION, `${userId}_${period}`);
     const statsDoc = await getDoc(statsRef);
 
     if (!statsDoc.exists()) {
@@ -547,11 +502,8 @@ class FirestoreService {
     callback: (visuals: Visual[]) => void,
     filters?: VisualFilters
   ): () => void {
-    if (!db) {
-      console.error('Firebase Firestore not initialized');
-      // Return a no-op unsubscribe function
-      return () => {};
-    }
+    try {
+      const db = getFirebaseDb();
 
     const constraints: QueryConstraint[] = [
       where('userId', '==', userId),
@@ -564,7 +516,7 @@ class FirestoreService {
       constraints.push(where('projectId', '==', filters.projectId));
     }
 
-    const q = query(collection(db, this.VISUALS_COLLECTION), ...constraints);
+    const q = query(collection(getFirebaseDb(), this.VISUALS_COLLECTION), ...constraints);
 
     return onSnapshot(q, (snapshot) => {
       const visuals: Visual[] = [];
@@ -574,6 +526,11 @@ class FirestoreService {
       });
       callback(visuals);
     });
+    } catch (error) {
+      console.error('Firebase Firestore not initialized:', error);
+      // Return a no-op unsubscribe function
+      return () => {};
+    }
   }
 
   /**
@@ -583,14 +540,11 @@ class FirestoreService {
     userId: string,
     callback: (projects: Project[]) => void
   ): () => void {
-    if (!db) {
-      console.error('Firebase Firestore not initialized');
-      // Return a no-op unsubscribe function
-      return () => {};
-    }
+    try {
+      const db = getFirebaseDb();
 
     const q = query(
-      collection(db, this.PROJECTS_COLLECTION),
+      collection(getFirebaseDb(), this.PROJECTS_COLLECTION),
       where('userId', '==', userId),
       orderBy('lastActivityAt', 'desc')
     );
@@ -603,6 +557,11 @@ class FirestoreService {
       });
       callback(projects);
     });
+    } catch (error) {
+      console.error('Firebase Firestore not initialized:', error);
+      // Return a no-op unsubscribe function
+      return () => {};
+    }
   }
 
   // ============================================================================
@@ -616,11 +575,8 @@ class FirestoreService {
     projectId: string,
     stats: { totalVisuals?: number; totalViews?: number; totalDownloads?: number }
   ): Promise<void> {
-    if (!db) {
-      throw new Error('Firebase Firestore not initialized');
-    }
 
-    const projectRef = doc(db, this.PROJECTS_COLLECTION, projectId);
+    const projectRef = doc(getFirebaseDb(), this.PROJECTS_COLLECTION, projectId);
     const updates: any = { lastActivityAt: serverTimestamp() };
 
     if (stats.totalVisuals) updates.totalVisuals = increment(stats.totalVisuals);
@@ -655,15 +611,12 @@ class FirestoreService {
    * Get trending visuals (most viewed in last 7 days)
    */
   async getTrendingVisuals(userId: string, maxResults: number = 10): Promise<Visual[]> {
-    if (!db) {
-      throw new Error('Firebase Firestore not initialized');
-    }
 
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
     const q = query(
-      collection(db, this.VISUALS_COLLECTION),
+      collection(getFirebaseDb(), this.VISUALS_COLLECTION),
       where('userId', '==', userId),
       where('lastViewedAt', '>=', Timestamp.fromDate(sevenDaysAgo)),
       orderBy('views', 'desc'),

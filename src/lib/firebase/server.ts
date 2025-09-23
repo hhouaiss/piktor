@@ -7,7 +7,7 @@
  */
 
 import { adminDb } from './admin';
-import { db } from './config';
+import { getFirebaseDb } from './config';
 import { 
   collection, 
   doc, 
@@ -54,10 +54,7 @@ class ServerFirestoreService {
 
   // Use client SDK for now (in development)
   private get firestore() {
-    if (!db) {
-      throw new Error('Firebase Firestore not initialized');
-    }
-    return db; // Use client SDK consistently
+    return getFirebaseDb(); // Use client SDK consistently
   }
 
   // ============================================================================

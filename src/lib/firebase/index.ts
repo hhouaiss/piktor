@@ -1,5 +1,12 @@
 // Export Firebase configuration
-export { default as app, auth, db, storage, analytics } from './config';
+export {
+  default as app,
+  getFirebaseAuth as auth,
+  getFirebaseDb as db,
+  getFirebaseStorage as storage,
+  getFirebaseAnalytics as analytics,
+  getFirebaseApp
+} from './config';
 
 // Export services
 export { authService } from './auth';

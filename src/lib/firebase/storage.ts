@@ -12,7 +12,7 @@ import {
   type UploadTaskSnapshot
 } from 'firebase/storage';
 
-import { storage } from './config';
+import { getFirebaseStorage } from './config';
 
 export interface UploadProgress {
   progress: number; // 0-100
@@ -77,7 +77,7 @@ class StorageService {
     const originalPath = `${this.USERS_PATH}/${userId}/${this.VISUALS_PATH}/${projectId}/${visualId}/original`;
     console.log('[StorageService] Upload path:', originalPath);
     
-    const originalRef = ref(storage!, originalPath);
+    const originalRef = ref(getFirebaseStorage(), originalPath);
 
     // Prepare metadata
     const metadata = {
@@ -286,7 +286,7 @@ class StorageService {
     
     // Upload thumbnail
     const thumbnailPath = `${this.USERS_PATH}/${userId}/${this.THUMBNAILS_PATH}/${projectId}/${visualId}`;
-    const thumbnailRef = ref(storage!, thumbnailPath);
+    const thumbnailRef = ref(getFirebaseStorage(), thumbnailPath);
     
     await uploadBytes(thumbnailRef, thumbnailBlob, {
       contentType: 'image/jpeg',
@@ -325,7 +325,7 @@ class StorageService {
         );
 
         const variantPath = `${this.USERS_PATH}/${userId}/${this.VISUALS_PATH}/${projectId}/${visualId}/${variant.format}`;
-        const variantRef = ref(storage!, variantPath);
+        const variantRef = ref(getFirebaseStorage(), variantPath);
 
         await uploadBytes(variantRef, variantBlob, {
           contentType: 'image/jpeg',
@@ -536,11 +536,11 @@ class StorageService {
   ): Promise<void> {
     try {
       // Delete from visuals folder
-      const visualsRef = ref(storage!, `${this.USERS_PATH}/${userId}/${this.VISUALS_PATH}/${projectId}/${visualId}`);
+      const visualsRef = ref(getFirebaseStorage(), `${this.USERS_PATH}/${userId}/${this.VISUALS_PATH}/${projectId}/${visualId}`);
       await this.deleteFolder(visualsRef);
 
       // Delete thumbnail
-      const thumbnailRef = ref(storage!, `${this.USERS_PATH}/${userId}/${this.THUMBNAILS_PATH}/${projectId}/${visualId}`);
+      const thumbnailRef = ref(getFirebaseStorage(), `${this.USERS_PATH}/${userId}/${this.THUMBNAILS_PATH}/${projectId}/${visualId}`);
       await this.deleteObjectSilently(thumbnailRef);
     } catch (error) {
       console.error('Failed to delete visual images:', error);
@@ -590,7 +590,7 @@ class StorageService {
     filename: string = 'original'
   ): Promise<string> {
     const imagePath = `${this.USERS_PATH}/${userId}/${this.VISUALS_PATH}/${projectId}/${visualId}/${filename}`;
-    const imageRef = ref(storage!, imagePath);
+    const imageRef = ref(getFirebaseStorage(), imagePath);
     
     return await getDownloadURL(imageRef);
   }
@@ -600,7 +600,7 @@ class StorageService {
    */
   async uploadTempImage(blob: Blob, filename?: string): Promise<string> {
     const tempFilename = filename || `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const tempRef = ref(storage!, `${this.TEMP_PATH}/${tempFilename}`);
+    const tempRef = ref(getFirebaseStorage(), `${this.TEMP_PATH}/${tempFilename}`);
     
     await uploadBytes(tempRef, blob);
     return await getDownloadURL(tempRef);
@@ -611,7 +611,7 @@ class StorageService {
    */
   async cleanupTempFiles(): Promise<void> {
     try {
-      const tempRef = ref(storage!, this.TEMP_PATH);
+      const tempRef = ref(getFirebaseStorage(), this.TEMP_PATH);
       const result = await listAll(tempRef);
       
       const now = Date.now();
@@ -640,7 +640,7 @@ class StorageService {
    */
   async getUserStorageUsage(userId: string): Promise<number> {
     try {
-      const userRef = ref(storage!, `${this.USERS_PATH}/${userId}`);
+      const userRef = ref(getFirebaseStorage(), `${this.USERS_PATH}/${userId}`);
       const result = await listAll(userRef);
       
       let totalSize = 0;

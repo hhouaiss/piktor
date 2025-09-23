@@ -97,7 +97,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   // Track page views for dashboard pages
   useEffect(() => {
-    trackPageView(pathname, `Dashboard - ${pathname.split('/').pop() || 'Home'}`);
+    trackPageView(pathname || '/', `Dashboard - ${pathname?.split('/').pop() || 'Home'}`);
   }, [pathname]);
 
   // Close mobile menu when route changes
@@ -292,7 +292,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           <nav className="flex-1 p-4 space-y-2">
             {sidebarItems.map((item) => {
               const Icon = item.icon;
-              const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
+              const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname?.startsWith(item.href));
               
               return (
                 <Link
@@ -356,7 +356,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               <nav className="p-4 space-y-2">
                 {sidebarItems.map((item) => {
                   const Icon = item.icon;
-                  const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
+                  const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname?.startsWith(item.href));
                   
                   return (
                     <Link
