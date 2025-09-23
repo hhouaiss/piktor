@@ -5,7 +5,7 @@
  * authentication for server-side operations in development.
  */
 
-import { db, auth } from './config';
+import { getFirebaseDb, getFirebaseAuth } from './config';
 import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { getPlaceholderUrl } from '../image-placeholders';
 import {
@@ -67,12 +67,7 @@ class MockAuthFirestoreService {
 
     try {
       // Sign in anonymously to get authentication context
-      if (!auth) {
-        console.error('Firebase auth not initialized');
-        this.authInitialized = true; // Mark as initialized to prevent retries
-        return;
-      }
-
+      const auth = getFirebaseAuth();
       await signInAnonymously(auth);
       this.authInitialized = true;
       console.log('🔥 Firebase authenticated for server-side operations');
@@ -92,9 +87,6 @@ class MockAuthFirestoreService {
   private async ensureFirebase(): Promise<void> {
     await this.ensureAuth();
 
-    if (!db) {
-      throw new Error('Firebase Firestore not initialized');
-    }
   }
 
   // Collections
@@ -111,7 +103,7 @@ class MockAuthFirestoreService {
   async getUserData(userId: string): Promise<User> {
     await this.ensureFirebase();
 
-    const userRef = doc(db!, this.USERS_COLLECTION, userId);
+    const userRef = doc(getFirebaseDb(), this.USERS_COLLECTION, userId);
     const userDoc = await getDoc(userRef);
 
     if (!userDoc.exists()) {
@@ -128,7 +120,7 @@ class MockAuthFirestoreService {
   async ensureUserDocument(userId: string, userData: Partial<FirestoreUser>): Promise<void> {
     await this.ensureFirebase();
 
-    const userRef = doc(db!, this.USERS_COLLECTION, userId);
+    const userRef = doc(getFirebaseDb(), this.USERS_COLLECTION, userId);
     const userDoc = await getDoc(userRef);
 
     if (!userDoc.exists()) {
@@ -171,7 +163,7 @@ class MockAuthFirestoreService {
   }
 
   async useCredits(userId: string, creditsUsed: number): Promise<void> {
-    const userRef = doc(db!, this.USERS_COLLECTION, userId);
+    const userRef = doc(getFirebaseDb(), this.USERS_COLLECTION, userId);
     const userData = await this.getUserData(userId);
     
     const newCreditsUsed = userData.usage.creditsUsed + creditsUsed;
@@ -212,14 +204,14 @@ class MockAuthFirestoreService {
       lastActivityAt: serverTimestamp() as any
     };
 
-    const docRef = await addDoc(collection(db!, this.PROJECTS_COLLECTION), project);
+    const docRef = await addDoc(collection(getFirebaseDb(), this.PROJECTS_COLLECTION), project);
     return docRef.id;
   }
 
   async getProject(projectId: string): Promise<Project | null> {
     await this.ensureFirebase();
     
-    const projectRef = doc(db!, this.PROJECTS_COLLECTION, projectId);
+    const projectRef = doc(getFirebaseDb(), this.PROJECTS_COLLECTION, projectId);
     const projectDoc = await getDoc(projectRef);
 
     if (!projectDoc.exists()) {
@@ -234,7 +226,7 @@ class MockAuthFirestoreService {
     await this.ensureFirebase();
     
     let q = query(
-      collection(db!, this.PROJECTS_COLLECTION),
+      collection(getFirebaseDb(), this.PROJECTS_COLLECTION),
       where('userId', '==', userId),
       orderBy('lastActivityAt', 'desc')
     );
@@ -244,7 +236,7 @@ class MockAuthFirestoreService {
     }
 
     if (options?.startAfter) {
-      const startAfterDoc = await getDoc(doc(db!, this.PROJECTS_COLLECTION, options.startAfter));
+      const startAfterDoc = await getDoc(doc(getFirebaseDb(), this.PROJECTS_COLLECTION, options.startAfter));
       if (startAfterDoc.exists()) {
         q = query(q, startAfter(startAfterDoc));
       }
@@ -268,7 +260,7 @@ class MockAuthFirestoreService {
   async updateProject(projectId: string, updates: Partial<FirestoreProject>): Promise<void> {
     await this.ensureFirebase();
     
-    const projectRef = doc(db!, this.PROJECTS_COLLECTION, projectId);
+    const projectRef = doc(getFirebaseDb(), this.PROJECTS_COLLECTION, projectId);
     
     await updateDoc(projectRef, {
       ...updates,
@@ -280,15 +272,15 @@ class MockAuthFirestoreService {
   async deleteProject(projectId: string): Promise<void> {
     await this.ensureFirebase();
     
-    const batch = writeBatch(db!);
+    const batch = writeBatch(getFirebaseDb());
 
     // Delete project
-    const projectRef = doc(db!, this.PROJECTS_COLLECTION, projectId);
+    const projectRef = doc(getFirebaseDb(), this.PROJECTS_COLLECTION, projectId);
     batch.delete(projectRef);
 
     // Delete all visuals in project
     const visualsQuery = query(
-      collection(db!, this.VISUALS_COLLECTION),
+      collection(getFirebaseDb(), this.VISUALS_COLLECTION),
       where('projectId', '==', projectId)
     );
     const visualsSnapshot = await getDocs(visualsQuery);
@@ -317,7 +309,7 @@ class MockAuthFirestoreService {
       updatedAt: serverTimestamp() as any
     };
 
-    const docRef = await addDoc(collection(db!, this.VISUALS_COLLECTION), visual);
+    const docRef = await addDoc(collection(getFirebaseDb(), this.VISUALS_COLLECTION), visual);
 
     // Update project stats
     await this.incrementProjectStats(visualData.projectId, { totalVisuals: 1 });
@@ -344,7 +336,7 @@ class MockAuthFirestoreService {
   async getVisual(visualId: string): Promise<Visual | null> {
     await this.ensureFirebase();
     
-    const visualRef = doc(db!, this.VISUALS_COLLECTION, visualId);
+    const visualRef = doc(getFirebaseDb(), this.VISUALS_COLLECTION, visualId);
     const visualDoc = await getDoc(visualRef);
 
     if (!visualDoc.exists()) {
@@ -364,7 +356,7 @@ class MockAuthFirestoreService {
     await this.ensureFirebase();
     
     let q = query(
-      collection(db!, this.VISUALS_COLLECTION),
+      collection(getFirebaseDb(), this.VISUALS_COLLECTION),
       where('userId', '==', userId)
     );
 
@@ -404,7 +396,7 @@ class MockAuthFirestoreService {
     }
 
     if (pagination?.startAfter) {
-      const startAfterDoc = await getDoc(doc(db!, this.VISUALS_COLLECTION, pagination.startAfter));
+      const startAfterDoc = await getDoc(doc(getFirebaseDb(), this.VISUALS_COLLECTION, pagination.startAfter));
       if (startAfterDoc.exists()) {
         q = query(q, startAfter(startAfterDoc));
       }
@@ -428,7 +420,7 @@ class MockAuthFirestoreService {
   async updateVisual(visualId: string, updates: Partial<FirestoreVisual>): Promise<void> {
     await this.ensureFirebase();
     
-    const visualRef = doc(db!, this.VISUALS_COLLECTION, visualId);
+    const visualRef = doc(getFirebaseDb(), this.VISUALS_COLLECTION, visualId);
     
     await updateDoc(visualRef, {
       ...updates,
@@ -442,7 +434,7 @@ class MockAuthFirestoreService {
     const visual = await this.getVisual(visualId);
     if (!visual) return;
 
-    const visualRef = doc(db!, this.VISUALS_COLLECTION, visualId);
+    const visualRef = doc(getFirebaseDb(), this.VISUALS_COLLECTION, visualId);
     await deleteDoc(visualRef);
 
     // Update project stats
@@ -493,7 +485,7 @@ class MockAuthFirestoreService {
     for (const project of projectsResult.data) {
       // Get latest visual for thumbnail
       const visualsQuery = query(
-        collection(db!, this.VISUALS_COLLECTION),
+        collection(getFirebaseDb(), this.VISUALS_COLLECTION),
         where('projectId', '==', project.id),
         orderBy('createdAt', 'desc'),
         limit(1)
@@ -529,7 +521,7 @@ class MockAuthFirestoreService {
       timestamp: serverTimestamp() as any
     };
 
-    await addDoc(collection(db!, this.USAGE_COLLECTION), usage);
+    await addDoc(collection(getFirebaseDb(), this.USAGE_COLLECTION), usage);
   }
 
   // ============================================================================
@@ -540,7 +532,7 @@ class MockAuthFirestoreService {
     projectId: string,
     stats: { totalVisuals?: number; totalViews?: number; totalDownloads?: number }
   ): Promise<void> {
-    const projectRef = doc(db!, this.PROJECTS_COLLECTION, projectId);
+    const projectRef = doc(getFirebaseDb(), this.PROJECTS_COLLECTION, projectId);
     const updates: any = { lastActivityAt: serverTimestamp() };
 
     if (stats.totalVisuals) {

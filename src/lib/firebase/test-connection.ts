@@ -1,6 +1,6 @@
 "use client";
 
-import { auth, db } from './config';
+import { getFirebaseAuth, getFirebaseDb } from './config';
 import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firestore';
 
 /**
@@ -11,18 +11,15 @@ export async function testFirebaseConnection() {
     console.log('[Firebase Test] Starting connection tests...');
 
     // Check if Firebase services are available
-    if (!auth) {
-      console.error('[Firebase Test] Firebase auth not initialized');
+    let auth, db, currentUser;
+    try {
+      auth = getFirebaseAuth();
+      db = getFirebaseDb();
+      currentUser = auth.currentUser;
+    } catch (error) {
+      console.error('[Firebase Test] Firebase not initialized:', error);
       return;
     }
-
-    if (!db) {
-      console.error('[Firebase Test] Firebase Firestore not initialized');
-      return;
-    }
-
-    // Check authentication state
-    const currentUser = auth.currentUser;
     console.log('[Firebase Test] Auth state:', {
       isAuthenticated: !!currentUser,
       uid: currentUser?.uid,
@@ -100,15 +97,15 @@ export async function testFirebaseConnection() {
  */
 export function waitForAuth(): Promise<boolean> {
   return new Promise((resolve) => {
-    if (!auth) {
-      console.error('[Firebase Test] Firebase auth not initialized');
+    try {
+      const auth = getFirebaseAuth();
+      const unsubscribe = auth.onAuthStateChanged((user) => {
+        unsubscribe();
+        resolve(!!user);
+      });
+    } catch (error) {
+      console.error('[Firebase Test] Firebase auth not initialized:', error);
       resolve(false);
-      return;
     }
-
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      unsubscribe();
-      resolve(!!user);
-    });
   });
 }

@@ -1,5 +1,5 @@
 import { authService } from '@/lib/firebase';
-import { auth } from '@/lib/firebase/config';
+import { getFirebaseAuth } from '@/lib/firebase/config';
 
 /**
  * Get authentication headers for API requests
@@ -9,8 +9,15 @@ export async function getAuthHeaders(): Promise<Record<string, string>> {
   let currentUser = authService.getCurrentUser();
 
   // Fallback to Firebase auth if authService doesn't have user yet
-  if (!currentUser && auth && auth.currentUser) {
-    currentUser = auth.currentUser;
+  if (!currentUser) {
+    try {
+      const auth = getFirebaseAuth();
+      if (auth && auth.currentUser) {
+        currentUser = auth.currentUser;
+      }
+    } catch (error) {
+      console.warn('[API Client] Firebase auth not available:', error);
+    }
   }
 
   if (!currentUser) {
@@ -131,7 +138,13 @@ export async function debugAuthState(): Promise<{
 }> {
   try {
     const authServiceUser = authService.getCurrentUser();
-    const firebaseAuthUser = auth ? auth.currentUser : null;
+    let firebaseAuthUser = null;
+    try {
+      const auth = getFirebaseAuth();
+      firebaseAuthUser = auth ? auth.currentUser : null;
+    } catch (error) {
+      // Firebase auth not available
+    }
 
     const result = {
       hasAuthServiceUser: !!authServiceUser,
