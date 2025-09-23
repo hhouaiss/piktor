@@ -12,7 +12,7 @@ export function ConditionalLayout({ children }: ConditionalLayoutProps) {
   const pathname = usePathname();
   
   // Check if current route is a dashboard route
-  const isDashboardRoute = pathname.startsWith('/dashboard');
+  const isDashboardRoute = pathname?.startsWith('/dashboard');
   
   // For dashboard routes, render children without header/footer
   if (isDashboardRoute) {

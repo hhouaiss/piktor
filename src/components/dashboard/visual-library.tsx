@@ -38,7 +38,7 @@ type SortOrder = "asc" | "desc";
 
 export function VisualLibrary() {
   const searchParams = useSearchParams();
-  const projectFilter = searchParams.get('project');
+  const projectFilter = searchParams?.get('project');
 
   const [visuals, setVisuals] = useState<Visual[]>([]);
   const [filteredVisuals, setFilteredVisuals] = useState<Visual[]>([]);

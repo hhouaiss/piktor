@@ -27,7 +27,7 @@ export function Header() {
     } else {
       // If on another page, navigate to home page with hash
       trackNavigation.navigateToGenerator({
-        fromPage: pathname
+        fromPage: pathname || '/'
       });
       window.location.href = '/#image-generator';
     }
