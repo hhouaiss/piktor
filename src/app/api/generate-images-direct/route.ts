@@ -7,7 +7,7 @@ import {
 } from "@/lib/gemini-api";
 import { generateProductionPrompt } from "@/lib/production-prompt-engine";
 import { detectEnvironment } from "@/lib/usage-limits";
-import { authService, firestoreService } from "@/lib/firebase";
+// Note: authService and firestoreService imports removed as they're not used in this server-side API route
 import { generationService } from "@/lib/firebase/generation-service";
 import type { GenerationRequest, GeneratedImageData } from "@/lib/firebase/generation-service";
 
@@ -215,7 +215,12 @@ export async function POST(request: NextRequest) {
       console.log('[Direct API] User authenticated, preparing to save images to Firebase:', {
         userId: usageLimitCheck.userId,
         imageCount: variations.length,
-        environment: usageLimitCheck.environment
+        environment: usageLimitCheck.environment,
+        nodeEnv: process.env.NODE_ENV,
+        isVercel: !!process.env.VERCEL,
+        hasFirebasePrivateKey: !!process.env.FIREBASE_PRIVATE_KEY,
+        hasFirebaseClientEmail: !!process.env.FIREBASE_CLIENT_EMAIL,
+        privateKeyLength: process.env.FIREBASE_PRIVATE_KEY?.length || 0
       });
 
       shouldSaveToFirebase = true;
@@ -286,7 +291,20 @@ export async function POST(request: NextRequest) {
         });
 
       } catch (firebaseError) {
-        console.error('[Direct API] Failed to save images to Firebase:', firebaseError);
+        console.error('[Direct API] Failed to save images to Firebase:', {
+          error: firebaseError instanceof Error ? firebaseError.message : 'Unknown Firebase error',
+          stack: firebaseError instanceof Error ? firebaseError.stack : undefined,
+          errorCode: (firebaseError as any).code,
+          errorName: (firebaseError as any).name,
+          userId: usageLimitCheck.userId,
+          environment: usageLimitCheck.environment,
+          nodeEnv: process.env.NODE_ENV,
+          isVercel: !!process.env.VERCEL,
+          hasFirebasePrivateKey: !!process.env.FIREBASE_PRIVATE_KEY,
+          hasFirebaseClientEmail: !!process.env.FIREBASE_CLIENT_EMAIL,
+          imageCount: variations.length
+        });
+
         // Don't fail the entire request if Firebase saving fails
         // Just log the error and continue with external URLs
         firebaseResults = [];

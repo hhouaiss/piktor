@@ -1,6 +1,7 @@
 import { serverFirestoreService } from './server-hybrid';
 import { firestoreService } from './firestore';
 import { storageService } from './storage';
+import { adminStorageService } from './admin-storage';
 import type { Visual, Project } from './types';
 import type { ImageVariant } from './storage';
 
@@ -252,10 +253,10 @@ class GenerationService {
       });
       console.log('[GenerationService] Created variants:', variants);
 
-      // Upload image to Firebase Storage
-      console.log('[GenerationService] Uploading to Firebase Storage...');
+      // Upload image to Firebase Storage using Admin SDK (server-side)
+      console.log('[GenerationService] Uploading to Firebase Storage using Admin SDK...');
       try {
-        const uploadResult = await storageService.uploadVisualImage(
+        const uploadResult = await adminStorageService.uploadVisualImage(
           userId,
           projectId,
           visualId,
@@ -560,10 +561,10 @@ class GenerationService {
       throw new Error('Unauthorized to update this visual');
     }
 
-    // Convert and upload new image
+    // Convert and upload new image using Admin SDK
     const blob = await this.convertImageDataToBlob(imageData);
-    
-    const uploadResult = await storageService.uploadVisualImage(
+
+    const uploadResult = await adminStorageService.uploadVisualImage(
       userId,
       visual.projectId,
       visualId,
