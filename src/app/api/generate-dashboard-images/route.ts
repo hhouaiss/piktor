@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { 
+import {
   buildDashboardPromptWithFallbacks,
   validateDashboardSettings,
   convertDashboardToProductionSpecs,
@@ -17,6 +17,7 @@ import { detectEnvironment } from "@/lib/usage-limits";
 import { supabaseAuthService, supabaseService } from "@/lib/supabase";
 import { generationService } from "@/lib/supabase/generation-service";
 import type { GenerationRequest, GeneratedImageData } from "@/lib/supabase/generation-service";
+import { verifyAdminOverride } from "@/lib/server-admin-auth";
 
 // Dashboard-specific generation request interface
 interface DashboardGenerationRequest {
@@ -55,12 +56,21 @@ async function checkServerSideUsageLimit(request: NextRequest): Promise<{ allowe
     return { allowed: true, environment, userId: userId || undefined };
   }
   
-  // Check for admin override in headers
+  // SECURITY: Check for admin override with server-side verification
   const adminHeader = request.headers.get('x-admin-override');
   console.log('[checkServerSideUsageLimit] Admin override header:', adminHeader);
+
   if (adminHeader === 'true') {
-    console.log('[checkServerSideUsageLimit] Admin override detected - unlimited access');
-    return { allowed: true, reason: 'admin-override', environment, userId: userId || undefined };
+    // Verify admin status server-side (NOT just trusting client header)
+    const adminVerification = verifyAdminOverride(adminHeader, userId);
+
+    if (adminVerification.isValid) {
+      console.log('[checkServerSideUsageLimit] ✅ Admin override verified - unlimited access');
+      return { allowed: true, reason: 'admin-override-verified', environment, userId: userId || undefined };
+    } else {
+      console.warn(`[checkServerSideUsageLimit] ❌ Admin override REJECTED - ${adminVerification.reason}`);
+      // Continue to normal credit check (don't allow unauthorized admin override)
+    }
   }
 
   // Check user ID for production environment (already extracted above)

@@ -9,6 +9,7 @@ import { generateProductionPrompt } from "@/lib/production-prompt-engine";
 import { detectEnvironment } from "@/lib/usage-limits";
 import { generationService } from "@/lib/supabase/generation-service";
 import type { GenerationRequest, GeneratedImageData } from "@/lib/supabase/generation-service";
+import { verifyAdminOverride } from "@/lib/server-admin-auth";
 
 interface GenerationParams {
   contextPreset: ContextPreset;
@@ -43,10 +44,19 @@ async function checkServerSideUsageLimit(request: NextRequest): Promise<{ allowe
     return { allowed: true, environment, userId: userId || undefined };
   }
 
-  // Check for admin override in headers
+  // SECURITY: Check for admin override with server-side verification
   const adminHeader = request.headers.get('x-admin-override');
   if (adminHeader === 'true') {
-    return { allowed: true, reason: 'admin-override', environment, userId: userId || undefined };
+    // Verify admin status server-side (NOT just trusting client header)
+    const adminVerification = verifyAdminOverride(adminHeader, userId);
+
+    if (adminVerification.isValid) {
+      console.log('[checkServerSideUsageLimit] ✅ Admin override verified - unlimited access');
+      return { allowed: true, reason: 'admin-override-verified', environment, userId: userId || undefined };
+    } else {
+      console.warn(`[checkServerSideUsageLimit] ❌ Admin override REJECTED - ${adminVerification.reason}`);
+      // Continue to normal usage check (don't allow unauthorized admin override)
+    }
   }
 
   // For production, we rely on client-side tracking
