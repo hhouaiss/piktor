@@ -60,7 +60,7 @@ async function checkServerSideUsageLimit(request: NextRequest): Promise<{ allowe
   console.log('[checkServerSideUsageLimit] Admin override header:', adminHeader);
   if (adminHeader === 'true') {
     console.log('[checkServerSideUsageLimit] Admin override detected - unlimited access');
-    return { allowed: true, reason: 'admin-override', environment };
+    return { allowed: true, reason: 'admin-override', environment, userId: userId || undefined };
   }
 
   // Check user ID for production environment (already extracted above)
