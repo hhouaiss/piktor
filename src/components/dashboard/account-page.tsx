@@ -20,7 +20,7 @@ import {
   Loader2
 } from "lucide-react";
 import { trackEvent } from "@/lib/analytics";
-import { useAuth } from "@/components/auth/auth-provider";
+import { useSimpleAuth } from "@/components/auth/simple-auth-provider";
 
 interface UserProfile {
   displayName: string;
@@ -94,7 +94,7 @@ const planFeatures = {
 };
 
 export function AccountPage() {
-  const { user, loading: authLoading, updateProfile } = useAuth();
+  const { user, loading: authLoading, updateProfile } = useSimpleAuth();
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editedProfile, setEditedProfile] = useState<UserProfile>({
@@ -104,11 +104,11 @@ export function AccountPage() {
     phone: ''
   });
 
-  // Initialize profile data from Firebase user
+  // Initialize profile data from Supabase user
   useEffect(() => {
     if (user) {
       const profile: UserProfile = {
-        displayName: user.displayName || '',
+        displayName: user.display_name || '',
         email: user.email || '',
         company: '',
         phone: ''
@@ -153,7 +153,7 @@ export function AccountPage() {
 
     try {
       await updateProfile({
-        displayName: editedProfile.displayName
+        display_name: editedProfile.displayName
       });
 
       setIsEditingProfile(false);
@@ -173,7 +173,7 @@ export function AccountPage() {
   const handleProfileCancel = () => {
     if (user) {
       setEditedProfile({
-        displayName: user.displayName || '',
+        displayName: user.display_name || '',
         email: user.email || '',
         company: '',
         phone: ''
@@ -330,7 +330,7 @@ export function AccountPage() {
             <Label htmlFor="displayName">Nom d'affichage</Label>
             <Input
               id="displayName"
-              value={isEditingProfile ? editedProfile.displayName : (user?.displayName || '')}
+              value={isEditingProfile ? editedProfile.displayName : (user?.display_name || '')}
               onChange={(e) => isEditingProfile && setEditedProfile(prev => ({ ...prev, displayName: e.target.value }))}
               disabled={!isEditingProfile}
               placeholder="Votre nom complet"
@@ -383,11 +383,11 @@ export function AccountPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Membre depuis :</span>
-                  <span>{user?.createdAt ? new Date(user.createdAt.toDate()).toLocaleDateString('fr-FR') : 'Non disponible'}</span>
+                  <span>{user?.created_at ? new Date(user.created_at).toLocaleDateString('fr-FR') : 'Non disponible'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Dernière connexion :</span>
-                  <span>{user?.updatedAt ? new Date(user.updatedAt.toDate()).toLocaleDateString('fr-FR') : 'Non disponible'}</span>
+                  <span>{user?.updated_at ? new Date(user.updated_at).toLocaleDateString('fr-FR') : 'Non disponible'}</span>
                 </div>
               </div>
             </div>

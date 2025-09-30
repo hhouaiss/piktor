@@ -1,37 +1,28 @@
-import { authService } from '@/lib/firebase';
-import { getFirebaseAuth } from '@/lib/firebase/config';
+import { supabaseClient } from '@/lib/supabase/config';
 
 /**
- * Get authentication headers for API requests
+ * Get authentication headers for API requests using Supabase
  */
 export async function getAuthHeaders(): Promise<Record<string, string>> {
-  // Try multiple sources for current user to handle timing issues
-  let currentUser = authService.getCurrentUser();
-
-  // Fallback to Firebase auth if authService doesn't have user yet
-  if (!currentUser) {
-    try {
-      const auth = getFirebaseAuth();
-      if (auth && auth.currentUser) {
-        currentUser = auth.currentUser;
-      }
-    } catch (error) {
-      console.warn('[API Client] Firebase auth not available:', error);
-    }
-  }
-
-  if (!currentUser) {
-    console.warn('[API Client] No authenticated user found for headers');
-    return {};
-  }
-
-  console.log('[API Client] Getting auth headers for user:', currentUser.uid);
-
   try {
-    const idToken = await currentUser.getIdToken();
+    // Get current session from Supabase
+    const { data: { session }, error } = await supabaseClient.auth.getSession();
+
+    if (error) {
+      console.warn('[API Client] Error getting auth session:', error);
+      return {};
+    }
+
+    if (!session || !session.user) {
+      console.warn('[API Client] No authenticated user found for headers');
+      return {};
+    }
+
+    console.log('[API Client] Getting auth headers for user:', session.user.id);
+
     const headers = {
-      'x-user-id': currentUser.uid,
-      'Authorization': `Bearer ${idToken}`
+      'x-user-id': session.user.id,
+      'Authorization': `Bearer ${session.access_token}`
     };
 
     console.log('[API Client] Auth headers prepared successfully:', {
@@ -42,11 +33,8 @@ export async function getAuthHeaders(): Promise<Record<string, string>> {
 
     return headers;
   } catch (error) {
-    console.error('[API Client] Failed to get auth token:', error);
-    // Return at least the user ID if token fails
-    return {
-      'x-user-id': currentUser.uid
-    };
+    console.error('[API Client] Failed to get auth headers:', error);
+    return {};
   }
 }
 
@@ -126,52 +114,37 @@ export async function authenticatedGet(url: string): Promise<Response> {
  * Debug authentication state - useful for troubleshooting
  */
 export async function debugAuthState(): Promise<{
-  hasAuthServiceUser: boolean;
-  hasFirebaseAuthUser: boolean;
-  userIds: {
-    authService?: string;
-    firebaseAuth?: string;
-  };
+  hasSupabaseUser: boolean;
+  userId?: string;
   canGetHeaders: boolean;
   headers?: Record<string, string>;
   error?: string;
 }> {
   try {
-    const authServiceUser = authService.getCurrentUser();
-    let firebaseAuthUser = null;
-    try {
-      const auth = getFirebaseAuth();
-      firebaseAuthUser = auth ? auth.currentUser : null;
-    } catch (error) {
-      // Firebase auth not available
-    }
+    const { data: { session }, error } = await supabaseClient.auth.getSession();
 
     const result = {
-      hasAuthServiceUser: !!authServiceUser,
-      hasFirebaseAuthUser: !!firebaseAuthUser,
-      userIds: {
-        authService: authServiceUser?.uid,
-        firebaseAuth: firebaseAuthUser?.uid
-      },
+      hasSupabaseUser: !!(session && session.user),
+      userId: session?.user?.id,
       canGetHeaders: false,
       headers: undefined as Record<string, string> | undefined,
-      error: undefined as string | undefined
+      error: error?.message
     };
 
-    try {
-      const headers = await getAuthHeaders();
-      result.canGetHeaders = !!headers['x-user-id'];
-      result.headers = headers;
-    } catch (error) {
-      result.error = error instanceof Error ? error.message : 'Unknown error getting headers';
+    if (session && session.user) {
+      try {
+        const headers = await getAuthHeaders();
+        result.canGetHeaders = !!headers['x-user-id'];
+        result.headers = headers;
+      } catch (headerError) {
+        result.error = headerError instanceof Error ? headerError.message : 'Unknown error getting headers';
+      }
     }
 
     return result;
   } catch (error) {
     return {
-      hasAuthServiceUser: false,
-      hasFirebaseAuthUser: false,
-      userIds: {},
+      hasSupabaseUser: false,
       canGetHeaders: false,
       error: error instanceof Error ? error.message : 'Unknown error in debug'
     };

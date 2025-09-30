@@ -1,155 +1,60 @@
 rules_version = '2';
-
-// Firebase Storage Security Rules for Piktor App
 service firebase.storage {
   match /b/{bucket}/o {
 
-    // ==========================================================================
-    // HELPER FUNCTIONS
-    // ==========================================================================
-
-    // Check if user is authenticated
-    function isAuthenticated() {
-      return request.auth != null;
+    // Helper function to check if request is from Admin SDK
+    function isAdmin() {
+      return request.auth == null;
     }
 
-    // Check if user owns the resource
+    // Helper function to check if user owns the resource
     function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
+      return request.auth != null && request.auth.uid == userId;
     }
 
-    // Check if request is from Firebase Admin SDK
-    function isAdminRequest() {
-      // Admin SDK can operate in multiple ways depending on environment:
-      // 1. No auth context (server-side operations)
-      // 2. Service account auth with special token claims
-      // 3. Elevated privileges indicated by specific claims
-      return request.auth == null ||
-             (request.auth != null &&
-              request.auth.token != null &&
-              (request.auth.token.firebase != null ||
-               request.auth.token.iss != null &&
-               request.auth.token.iss.matches('.*googleapis.com$')));
-    }
-
-    // Validate image file types
-    function isValidImageType() {
+    // Helper function to validate image types
+    function isValidImage() {
       return request.resource.contentType != null &&
-             (request.resource.contentType.matches('image/jpeg') ||
-              request.resource.contentType.matches('image/png') ||
-              request.resource.contentType.matches('image/webp') ||
-              request.resource.contentType.matches('image/gif'));
+             request.resource.contentType.matches('image/.*');
     }
 
-    // Check file size limits (50MB max for uploads)
-    function isValidFileSize() {
+    // Helper function to check file size (50MB max)
+    function isValidSize() {
       return request.resource.size <= 50 * 1024 * 1024;
     }
 
-    // Validate file metadata (optional - more flexible for Admin SDK)
-    function hasValidMetadata() {
-      return request.resource.metadata == null ||
-             !('userId' in request.resource.metadata) ||
-             request.resource.metadata.userId == request.auth.uid ||
-             isAdminRequest();
-    }
-
-    // Check if path belongs to authenticated user or admin
-    function pathBelongsToUser(userId) {
-      return isOwner(userId) || isAdminRequest();
-    }
-
-    // ==========================================================================
-    // USER-SPECIFIC STORAGE PATHS
-    // ==========================================================================
-
-    // User visuals directory: /users/{userId}/visuals/{projectId}/{visualId}/*
+    // User visuals: /users/{userId}/visuals/{projectId}/{visualId}/{fileName}
     match /users/{userId}/visuals/{projectId}/{visualId}/{fileName} {
-      // Users can read and write their own visual files
-      allow read: if pathBelongsToUser(userId);
-
-      // Allow upload with validation (metadata is optional but validated if present)
-      allow write: if pathBelongsToUser(userId) &&
-                     isValidImageType() &&
-                     isValidFileSize() &&
-                     hasValidMetadata();
-
-      // Allow deletion by owner
-      allow delete: if pathBelongsToUser(userId);
+      allow read: if isAdmin() || isOwner(userId);
+      allow write: if isAdmin() || (isOwner(userId) && isValidImage() && isValidSize());
+      allow delete: if isAdmin() || isOwner(userId);
     }
 
-    // User thumbnails directory: /users/{userId}/thumbnails/{projectId}/{visualId}
+    // User thumbnails: /users/{userId}/thumbnails/{projectId}/{visualId}
     match /users/{userId}/thumbnails/{projectId}/{visualId} {
-      // Users can read and write their own thumbnails
-      allow read: if pathBelongsToUser(userId);
-
-      // Allow thumbnail upload with validation (metadata is optional but validated if present)
-      allow write: if pathBelongsToUser(userId) &&
-                     isValidImageType() &&
-                     request.resource.size <= 5 * 1024 * 1024 && // 5MB max for thumbnails
-                     hasValidMetadata();
-
-      // Allow deletion by owner
-      allow delete: if pathBelongsToUser(userId);
+      allow read: if isAdmin() || isOwner(userId);
+      allow write: if isAdmin() || (isOwner(userId) && isValidImage() && request.resource.size <= 5 * 1024 * 1024);
+      allow delete: if isAdmin() || isOwner(userId);
     }
 
-    // ==========================================================================
-    // TEMPORARY FILES
-    // ==========================================================================
-
-    // Temp files - allow authenticated users to read/write with size limits
+    // Temp files: /temp/{fileName}
     match /temp/{fileName} {
-      // Allow read for authenticated users
-      allow read: if isAuthenticated();
-
-      // Allow write with strict validation (metadata is optional but validated if present)
-      allow write: if isAuthenticated() &&
-                     isValidImageType() &&
-                     isValidFileSize() &&
-                     hasValidMetadata();
-
-      // Allow deletion by any authenticated user (for cleanup)
-      allow delete: if isAuthenticated();
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && isValidImage() && isValidSize();
+      allow delete: if request.auth != null;
     }
 
-    // ==========================================================================
-    // PUBLIC ACCESS FOR SHARED CONTENT (SECURE IMPLEMENTATION)
-    // ==========================================================================
-
-    // REMOVED: Overly permissive public access rules that created security vulnerabilities
-    // If public sharing is needed, implement proper Firestore-based validation:
-    //
-    // match /users/{userId}/visuals/{projectId}/{visualId}/{fileName} {
-    //   allow read: if isProjectPublic(projectId, userId);
-    // }
-    //
-    // function isProjectPublic(projectId, userId) {
-    //   return exists(/databases/$(database)/documents/projects/$(projectId)) &&
-    //          get(/databases/$(database)/documents/projects/$(projectId)).data.isPublic == true &&
-    //          get(/databases/$(database)/documents/projects/$(projectId)).data.userId == userId;
-    // }
-    //
-    // For now, all access requires proper authentication and ownership verification.
-
-    // ==========================================================================
-    // SYSTEM FILES (Admin/Backup)
-    // ==========================================================================
-
-    // System files - no public access
+    // System files - Admin only
     match /system/{allPaths=**} {
-      allow read, write: if false; // Only accessible via Admin SDK
+      allow read, write: if false;
     }
 
-    // Backup files - no public access
+    // Backup files - Admin only
     match /backups/{allPaths=**} {
-      allow read, write: if false; // Only accessible via Admin SDK
+      allow read, write: if false;
     }
 
-    // ==========================================================================
-    // SECURITY BOUNDARIES
-    // ==========================================================================
-
-    // Deny access to root and any unmatched paths
+    // Default deny for all other paths
     match /{allPaths=**} {
       allow read, write: if false;
     }

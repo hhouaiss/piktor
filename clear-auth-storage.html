@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clear Auth Storage</title>
+</head>
+<body>
+    <h1>Clearing Auth Storage...</h1>
+    <p id="status">Processing...</p>
+
+    <script>
+        try {
+            // Clear all localStorage
+            localStorage.clear();
+
+            // Clear all sessionStorage
+            sessionStorage.clear();
+
+            // Clear all cookies for this domain
+            document.cookie.split(";").forEach(function(c) {
+                document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+            });
+
+            // Clear IndexedDB (Supabase might use this)
+            if ('indexedDB' in window) {
+                indexedDB.databases().then(databases => {
+                    databases.forEach(db => {
+                        indexedDB.deleteDatabase(db.name);
+                    });
+                });
+            }
+
+            document.getElementById('status').innerHTML = `
+                <p style="color: green;">✅ Auth storage cleared successfully!</p>
+                <p>Cleared:</p>
+                <ul>
+                    <li>localStorage</li>
+                    <li>sessionStorage</li>
+                    <li>Cookies</li>
+                    <li>IndexedDB</li>
+                </ul>
+                <p><strong>Please close this tab and try signing in again.</strong></p>
+            `;
+
+        } catch (error) {
+            document.getElementById('status').innerHTML = `
+                <p style="color: red;">❌ Error clearing storage: ${error.message}</p>
+            `;
+        }
+    </script>
+</body>
+</html>

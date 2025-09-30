@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Expanded domain validation - support both BFL and Firebase Storage URLs
+    // Expanded domain validation - support both BFL and Supabase Storage URLs
     const allowedDomains = [
       // BFL domains
       'delivery-eu1.bfl.ai',
@@ -52,9 +52,9 @@ export async function GET(request: NextRequest) {
       'static.bfl.ai',
       'images.bfl.ai',
       'assets.bfl.ai',
-      // Firebase Storage domains
-      'firebasestorage.googleapis.com',
-      'storage.googleapis.com'
+      // Supabase Storage domains
+      'supabase.co',
+      'supabase.com'
     ];
 
     const isValidDomain = allowedDomains.some(domain =>
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         {
           error: 'Invalid image URL domain',
-          details: `Only BFL and Firebase Storage URLs are allowed. Got: ${urlObj.hostname}`,
+          details: `Only BFL and Supabase Storage URLs are allowed. Got: ${urlObj.hostname}`,
           allowedDomains: allowedDomains
         },
         { status: 400 }

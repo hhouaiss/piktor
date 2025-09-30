@@ -51,3 +51,9 @@ firebase-debug.log
 SECURITY_CHECKLIST.md
 SECURITY_FIXES.md
 .claude/agents/saas-security-advisor.md
+
+# mcp
+.mcp*
+
+# md files
+*.md

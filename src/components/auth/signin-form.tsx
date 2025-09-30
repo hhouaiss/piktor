@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { useAuth } from './auth-provider';
+import { useSimpleAuth } from './simple-auth-provider';
 import { Eye, EyeOff, Loader2, Mail, Lock, Chrome } from 'lucide-react';
 import { trackEvent } from '@/lib/analytics';
 
@@ -19,7 +19,7 @@ export function SignInForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
-  const { signIn, signInWithGoogle } = useAuth();
+  const { signIn } = useSimpleAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectPath = searchParams?.get('redirect') || '/dashboard';
@@ -58,35 +58,8 @@ export function SignInForm() {
   };
 
   const handleGoogleSignIn = async () => {
-    if (loading) return;
-
-    setLoading(true);
-    setError('');
-
-    try {
-      await signInWithGoogle();
-      
-      trackEvent('user_signin', {
-        event_category: 'auth',
-        event_label: 'google_signin',
-        custom_parameters: {
-          method: 'google'
-        }
-      });
-      
-      router.push(redirectPath);
-    } catch (error: any) {
-      setError(error.message);
-      trackEvent('signin_error', {
-        event_category: 'auth',
-        event_label: 'google_signin_error',
-        custom_parameters: {
-          error_code: error.code || 'unknown'
-        }
-      });
-    } finally {
-      setLoading(false);
-    }
+    // TODO: Implement Google sign-in later
+    setError('Google sign-in temporarily disabled');
   };
 
   return (

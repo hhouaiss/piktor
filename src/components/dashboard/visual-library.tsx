@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -25,8 +25,9 @@ import {
   RefreshCw
 } from "lucide-react";
 import { trackEvent, trackImageGeneration } from "@/lib/analytics";
-import { authService, firestoreService } from "@/lib/firebase";
-import type { Visual, VisualFilters, VisualSort, PaginationOptions } from "@/lib/firebase";
+import { useSimpleAuth } from "@/components/auth/simple-auth-provider";
+import { supabaseService } from "@/lib/supabase/database";
+import type { Visual, VisualFilters, VisualSort, PaginationOptions } from "@/lib/supabase/types";
 import { getPlaceholderUrl } from "@/lib/image-placeholders";
 import Link from "next/link";
 
@@ -39,6 +40,7 @@ type SortOrder = "asc" | "desc";
 export function VisualLibrary() {
   const searchParams = useSearchParams();
   const projectFilter = searchParams?.get('project');
+  const { user: authUser } = useSimpleAuth(); // Get user from auth context
 
   const [visuals, setVisuals] = useState<Visual[]>([]);
   const [filteredVisuals, setFilteredVisuals] = useState<Visual[]>([]);
@@ -52,35 +54,24 @@ export function VisualLibrary() {
   const [fullscreenVisual, setFullscreenVisual] = useState<Visual | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [user, setUser] = useState<any>(null);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const hasLoadedInitially = useRef(false);
 
   // Get unique formats and tags for filters
   const availableFormats = Array.from(new Set(visuals.flatMap(v => Array.isArray(v.format) ? v.format : [v.format])));
   const availableTags = Array.from(new Set(visuals.flatMap(v => v.tags)));
 
   useEffect(() => {
-    // Check authentication and load data
-    const currentUser = authService.getCurrentUser();
-    if (currentUser) {
-      setUser(currentUser);
-      loadVisuals(currentUser.uid);
-    } else {
-      // Listen for auth state changes
-      const unsubscribe = authService.onAuthStateChange((firebaseUser) => {
-        if (firebaseUser) {
-          setUser(firebaseUser);
-          loadVisuals(firebaseUser.uid);
-        } else {
-          setLoading(false);
-          setError('Utilisateur non authentifié');
-        }
-      });
-      
-      return () => unsubscribe();
+    // Only load visuals on initial mount when user is available
+    if (authUser && !hasLoadedInitially.current) {
+      hasLoadedInitially.current = true;
+      loadVisuals(authUser.id);
+    } else if (!authUser) {
+      setLoading(false);
+      setError('Utilisateur non authentifié');
     }
-  }, []);
+  }, [authUser]); // Re-run when authUser changes
 
   const loadVisuals = useCallback(async (userId: string, append: boolean = false) => {
     try {
@@ -91,7 +82,6 @@ export function VisualLibrary() {
         setLoadingMore(true);
       }
 
-
       // Build filters
       const filters: VisualFilters = {};
       if (projectFilter) filters.projectId = projectFilter;
@@ -99,20 +89,18 @@ export function VisualLibrary() {
       if (selectedTag !== "all") filters.tags = [selectedTag];
       if (searchQuery) filters.search = searchQuery;
 
-
       // Build sort
       const sort: VisualSort = {
-        field: sortBy === "date" ? "createdAt" : sortBy as any,
+        field: sortBy === "date" ? "created_at" : sortBy as any,
         direction: sortOrder
       };
 
       // Build pagination
       const pagination: PaginationOptions = {
-        limit: 20,
-        startAfter: append ? visuals[visuals.length - 1] : undefined
+        limit: 20
       };
 
-      const result = await firestoreService.getUserVisuals(userId, filters, sort, pagination);
+      const result = await supabaseService.getUserVisuals(userId, filters, sort, pagination);
 
 
 
@@ -146,21 +134,21 @@ export function VisualLibrary() {
 
   // Re-filter visuals when filters change
   useEffect(() => {
-    if (user) {
-      loadVisuals(user.uid);
+    if (authUser) {
+      loadVisuals(authUser.id);
     }
-  }, [selectedFormat, selectedTag, sortBy, sortOrder]);
+  }, [selectedFormat, selectedTag, sortBy, sortOrder, authUser]);
 
   // Handle search with debounce
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (user && searchQuery !== undefined) {
-        loadVisuals(user.uid);
+      if (authUser && searchQuery !== undefined) {
+        loadVisuals(authUser.id);
       }
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [searchQuery, authUser]);
 
   // Set filtered visuals to all visuals (filtering is now done server-side)
   useEffect(() => {
@@ -195,7 +183,7 @@ export function VisualLibrary() {
 
     // Increment view count
     try {
-      await firestoreService.incrementVisualStats(visual.id, { views: 1 });
+      await supabaseService.incrementVisualStats(visual.id, { views: 1 });
 
       // Update local state
       setVisuals(prev => prev.map(v =>
@@ -213,8 +201,8 @@ export function VisualLibrary() {
 
   const handleDownload = async (visual: Visual) => {
     try {
-      // Increment download count in Firebase
-      await firestoreService.incrementVisualStats(visual.id, { downloads: 1 });
+      // Increment download count in Supabase
+      await supabaseService.incrementVisualStats(visual.id, { downloads: 1 });
 
       // Track download analytics
       trackImageGeneration.imageDownloaded({
@@ -228,7 +216,7 @@ export function VisualLibrary() {
         v.id === visual.id ? { ...v, downloads: v.downloads + 1 } : v
       ));
 
-      // Use the download API to handle Firebase Storage URLs properly
+      // Use the download API to handle Supabase Storage URLs properly
       const filename = `${visual.name}.jpg`;
       const proxyUrl = `/api/download-image?url=${encodeURIComponent(visual.originalImageUrl)}&filename=${encodeURIComponent(filename)}`;
 
@@ -282,7 +270,7 @@ export function VisualLibrary() {
 
   const handleToggleFavorite = async (visual: Visual) => {
     try {
-      const newFavoriteStatus = await firestoreService.toggleVisualFavorite(visual.id);
+      const newFavoriteStatus = await supabaseService.toggleVisualFavorite(visual.id);
       
       // Update local state
       setVisuals(prev => prev.map(v => 
@@ -304,7 +292,7 @@ export function VisualLibrary() {
   const handleDeleteVisual = async (visual: Visual) => {
     if (confirm(`Êtes-vous sûr de vouloir supprimer "${visual.name}" ?`)) {
       try {
-        await firestoreService.deleteVisual(visual.id);
+        await supabaseService.deleteVisual(visual.id);
         
         // Update local state
         setVisuals(prev => prev.filter(v => v.id !== visual.id));
@@ -333,8 +321,8 @@ export function VisualLibrary() {
   };
 
   const loadMoreVisuals = () => {
-    if (user && hasMore && !loadingMore) {
-      loadVisuals(user.uid, true);
+    if (authUser && hasMore && !loadingMore) {
+      loadVisuals(authUser.id, true);
     }
   };
 
@@ -353,7 +341,7 @@ export function VisualLibrary() {
   }
 
   // Error state
-  if (error || !user) {
+  if (error || !authUser) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-center py-12">
@@ -364,12 +352,16 @@ export function VisualLibrary() {
             </p>
             <div className="flex gap-2 justify-center">
               {error && (
-                <Button variant="outline" onClick={() => user && loadVisuals(user.uid)}>
+                <Button variant="outline" onClick={() => {
+                  if (authUser) {
+                    loadVisuals(authUser.id);
+                  }
+                }}>
                   <RefreshCw className="w-4 h-4 mr-2" />
                   Réessayer
                 </Button>
               )}
-              {!user && (
+              {!authUser && (
                 <Button asChild>
                   <Link href="/auth/signin">
                     Se connecter
@@ -383,28 +375,40 @@ export function VisualLibrary() {
     );
   }
 
-  const renderGridView = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-      {filteredVisuals.map((visual) => (
-        <Card key={visual.id} className="group overflow-hidden hover:shadow-lg transition-shadow">
+  const renderGridView = () => {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {filteredVisuals.map((visual) => {
+          // Get valid image URL, fallback to placeholder if empty
+          const imageUrl = visual.thumbnailUrl || visual.originalImageUrl || getPlaceholderUrl('small');
+          const hasValidUrl = imageUrl && imageUrl.trim() !== '';
+
+          return (
+          <Card key={visual.id} className="group overflow-hidden hover:shadow-lg transition-shadow">
           <div className="relative aspect-square bg-sophisticated-gray-100 overflow-hidden">
-            <Image
-              src={visual.thumbnailUrl || visual.originalImageUrl}
-              alt={visual.name}
-              fill
-              className="object-cover cursor-pointer transition-transform group-hover:scale-105"
-              onClick={() => handleFullscreenView(visual)}
-              placeholder="blur"
-              blurDataURL={getPlaceholderUrl('small')}
-              onError={(e) => {
-                // Fallback to placeholder without causing additional requests
-                const target = e.currentTarget as HTMLImageElement;
-                target.src = getPlaceholderUrl('small');
-                target.style.display = 'block';
-                // Ensure we don't trigger the error again
-                target.onerror = null;
-              }}
-            />
+            {hasValidUrl ? (
+              <Image
+                src={imageUrl}
+                alt={visual.name}
+                fill
+                className="object-cover cursor-pointer transition-transform group-hover:scale-105"
+                onClick={() => handleFullscreenView(visual)}
+                placeholder="blur"
+                blurDataURL={getPlaceholderUrl('small')}
+                onError={(e) => {
+                  // Fallback to placeholder without causing additional requests
+                  const target = e.currentTarget as HTMLImageElement;
+                  target.src = getPlaceholderUrl('small');
+                  target.style.display = 'block';
+                  // Ensure we don't trigger the error again
+                  target.onerror = null;
+                }}
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-sophisticated-gray-200">
+                <Images className="w-16 h-16 text-sophisticated-gray-400" />
+              </div>
+            )}
             <Images className="absolute inset-0 w-16 h-16 m-auto text-sophisticated-gray-400 hidden" />
             
             {/* Overlay with actions */}
@@ -493,10 +497,12 @@ export function VisualLibrary() {
               Télécharger
             </Button>
           </div>
-        </Card>
-      ))}
-    </div>
-  );
+          </Card>
+          );
+        })}
+      </div>
+    );
+  };
 
   const renderListView = () => (
     <div className="space-y-3">
@@ -735,24 +741,31 @@ export function VisualLibrary() {
 
       {/* Content */}
       {filteredVisuals.length === 0 ? (
-        <Card className="p-12 text-center">
-          <Images className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-foreground mb-2">
-            {visuals.length === 0 ? "Aucun visuel créé" : "Aucun résultat"}
+        <Card className="p-12 text-center border-dashed border-2">
+          <div className="bg-primary/5 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-6">
+            <Images className="h-12 w-12 text-primary" />
+          </div>
+          <h3 className="text-2xl font-semibold text-foreground mb-3">
+            {visuals.length === 0 ? "Votre bibliothèque est vide" : "Aucun résultat"}
           </h3>
-          <p className="text-muted-foreground mb-6">
-            {visuals.length === 0 
-              ? "Commencez par créer votre premier visuel IA"
-              : "Essayez de modifier vos critères de recherche"
+          <p className="text-muted-foreground mb-8 max-w-md mx-auto">
+            {visuals.length === 0
+              ? "Créez votre premier visuel IA en quelques clics et commencez à constituer votre collection de designs uniques."
+              : "Essayez de modifier vos critères de recherche ou de supprimer certains filtres."
             }
           </p>
           {visuals.length === 0 && (
-            <Button asChild>
-              <Link href="/dashboard/create">
-                <Plus className="w-4 h-4 mr-2" />
-                Créer mon premier visuel
-              </Link>
-            </Button>
+            <div className="space-y-4">
+              <Button asChild size="lg" className="bg-gradient-ocean-deep hover:opacity-90 text-white">
+                <Link href="/dashboard/create">
+                  <Plus className="w-5 h-5 mr-2" />
+                  Créer mon premier visuel
+                </Link>
+              </Button>
+              <p className="text-sm text-muted-foreground">
+                Générez des images avec l'IA en décrivant simplement ce que vous voulez
+              </p>
+            </div>
           )}
         </Card>
       ) : (

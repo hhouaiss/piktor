@@ -2,7 +2,7 @@
 
 import { ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from './auth-provider';
+import { useSimpleAuth } from './simple-auth-provider';
 import { Loader2, Shield, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -25,7 +25,7 @@ export function ProtectedRoute({
   loadingComponent,
   errorComponent
 }: ProtectedRouteProps) {
-  const { user, loading, error } = useAuth();
+  const { user, loading, error } = useSimpleAuth();
   const router = useRouter();
 
   // Show loading state
@@ -145,7 +145,7 @@ export function withAuth<P extends object>(
 
 // Hook for programmatic auth checks
 export function useAuthGuard() {
-  const { user, loading } = useAuth();
+  const { user, loading } = useSimpleAuth();
   const router = useRouter();
 
   const requireAuth = (redirectPath = '/auth/signin') => {

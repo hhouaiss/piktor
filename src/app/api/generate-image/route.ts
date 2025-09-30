@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateMultipleImagesWithGemini, getGeminiAspectRatio, base64ToDataUrl } from "@/lib/gemini-api";
-import { firestoreService } from "@/lib/firebase";
-import { generationService } from "@/lib/firebase/generation-service";
-import type { GenerationRequest, GeneratedImageData } from "@/lib/firebase/generation-service";
+import { supabaseService } from "@/lib/supabase/database";
+import { generationService } from "@/lib/supabase/generation-service";
+import type { GenerationRequest, GeneratedImageData } from "@/lib/supabase/generation-service";
 
 interface PromptData {
   product: {
@@ -138,68 +138,55 @@ export async function POST(request: NextRequest) {
 
     const generatedImageUrl = base64ToDataUrl(firstResult.imageData);
 
-    // Save to Firebase if user is authenticated
-    let firebaseResult = null;
-    
+    // Save to Supabase Storage if user is authenticated
+    let supabaseResult = null;
+
     // Get user ID from request headers (set by client-side authentication)
     const userId = request.headers.get('x-user-id');
 
 
     if (userId) {
-      
+
       try {
         const generationRequest: GenerationRequest = {
           userId: userId,
-          projectName: `${promptData.product.name} - ${promptData.output.type}`,
+          projectId: null, // null for direct generation (not tied to a project)
           prompt: detailedPrompt,
-          style: promptData.product.style,
-          environment: promptData.output.background,
-          formats: [promptData.output.type],
-          generationParams: {
-            model: 'gemini-2.5-flash-image-preview',
-            contextPreset,
-            aspectRatio: promptData.output.aspectRatio,
-            lighting: promptData.output.lighting,
-            cameraAngle: promptData.output.cameraAngle,
-            material: promptData.product.material,
-            color: promptData.product.color,
-            dimensions: promptData.product.dimensions
-          }
+          contextPreset
         };
-        
+
         const generatedImageData: GeneratedImageData[] = [{
-          imageData: firstResult.imageData,
-          format: promptData.output.type,
+          url: generatedImageUrl, // Use the data URL instead of raw base64
           prompt: detailedPrompt
         }];
-        const results = await generationService.saveGeneratedImages(
+        const generationResult = await generationService.processGeneration(
           generationRequest,
           generatedImageData
         );
-        
-        if (results.length > 0 && results[0].success) {
-          firebaseResult = {
-            visualId: results[0].visualId,
-            projectId: results[0].projectId,
+
+        if (generationResult.visualId) {
+          supabaseResult = {
+            visualId: generationResult.visualId,
+            projectId: generationRequest.projectId,
             savedToLibrary: true
           };
         } else {
-          console.error('Firebase save failed:', results[0]?.error || 'No results returned');
+          console.error('Generation processing failed: No visual ID returned');
         }
-        
-      } catch (firebaseError) {
-        console.error('Firebase save error:', firebaseError instanceof Error ? firebaseError.message : 'Unknown Firebase error');
+
+      } catch (supabaseError) {
+        console.error('Supabase Storage save error:', supabaseError instanceof Error ? supabaseError.message : 'Unknown Supabase error');
       }
     }
 
-    // Determine final image URL with proper Firebase Storage URL retrieval
+    // Determine final image URL with proper Supabase Storage URL retrieval
     let finalImageUrl = generatedImageUrl; // Default fallback
 
-    if (firebaseResult?.visualId) {
-      // Wait for Firestore eventual consistency
+    if (supabaseResult?.visualId) {
+      // Wait for database eventual consistency
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Retry logic for Firestore retrieval
+      // Retry logic for database retrieval
       let retries = 3;
       let savedVisual = null;
 
@@ -209,14 +196,14 @@ export async function POST(request: NextRequest) {
         }
 
         try {
-          savedVisual = await firestoreService.getVisual(firebaseResult.visualId);
+          savedVisual = await supabaseService.getVisual(supabaseResult.visualId);
 
           if (savedVisual?.originalImageUrl && !savedVisual.originalImageUrl.startsWith('data:')) {
             finalImageUrl = savedVisual.originalImageUrl;
             break;
           }
         } catch (error) {
-          console.error('Firestore retrieval failed:', error);
+          console.error('Supabase retrieval failed:', error);
         }
 
         retries--;
@@ -233,12 +220,12 @@ export async function POST(request: NextRequest) {
         originalImageName: image.name,
         promptData: promptData,
         analysisData: analysisDataStr ? JSON.parse(analysisDataStr) : null,
-        urlSource: finalImageUrl === generatedImageUrl ? 'data_url_fallback' : 'firebase_storage'
+        urlSource: finalImageUrl === generatedImageUrl ? 'data_url_fallback' : 'supabase_storage'
       },
-      // Firebase integration data
-      ...(firebaseResult && {
-        firebase: {
-          ...firebaseResult,
+      // Supabase Storage integration data
+      ...(supabaseResult && {
+        supabase: {
+          ...supabaseResult,
           storageUrlRetrieved: finalImageUrl !== generatedImageUrl
         }
       })

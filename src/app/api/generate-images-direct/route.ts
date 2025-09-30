@@ -7,9 +7,8 @@ import {
 } from "@/lib/gemini-api";
 import { generateProductionPrompt } from "@/lib/production-prompt-engine";
 import { detectEnvironment } from "@/lib/usage-limits";
-// Note: authService and firestoreService imports removed as they're not used in this server-side API route
-import { generationService } from "@/lib/firebase/generation-service";
-import type { GenerationRequest, GeneratedImageData } from "@/lib/firebase/generation-service";
+import { generationService } from "@/lib/supabase/generation-service";
+import type { GenerationRequest, GeneratedImageData } from "@/lib/supabase/generation-service";
 
 interface GenerationParams {
   contextPreset: ContextPreset;
@@ -17,13 +16,13 @@ interface GenerationParams {
   quality: 'high' | 'medium' | 'low';
 }
 
-// Server-side usage limit checking with Firebase integration
+// Server-side usage limit checking
 async function checkServerSideUsageLimit(request: NextRequest): Promise<{ allowed: boolean; reason?: string; environment: string; userId?: string }> {
   const environment = detectEnvironment();
 
   console.log('[checkServerSideUsageLimit] Starting usage limit check, environment:', environment);
 
-  // Extract user ID from headers for Firebase integration (even in dev/preview)
+  // Extract user ID from headers
   const userId = request.headers.get('x-user-id');
   const authHeader = request.headers.get('Authorization');
 
@@ -34,12 +33,12 @@ async function checkServerSideUsageLimit(request: NextRequest): Promise<{ allowe
     userIdPrefix: userId ? userId.substring(0, 8) + '...' : 'none'
   });
 
-  // Preview branch: unlimited generations (but include userId for Firebase)
+  // Preview branch: unlimited generations
   if (environment === 'preview') {
     return { allowed: true, environment, userId: userId || undefined };
   }
 
-  // Development: unlimited generations (but include userId for Firebase)
+  // Development: unlimited generations
   if (environment === 'development') {
     return { allowed: true, environment, userId: userId || undefined };
   }
@@ -206,118 +205,99 @@ export async function POST(request: NextRequest) {
       console.log(`Generated ${variations.length} variations using text-only fallback`);
     }
 
-    // CRITICAL FIX: Save generated images to Firebase Storage if user is authenticated
-    let firebaseResults: any[] = [];
-    let shouldSaveToFirebase = false;
+    // SUPABASE STORAGE: Save generated images if user is authenticated
+    let supabaseResults: any[] = [];
+    let shouldSaveToSupabase = false;
     let isUserAuthenticated = false;
 
     if (usageLimitCheck.userId) {
-      console.log('[Direct API] User authenticated, preparing to save images to Firebase:', {
+      console.log('[Direct API] User authenticated, preparing to save images to Supabase Storage:', {
         userId: usageLimitCheck.userId,
         imageCount: variations.length,
-        environment: usageLimitCheck.environment,
-        nodeEnv: process.env.NODE_ENV,
-        isVercel: !!process.env.VERCEL,
-        hasFirebasePrivateKey: !!process.env.FIREBASE_PRIVATE_KEY,
-        hasFirebaseClientEmail: !!process.env.FIREBASE_CLIENT_EMAIL,
-        privateKeyLength: process.env.FIREBASE_PRIVATE_KEY?.length || 0
+        environment: usageLimitCheck.environment
       });
 
-      shouldSaveToFirebase = true;
+      shouldSaveToSupabase = true;
       isUserAuthenticated = true;
 
       try {
         // Convert API variations to GeneratedImageData format
         const generatedImageData: GeneratedImageData[] = variations.map((variation: any) => ({
           url: variation.url,
-          imageData: '', // We'll use the URL to download the image
-          format: 'jpeg'
+          prompt: promptResult.prompt
         }));
 
-        // Create generation request for Firebase saving
+        // Create generation request for Supabase Storage saving
         const generationRequest: GenerationRequest = {
           userId: usageLimitCheck.userId,
+          projectId: null, // null for direct generation (not tied to a project)
           prompt: promptResult.prompt,
-          style: 'modern', // Default fallback
-          environment: 'lifestyle', // Default fallback
-          formats: ['square'], // Default fallback
-          generationParams: {
-            contextPreset: params.contextPreset,
-            variations: params.variations,
-            quality: params.quality,
-            model: 'google-nano-banana',
-            timestamp: new Date().toISOString(),
-            sourceAPI: 'generate-images-direct',
-            productionReady: promptResult.metadata.productionReady,
-            engineVersion: promptResult.metadata.engineVersion
-          }
+          contextPreset: params.contextPreset,
+          variations: params.variations,
+          quality: params.quality
         };
 
-        console.log('[Direct API] Calling generationService.saveGeneratedImages...');
-        firebaseResults = await generationService.saveGeneratedImages(
+        console.log('[Direct API] Calling generationService.processGeneration...');
+        const generationResult = await generationService.processGeneration(
           generationRequest,
           generatedImageData
         );
 
-        console.log('[Direct API] Firebase save completed:', {
-          results: firebaseResults.map(r => ({
+        supabaseResults = [{
+          success: true,
+          visualId: generationResult.visualId,
+          projectId: generationRequest.projectId || undefined
+        }];
+
+        console.log('[Direct API] Supabase Storage save completed:', {
+          results: supabaseResults.map(r => ({
             success: r.success,
             visualId: r.visualId,
-            projectId: r.projectId,
-            error: r.error
+            projectId: r.projectId
           }))
         });
 
-        // Update variations with Firebase Storage URLs if successful
-        firebaseResults.forEach((result, index) => {
+        // Update variations with generation metadata
+        supabaseResults.forEach((result, index) => {
           const variation = variations[index];
-          if (result.success && result.visual && result.visual.originalImageUrl && variation) {
-            console.log(`[Direct API] Updating variation ${index} with Firebase URL:`, {
-              originalUrl: variation.url?.substring(0, 50) + '...',
-              firebaseUrl: result.visual.originalImageUrl.substring(0, 50) + '...'
+          if (result.success && variation) {
+            console.log(`[Direct API] Updating variation ${index} with generation metadata:`, {
+              visualId: result.visualId,
+              projectId: result.projectId
             });
 
-            // Replace the external URL with Firebase Storage URL
-            variation.url = result.visual.originalImageUrl;
-            (variation as any).firebaseUrl = result.visual.originalImageUrl;
+            // Add generation metadata
             (variation as any).visualId = result.visualId;
             (variation as any).projectId = result.projectId;
-            (variation as any).savedToFirebase = true;
-          } else if (result.error && variation) {
-            console.error(`[Direct API] Failed to save variation ${index} to Firebase:`, result.error);
-            (variation as any).savedToFirebase = false;
-            (variation as any).firebaseError = result.error;
+            (variation as any).savedToSupabase = true;
+          } else if (!result.success && variation) {
+            console.error(`[Direct API] Failed to save variation ${index} to Supabase Storage`);
+            (variation as any).savedToSupabase = false;
           }
         });
 
-      } catch (firebaseError) {
-        console.error('[Direct API] Failed to save images to Firebase:', {
-          error: firebaseError instanceof Error ? firebaseError.message : 'Unknown Firebase error',
-          stack: firebaseError instanceof Error ? firebaseError.stack : undefined,
-          errorCode: (firebaseError as any).code,
-          errorName: (firebaseError as any).name,
+      } catch (supabaseError) {
+        console.error('[Direct API] Failed to save images to Supabase Storage:', {
+          error: supabaseError instanceof Error ? supabaseError.message : 'Unknown Supabase error',
+          stack: supabaseError instanceof Error ? supabaseError.stack : undefined,
           userId: usageLimitCheck.userId,
           environment: usageLimitCheck.environment,
-          nodeEnv: process.env.NODE_ENV,
-          isVercel: !!process.env.VERCEL,
-          hasFirebasePrivateKey: !!process.env.FIREBASE_PRIVATE_KEY,
-          hasFirebaseClientEmail: !!process.env.FIREBASE_CLIENT_EMAIL,
           imageCount: variations.length
         });
 
-        // Don't fail the entire request if Firebase saving fails
+        // Don't fail the entire request if Supabase Storage saving fails
         // Just log the error and continue with external URLs
-        firebaseResults = [];
-        shouldSaveToFirebase = false;
+        supabaseResults = [];
+        shouldSaveToSupabase = false;
 
-        // Mark all variations as not saved to Firebase
+        // Mark all variations as not saved to Supabase
         variations.forEach((variation: any) => {
-          variation.savedToFirebase = false;
-          variation.firebaseError = firebaseError instanceof Error ? firebaseError.message : 'Unknown Firebase error';
+          variation.savedToSupabase = false;
+          variation.supabaseError = supabaseError instanceof Error ? supabaseError.message : 'Unknown Supabase error';
         });
       }
     } else {
-      console.log('[Direct API] No user authentication found, skipping Firebase save:', {
+      console.log('[Direct API] No user authentication found, skipping Supabase Storage save:', {
         hasUserId: !!usageLimitCheck.userId,
         environment: usageLimitCheck.environment
       });
@@ -333,13 +313,13 @@ export async function POST(request: NextRequest) {
         limitEnforced: usageLimitCheck.environment === 'production',
         serverSideValidation: true,
       },
-      firebaseIntegration: {
+      supabaseIntegration: {
         userAuthenticated: isUserAuthenticated,
-        shouldSaveToFirebase,
-        savedToFirebase: firebaseResults.length > 0 && firebaseResults.some(r => r.success),
-        savedCount: firebaseResults.filter(r => r.success).length,
+        shouldSaveToSupabase,
+        savedToSupabase: supabaseResults.length > 0 && supabaseResults.some(r => r.success),
+        savedCount: supabaseResults.filter(r => r.success).length,
         totalImages: variations.length,
-        errors: firebaseResults.filter(r => !r.success).map(r => r.error)
+        errors: supabaseResults.filter(r => !r.success).map(r => r.error)
       },
       generationDetails: {
         sourceImageCount: referenceImages.length,

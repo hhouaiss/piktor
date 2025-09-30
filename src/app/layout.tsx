@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { ConditionalLayout } from "@/components/layout/conditional-layout";
-import { AuthProvider } from "@/components/auth/auth-provider";
+import { SimpleAuthProvider } from "@/components/auth/simple-auth-provider";
 import Script from "next/script";
 
 const inter = Inter({
@@ -49,11 +49,11 @@ export default function RootLayout({
           `}
         </Script>
         
-        <AuthProvider>
+        <SimpleAuthProvider>
           <ConditionalLayout>
             {children}
           </ConditionalLayout>
-        </AuthProvider>
+        </SimpleAuthProvider>
       </body>
     </html>
   );

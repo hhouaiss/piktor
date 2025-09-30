@@ -14,9 +14,9 @@ import {
 } from "@/lib/gemini-api";
 import { generateProductionPrompt } from "@/lib/production-prompt-engine";
 import { detectEnvironment } from "@/lib/usage-limits";
-import { authService, firestoreService } from "@/lib/firebase";
-import { generationService } from "@/lib/firebase/generation-service";
-import type { GenerationRequest, GeneratedImageData } from "@/lib/firebase/generation-service";
+import { supabaseAuthService, supabaseService } from "@/lib/supabase";
+import { generationService } from "@/lib/supabase/generation-service";
+import type { GenerationRequest, GeneratedImageData } from "@/lib/supabase/generation-service";
 
 // Dashboard-specific generation request interface
 interface DashboardGenerationRequest {
@@ -28,13 +28,13 @@ interface DashboardGenerationRequest {
   }>;
 }
 
-// Server-side usage limit checking with Firebase integration
+// Server-side usage limit checking with Supabase integration
 async function checkServerSideUsageLimit(request: NextRequest): Promise<{ allowed: boolean; reason?: string; environment: string; userId?: string }> {
   const environment = detectEnvironment();
 
   console.log('[checkServerSideUsageLimit] Starting usage limit check, environment:', environment);
 
-  // Extract user ID from headers for Firebase integration (even in dev/preview)
+  // Extract user ID from headers for Supabase integration (even in dev/preview)
   const userId = request.headers.get('x-user-id');
   const authHeader = request.headers.get('Authorization');
 
@@ -45,12 +45,12 @@ async function checkServerSideUsageLimit(request: NextRequest): Promise<{ allowe
     userIdPrefix: userId ? userId.substring(0, 8) + '...' : 'none'
   });
 
-  // Preview branch: unlimited generations (but include userId for Firebase)
+  // Preview branch: unlimited generations (but include userId for Supabase)
   if (environment === 'preview') {
     return { allowed: true, environment, userId: userId || undefined };
   }
 
-  // Development: unlimited generations (but include userId for Firebase)
+  // Development: unlimited generations (but include userId for Supabase)
   if (environment === 'development') {
     return { allowed: true, environment, userId: userId || undefined };
   }
@@ -72,7 +72,7 @@ async function checkServerSideUsageLimit(request: NextRequest): Promise<{ allowe
 
     console.log('[checkServerSideUsageLimit] Checking credits for user:', userId);
     // Check if user has sufficient credits
-    const hasCredits = await authService.hasCredits(userId, 1);
+    const hasCredits = await supabaseAuthService.hasCredits(userId, 1);
     console.log('[checkServerSideUsageLimit] Credits check result:', hasCredits);
 
     if (!hasCredits) {
@@ -271,82 +271,79 @@ ${productionPromptResult.prompt.split('🔧 PRODUCTION QUALITY ENHANCEMENT:')[1]
       console.log('[Dashboard API] Generated variations using text-only fallback:', variations.length);
     }
 
-    // Save generated images to Firebase if user is authenticated
-    let firebaseResults: Array<{success: boolean, visualId?: string, projectId?: string, error?: string}> = [];
+    // Save generated images to Supabase Storage if user is authenticated
+    let supabaseResults: Array<{success: boolean, visualId?: string, projectId?: string, error?: string}> = [];
     if (usageLimitCheck.userId) {
-      console.log('[Dashboard API] Attempting Firebase save for user:', usageLimitCheck.userId);
-      
+      console.log('[Dashboard API] Attempting Supabase Storage save for user:', usageLimitCheck.userId);
+
       try {
         const generationRequest: GenerationRequest = {
           userId: usageLimitCheck.userId,
-          projectName: `${productProfile.productName} - Dashboard`,
+          projectId: null, // No specific project for dashboard images
           prompt: dashboardPrompt,
-          style: settings.style,
-          environment: settings.environment,
-          formats: settings.formats,
-          generationParams: {
-            model: 'gemini-dashboard',
-            method: generationMethod,
-            contextPreset: productionSpecs.generationParams.contextPreset,
-            lighting: settings.lighting,
-            angle: settings.angle,
-            ...(settings.customPrompt && { customPrompt: settings.customPrompt })
-          },
-          ...(settings.customPrompt && { customPrompt: settings.customPrompt })
+          contextPreset: productionSpecs.generationParams.contextPreset
         };
-        
+
         const generatedImageData: GeneratedImageData[] = variations
-          .filter((variation) => variation.imageData)
-          .map((variation, index) => ({
-            imageData: variation.imageData!,
-            format: settings.formats[index] || settings.formats[0],
+          .filter((variation) => variation.url || variation.imageData)
+          .map((variation) => ({
+            url: variation.url || variation.imageData!, // Use url (data URL) if available, fallback to imageData
             prompt: dashboardPrompt
           }));
-        
+
         console.log('[Dashboard API] Generation request prepared:', {
           userId: generationRequest.userId,
-          projectName: generationRequest.projectName,
+          projectId: generationRequest.projectId,
           imageDataCount: generatedImageData.length,
-          formats: settings.formats,
-          hasImageData: generatedImageData.map(img => !!img.imageData)
+          hasImageData: generatedImageData.map(img => !!img.url),
+          firstImageUrlType: generatedImageData[0]?.url ?
+            (typeof generatedImageData[0].url) : 'no-url',
+          firstImageUrlPrefix: generatedImageData[0]?.url ?
+            String(generatedImageData[0].url).substring(0, 50) : 'no-url'
         });
-        
-        console.log('[Dashboard API] Calling generationService.saveGeneratedImages...');
-        firebaseResults = await generationService.saveGeneratedImages(
+
+        console.log('[Dashboard API] Calling generationService.processGeneration...');
+        const generationResult = await generationService.processGeneration(
           generationRequest,
           generatedImageData
         );
-        
-        console.log('[Dashboard API] Firebase save completed:', {
-          results: firebaseResults.map(r => ({
+
+        supabaseResults = [{
+          success: true,
+          visualId: generationResult.visualId,
+          projectId: generationRequest.projectId || undefined
+        }];
+
+        console.log('[Dashboard API] Supabase Storage save completed:', {
+          results: supabaseResults.map(r => ({
             success: r.success,
             visualId: r.visualId,
             projectId: r.projectId,
             error: r.error
           })),
-          successCount: firebaseResults.filter(r => r.success).length,
-          totalCount: firebaseResults.length
+          successCount: supabaseResults.filter(r => r.success).length,
+          totalCount: supabaseResults.length
         });
-        
+
         // Log any errors from individual saves
-        const failures = firebaseResults.filter(r => !r.success);
+        const failures = supabaseResults.filter(r => !r.success);
         if (failures.length > 0) {
-          console.error('[Dashboard API] Some Firebase saves failed:', failures.map(f => f.error));
+          console.error('[Dashboard API] Some Supabase Storage saves failed:', failures.map(f => f.error));
         }
-        
-      } catch (firebaseError) {
-        console.error('[Dashboard API] Firebase save error:', {
-          error: firebaseError instanceof Error ? firebaseError.message : 'Unknown Firebase error',
-          stack: firebaseError instanceof Error ? firebaseError.stack : undefined,
+
+      } catch (supabaseError) {
+        console.error('[Dashboard API] Supabase Storage save error:', {
+          error: supabaseError instanceof Error ? supabaseError.message : 'Unknown Supabase error',
+          stack: supabaseError instanceof Error ? supabaseError.stack : undefined,
           userId: usageLimitCheck.userId,
           variations: variations.length
         });
-        
-        // Continue without Firebase integration but log that we're doing so
-        console.warn('[Dashboard API] Continuing without Firebase integration due to error');
+
+        // Continue without Supabase Storage integration but log that we're doing so
+        console.warn('[Dashboard API] Continuing without Supabase Storage integration due to error');
       }
     } else {
-      console.log('[Dashboard API] Skipping Firebase save - no authenticated user');
+      console.log('[Dashboard API] Skipping Supabase Storage save - no authenticated user');
       console.log('[Dashboard API] Request headers debug:', {
         'x-user-id': request.headers.get('x-user-id'),
         'Authorization': request.headers.get('Authorization') ? 'present' : 'missing',
@@ -362,26 +359,26 @@ ${productionPromptResult.prompt.split('🔧 PRODUCTION QUALITY ENHANCEMENT:')[1]
       productCategory: productProfile.productCategory,
       settings: settings,
       variations: await Promise.all(variations.map(async (variation, index) => {
-        // Get Firebase Storage URL if image was saved successfully
+        // Get Supabase Storage URL if image was saved successfully
         let finalImageUrl = variation.url || ''; // Default to data URL from Gemini
         let urlSource = 'data_url_fallback';
 
         console.log(`[Dashboard API] Processing variation ${index + 1}:`, {
-          hasFirebaseResult: !!firebaseResults[index]?.success,
-          firebaseVisualId: firebaseResults[index]?.visualId,
+          hasSupabaseResult: !!supabaseResults[index]?.success,
+          supabaseVisualId: supabaseResults[index]?.visualId,
           originalUrlType: variation.url?.startsWith('data:') ? 'data_url' : 'other'
         });
 
-        if (firebaseResults[index]?.success) {
-          console.log(`[Dashboard API] Retrieving Firebase Storage URL for variation ${index + 1}:`, firebaseResults[index].visualId);
+        if (supabaseResults[index]?.success) {
+          console.log(`[Dashboard API] Retrieving Supabase Storage URL for variation ${index + 1}:`, supabaseResults[index].visualId);
           try {
-            // Add a small delay to ensure Firestore consistency
+            // Add a small delay to ensure database consistency
             await new Promise(resolve => setTimeout(resolve, 100));
 
-            const visualId = firebaseResults[index].visualId;
+            const visualId = supabaseResults[index].visualId;
             if (visualId) {
-              const visual = await firestoreService.getVisual(visualId);
-              console.log(`[Dashboard API] Retrieved visual ${index + 1} from Firestore:`, {
+              const visual = await supabaseService.getVisual(visualId);
+              console.log(`[Dashboard API] Retrieved visual ${index + 1} from Supabase:`, {
                 visualExists: !!visual,
                 visualId: visual?.id,
                 hasOriginalImageUrl: !!visual?.originalImageUrl,
@@ -390,26 +387,26 @@ ${productionPromptResult.prompt.split('🔧 PRODUCTION QUALITY ENHANCEMENT:')[1]
 
               if (visual?.originalImageUrl) {
                 finalImageUrl = visual.originalImageUrl;
-                urlSource = 'firebase_storage';
-                console.log(`[Dashboard API] Using Firebase Storage URL for variation ${index + 1}:`, finalImageUrl.substring(0, 100) + '...');
+                urlSource = 'supabase_storage';
+                console.log(`[Dashboard API] Using Supabase Storage URL for variation ${index + 1}:`, finalImageUrl.substring(0, 100) + '...');
               } else {
                 console.warn(`[Dashboard API] No originalImageUrl found for variation ${index + 1}, using data URL fallback`);
               }
             }
           } catch (error) {
-            console.error(`[Dashboard API] Failed to retrieve Firebase Storage URL for variation ${index + 1}:`, {
+            console.error(`[Dashboard API] Failed to retrieve Supabase Storage URL for variation ${index + 1}:`, {
               error: error instanceof Error ? error.message : 'Unknown error',
-              visualId: firebaseResults[index].visualId
+              visualId: supabaseResults[index].visualId
             });
-            console.warn(`[Dashboard API] Falling back to data URL for variation ${index + 1} due to Firebase retrieval error`);
+            console.warn(`[Dashboard API] Falling back to data URL for variation ${index + 1} due to Supabase retrieval error`);
           }
         } else {
-          console.log(`[Dashboard API] No successful Firebase save for variation ${index + 1}, using data URL`);
+          console.log(`[Dashboard API] No successful Supabase Storage save for variation ${index + 1}, using data URL`);
         }
 
         console.log(`[Dashboard API] Final URL for variation ${index + 1}:`, {
           isDataUrl: finalImageUrl.startsWith('data:'),
-          isFirebaseUrl: finalImageUrl.includes('firebasestorage.googleapis.com'),
+          isSupabaseUrl: finalImageUrl.includes('supabase.co'),
           urlSource,
           urlPrefix: finalImageUrl.substring(0, 100) + '...'
         });
@@ -420,22 +417,22 @@ ${productionPromptResult.prompt.split('🔧 PRODUCTION QUALITY ENHANCEMENT:')[1]
           format: settings.formats[index] || settings.formats[0],
           prompt: index === 0 ? dashboardPrompt : `${dashboardPrompt} (Format: ${settings.formats[index] || 'primary'})`,
           urlSource, // Add metadata about URL source
-          // Add Firebase data if available
-          ...(firebaseResults[index]?.success && {
-            firebaseVisualId: firebaseResults[index].visualId,
-            firebaseProjectId: firebaseResults[index].projectId,
+          // Add Supabase data if available
+          ...(supabaseResults[index]?.success && {
+            supabaseVisualId: supabaseResults[index].visualId,
+            supabaseProjectId: supabaseResults[index].projectId,
             savedToLibrary: true
           })
         };
       })),
-      
-      // Firebase integration metadata
+
+      // Supabase Storage integration metadata
       ...(usageLimitCheck.userId && {
-        firebaseIntegration: {
+        supabaseIntegration: {
           enabled: true,
           userId: usageLimitCheck.userId,
-          savedCount: firebaseResults.filter(r => r.success).length,
-          errors: firebaseResults.filter(r => !r.success).map(r => r.error)
+          savedCount: supabaseResults.filter(r => r.success).length,
+          errors: supabaseResults.filter(r => !r.success).map(r => r.error)
         }
       }),
       
@@ -471,7 +468,7 @@ ${productionPromptResult.prompt.split('🔧 PRODUCTION QUALITY ENHANCEMENT:')[1]
         environment: usageLimitCheck.environment,
         limitEnforced: usageLimitCheck.environment === 'production',
         serverSideValidation: true,
-        firebaseIntegrated: Boolean(usageLimitCheck.userId),
+        supabaseIntegrated: Boolean(usageLimitCheck.userId),
         userId: usageLimitCheck.userId
       },
       

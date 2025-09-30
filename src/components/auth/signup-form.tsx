@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { useAuth } from './auth-provider';
+import { useSimpleAuth } from './simple-auth-provider';
 import { Eye, EyeOff, Loader2, Mail, Lock, User, Chrome, Check } from 'lucide-react';
 import { trackEvent } from '@/lib/analytics';
 
@@ -32,7 +32,7 @@ export function SignUpForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
-  const { signUp, signInWithGoogle } = useAuth();
+  const { signUp } = useSimpleAuth();
   const router = useRouter();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -92,7 +92,8 @@ export function SignUpForm() {
     setError('');
 
     try {
-      await signInWithGoogle();
+      // TODO: Implement Google sign-in later
+      throw new Error('Google sign-in temporarily disabled');
       
       trackEvent('user_signup', {
         event_category: 'auth',

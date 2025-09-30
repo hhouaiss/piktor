@@ -21,52 +21,59 @@ import {
   AlertCircle
 } from "lucide-react";
 import { trackEvent } from "@/lib/analytics";
-import { useAuth } from "@/components/auth/auth-provider";
-import { useDashboardStats, useRecentProjects, useActivityTracker } from "@/lib/firebase/realtime-service";
-import type { RecentProject } from "@/lib/firebase";
-import { debugUserData } from "@/lib/debug-firebase";
-import { testFirebaseConnection } from "@/lib/firebase/test-connection";
+import { useSimpleAuth } from "@/components/auth/simple-auth-provider";
 import { getPlaceholderUrl } from "@/lib/image-placeholders";
 
+interface DashboardStats {
+  totalVisuals: number;
+  thisMonth: number;
+  downloads: number;
+  views: number;
+  creditsUsed: number;
+  creditsRemaining: number;
+  projects: number;
+}
 
+interface RecentProject {
+  id: string;
+  name: string;
+  thumbnail: string;
+  format: string | string[];
+  createdAt: string;
+  visualsCount: number;
+  downloads: number;
+}
 
 export function DashboardHome() {
-  const { user: authUser, loading: authLoading, firebaseUser } = useAuth();
-  const { stats, loading: statsLoading, error: statsError } = useDashboardStats(authUser?.id || null);
-  const { projects: recentProjects, loading: projectsLoading, error: projectsError } = useRecentProjects(authUser?.id || null, 3);
-  const { trackView } = useActivityTracker(authUser?.id || null);
+  const { user: authUser, loading: authLoading, supabaseUser } = useSimpleAuth();
 
-  const loading = authLoading || statsLoading || projectsLoading;
-  const error = statsError || projectsError;
+  // Mock data for now - these can be replaced with real data later
+  const stats: DashboardStats = {
+    totalVisuals: 0,
+    thisMonth: 0,
+    downloads: 0,
+    views: 0,
+    creditsUsed: 0,
+    creditsRemaining: 50,
+    projects: 0
+  };
+
+  const recentProjects: RecentProject[] = [];
+
+  const loading = authLoading;
+  const error = null;
   const user = authUser;
 
   useEffect(() => {
-    // Debug authentication state
-    console.log('[DashboardHome] Auth state:', {
-      authLoading,
-      hasUser: !!user,
-      hasFirebaseUser: !!firebaseUser,
-      userId: user?.id,
-      firebaseUid: firebaseUser?.uid
-    });
-
     // Only run these effects once when we have a stable auth state
-    if (!authLoading && firebaseUser && user) {
-      // Debug user data
-      debugUserData(user, 'DashboardHome');
-
-      // Test Firebase connection (development only)
-      if (process.env.NODE_ENV === 'development') {
-        testFirebaseConnection();
-      }
-
+    if (!authLoading && user) {
       // Track dashboard home view
       trackEvent('dashboard_home_viewed', {
         event_category: 'dashboard',
         event_label: 'home_page_view'
       });
     }
-  }, [authLoading, !!firebaseUser, !!user]); // Fixed dependencies to prevent infinite loops
+  }, [authLoading, !!user]);
 
   const handleCreateNewVisual = () => {
     trackEvent('dashboard_create_new_clicked', {
@@ -85,10 +92,10 @@ export function DashboardHome() {
       }
     });
     
-    // Track view activity
-    if (project.visualsCount > 0) {
-      trackView('', project.id);
-    }
+    // Track view activity - placeholder for future implementation
+    // if (project.visualsCount > 0) {
+    //   trackView('', project.id);
+    // }
   };
 
 
@@ -136,23 +143,15 @@ export function DashboardHome() {
   }
 
   // Handle permission errors gracefully - show dashboard with default data
-  const hasPermissionError = error?.includes?.('Permission denied') || statsError?.includes?.('Permission denied') || projectsError?.includes?.('Permission denied');
+  const hasPermissionError = false; // No errors for now
 
   // Show default state if no stats yet
-  const displayStats = stats || {
-    totalVisuals: 0,
-    thisMonth: 0,
-    downloads: 0,
-    views: 0,
-    creditsUsed: 0,
-    creditsRemaining: 50,
-    projects: 0
-  };
+  const displayStats = stats;
 
   // Helper function to get display name
   const getDisplayName = () => {
-    if (user?.displayName) {
-      return user.displayName;
+    if (user?.display_name) {
+      return user.display_name;
     }
     if (user?.email) {
       // Extract name from email (part before @)

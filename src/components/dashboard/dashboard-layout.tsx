@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trackEvent, trackPageView } from "@/lib/analytics";
-import { useAuth } from "@/components/auth/auth-provider";
+import { useSimpleAuth } from "@/components/auth/simple-auth-provider";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -93,7 +93,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const pathname = usePathname();
-  const { user, signOut } = useAuth();
+  const { user, signOut } = useSimpleAuth();
 
   // Track page views for dashboard pages
   useEffect(() => {
@@ -153,8 +153,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   // Helper functions for user display
   const getDisplayName = () => {
-    if (user?.displayName) {
-      return user.displayName;
+    if (user?.display_name) {
+      return user.display_name;
     }
     if (user?.email) {
       // Extract name from email (part before @)
@@ -164,8 +164,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   const getUserInitials = () => {
-    if (user?.displayName) {
-      const names = user.displayName.split(' ');
+    if (user?.display_name) {
+      const names = user.display_name.split(' ');
       return names.length > 1
         ? `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase()
         : names[0][0].toUpperCase();
