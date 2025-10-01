@@ -12,6 +12,8 @@ export interface GenerationRequest {
   quality?: 'high' | 'medium' | 'low';
   aspectRatio?: string;
   references?: string[];
+  productName?: string;
+  productCategory?: string;
 }
 
 export interface GeneratedImageData {
@@ -292,7 +294,11 @@ class SupabaseGenerationService {
           variations: request.variations || 1,
           quality: request.quality || 'medium',
           aspectRatio: request.aspectRatio,
-          references: request.references
+          references: request.references,
+          product: {
+            name: request.productName,
+            category: request.productCategory
+          }
         }
       );
 
@@ -304,7 +310,7 @@ class SupabaseGenerationService {
         generatedImages
       );
 
-      // Complete generation
+      // Complete generation - preserve product information from initial metadata
       const metadata = {
         prompt: request.prompt,
         negativePrompt: request.negativePrompt,
@@ -313,7 +319,11 @@ class SupabaseGenerationService {
         quality: request.quality || 'medium',
         aspectRatio: request.aspectRatio,
         timestamp: new Date().toISOString(),
-        model: generatedImages[0]?.model || 'unknown'
+        model: generatedImages[0]?.model || 'unknown',
+        product: {
+          name: request.productName,
+          category: request.productCategory
+        }
       };
 
       await this.completeGeneration(visualId, uploadResults, metadata);

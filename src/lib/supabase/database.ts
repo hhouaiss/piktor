@@ -66,13 +66,14 @@ function transformVisual(dbVisual: DatabaseVisual): Visual {
     environment: metadata.environment || 'neutral',
     format: metadata.format || ['instagram_post'],
     generationParams: metadata.generationParams || { model: 'default' },
+    metadata: metadata, // Add metadata field
     tags: metadata.tags || [],
     colors: metadata.colors || [],
     dimensions: metadata.dimensions || { width: 1024, height: 1024 },
     fileSize: metadata.fileSize || 0,
     mimeType: metadata.mimeType || 'image/jpeg',
-    views: metadata.views || 0,
-    downloads: metadata.downloads || 0,
+    views: dbVisual.views || 0, // Read from database column, not metadata
+    downloads: dbVisual.downloads || 0, // Read from database column, not metadata
     shares: metadata.shares || 0,
     isFavorite: metadata.isFavorite || false,
     createdAt: new Date(dbVisual.created_at).toISOString(),

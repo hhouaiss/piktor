@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,10 @@ import {
 import { trackEvent } from "@/lib/analytics";
 import { useSimpleAuth } from "@/components/auth/simple-auth-provider";
 import { getPlaceholderUrl } from "@/lib/image-placeholders";
+import { analyticsService } from "@/lib/supabase/analytics-service";
+import type { DashboardStats as AnalyticsStats } from "@/lib/supabase/analytics-service";
+import type { Visual } from "@/lib/supabase/types";
+import { extractProductName, formatLabel } from "@/lib/product-name-extractor";
 
 interface DashboardStats {
   totalVisuals: number;
@@ -47,8 +51,8 @@ interface RecentProject {
 export function DashboardHome() {
   const { user: authUser, loading: authLoading, supabaseUser } = useSimpleAuth();
 
-  // Mock data for now - these can be replaced with real data later
-  const stats: DashboardStats = {
+  // Real data state
+  const [stats, setStats] = useState<DashboardStats>({
     totalVisuals: 0,
     thisMonth: 0,
     downloads: 0,
@@ -56,24 +60,62 @@ export function DashboardHome() {
     creditsUsed: 0,
     creditsRemaining: 50,
     projects: 0
-  };
+  });
+  const [recentImages, setRecentImages] = useState<Visual[]>([]);
+  const [statsLoading, setStatsLoading] = useState(true);
 
-  const recentProjects: RecentProject[] = [];
-
-  const loading = authLoading;
+  const loading = authLoading || statsLoading;
   const error = null;
   const user = authUser;
 
+  // Fetch real stats and recent images
   useEffect(() => {
-    // Only run these effects once when we have a stable auth state
-    if (!authLoading && user) {
-      // Track dashboard home view
-      trackEvent('dashboard_home_viewed', {
-        event_category: 'dashboard',
-        event_label: 'home_page_view'
-      });
+    async function fetchDashboardData() {
+      if (!authUser?.id) {
+        setStatsLoading(false);
+        return;
+      }
+
+      try {
+        setStatsLoading(true);
+
+        // Fetch stats and recent images in parallel
+        const [analyticsStats, visuals] = await Promise.all([
+          analyticsService.getDashboardStats(authUser.id),
+          analyticsService.getRecentVisuals(authUser.id, 6)
+        ]);
+
+        // Map analytics stats to dashboard stats
+        setStats({
+          totalVisuals: analyticsStats.totalVisuals,
+          thisMonth: analyticsStats.thisMonthVisuals,
+          downloads: analyticsStats.totalDownloads,
+          views: analyticsStats.totalViews,
+          creditsUsed: authUser.usage?.creditsUsed || 0,
+          creditsRemaining: (authUser.usage?.creditsTotal || 50) - (authUser.usage?.creditsUsed || 0),
+          projects: 0 // Can add project count later
+        });
+
+        setRecentImages(visuals as Visual[]);
+
+        // Track dashboard home view
+        trackEvent('dashboard_home_viewed', {
+          event_category: 'dashboard',
+          event_label: 'home_page_view',
+          custom_parameters: {
+            total_visuals: analyticsStats.totalVisuals,
+            total_views: analyticsStats.totalViews
+          }
+        });
+      } catch (error) {
+        console.error('[Dashboard] Error fetching data:', error);
+      } finally {
+        setStatsLoading(false);
+      }
     }
-  }, [authLoading, !!user]);
+
+    fetchDashboardData();
+  }, [authUser]);
 
   const handleCreateNewVisual = () => {
     trackEvent('dashboard_create_new_clicked', {
@@ -266,10 +308,10 @@ export function DashboardHome() {
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Recent Projects */}
+        {/* Recent Images */}
         <div className="lg:col-span-2">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-foreground">Projets récents</h2>
+            <h2 className="text-xl font-semibold text-foreground">Générations récentes</h2>
             <Button variant="ghost" asChild className="text-primary hover:text-primary/80">
               <Link href="/dashboard/library">
                 Voir tout
@@ -278,75 +320,82 @@ export function DashboardHome() {
             </Button>
           </div>
 
-          <div className="space-y-4">
-            {recentProjects.map((project) => (
-              <Card key={project.id} className="p-4 hover:shadow-md transition-shadow">
-                <Link
-                  href={`/dashboard/library?project=${project.id}`}
-                  className="block cursor-pointer"
-                  onClick={() => handleViewProject(project)}
-                >
-                  <div className="flex items-center space-x-4">
-                    <div className="w-16 h-16 bg-sophisticated-gray-100 rounded-lg flex items-center justify-center overflow-hidden relative">
-                      <Image
-                        src={project.thumbnail}
-                        alt={project.name}
-                        fill
-                        className="object-cover"
-                        placeholder="blur"
-                        blurDataURL={getPlaceholderUrl('small')}
-                        onError={(e) => {
-                          // Fallback to placeholder without causing additional requests
-                          const target = e.currentTarget as HTMLImageElement;
-                          target.src = getPlaceholderUrl('small');
-                          target.style.display = 'block';
-                          // Ensure we don't trigger the error again
-                          target.onerror = null;
-                        }}
-                      />
-                      <Sparkles className="h-6 w-6 text-sophisticated-gray-400 hidden" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-foreground truncate">{project.name}</h3>
-                      <div className="flex items-center space-x-4 mt-1">
-                        <span className="text-sm text-muted-foreground flex items-center">
-                          <Calendar className="h-3 w-3 mr-1" />
-                          {formatDate(project.createdAt)}
-                        </span>
-                        <span className="text-sm text-muted-foreground">
-                          {Array.isArray(project.format) ? project.format.join(', ') : project.format}
-                        </span>
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {project.visualsCount} visuel{project.visualsCount > 1 ? 's' : ''}
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                      <Download className="h-4 w-4" />
-                      <span>{project.downloads}</span>
-                    </div>
-                  </div>
-                </Link>
-              </Card>
-            ))}
-          </div>
-
-          {recentProjects.length === 0 && (
+          {recentImages.length === 0 ? (
             <Card className="p-12 text-center">
-              <Sparkles className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-foreground mb-2">
-                Aucun projet pour le moment
-              </h3>
+              <Sparkles className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-foreground mb-2">Aucun projet pour le moment</h3>
               <p className="text-muted-foreground mb-6">
                 Commencez par créer votre premier visuel IA en quelques minutes
               </p>
-              <Button asChild>
-                <Link href="/dashboard/create">
+              <Button asChild className="bg-gradient-to-r from-ocean-blue-600 to-ocean-blue-700 hover:from-ocean-blue-700 hover:to-ocean-blue-800">
+                <Link href="/dashboard/create" onClick={handleCreateNewVisual}>
                   <Plus className="w-4 h-4 mr-2" />
                   Créer mon premier visuel
                 </Link>
               </Button>
             </Card>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {recentImages.map((visual) => (
+                <Card key={visual.id} className="group hover:shadow-lg transition-all overflow-hidden">
+                  <div
+                    className="block cursor-pointer"
+                    onClick={async () => {
+                      // Track view
+                      const newViewCount = await analyticsService.trackView(visual.id);
+                      setRecentImages(prev => prev.map(v =>
+                        v.id === visual.id ? { ...v, views: newViewCount } : v
+                      ));
+
+                      // Navigate to library
+                      window.location.href = '/dashboard/library';
+                    }}
+                  >
+                    <div className="aspect-square bg-sophisticated-gray-100 flex items-center justify-center overflow-hidden relative">
+                      <Image
+                        src={visual.originalImageUrl || visual.thumbnailUrl || getPlaceholderUrl('medium')}
+                        alt={extractProductName(visual.metadata, visual.id)}
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-300"
+                        placeholder="blur"
+                        blurDataURL={getPlaceholderUrl('small')}
+                        onError={(e) => {
+                          const target = e.currentTarget as HTMLImageElement;
+                          target.src = getPlaceholderUrl('medium');
+                          target.onerror = null;
+                        }}
+                      />
+                    </div>
+                    <div className="p-3 bg-white dark:bg-gray-800">
+                      <h3 className="font-medium text-foreground truncate text-sm mb-1">
+                        {extractProductName(visual.metadata, visual.id)}
+                      </h3>
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span className="flex items-center">
+                          <Calendar className="h-3 w-3 mr-1" />
+                          {formatDate(visual.createdAt)}
+                        </span>
+                        <div className="flex items-center space-x-2">
+                          <span className="flex items-center">
+                            <Eye className="h-3 w-3 mr-1" />
+                            {visual.views || 0}
+                          </span>
+                          <span className="flex items-center">
+                            <Download className="h-3 w-3 mr-1" />
+                            {visual.downloads || 0}
+                          </span>
+                        </div>
+                      </div>
+                      {visual.metadata?.contextPreset && (
+                        <span className="inline-block mt-2 text-xs px-2 py-0.5 bg-ocean-blue-100 text-ocean-blue-700 rounded">
+                          {formatLabel(visual.metadata.contextPreset)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
           )}
         </div>
 

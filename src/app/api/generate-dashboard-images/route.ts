@@ -291,7 +291,9 @@ ${productionPromptResult.prompt.split('🔧 PRODUCTION QUALITY ENHANCEMENT:')[1]
           userId: usageLimitCheck.userId,
           projectId: null, // No specific project for dashboard images
           prompt: dashboardPrompt,
-          contextPreset: productionSpecs.generationParams.contextPreset
+          contextPreset: productionSpecs.generationParams.contextPreset,
+          productName: productProfile.productName,
+          productCategory: productProfile.productCategory
         };
 
         const generatedImageData: GeneratedImageData[] = variations

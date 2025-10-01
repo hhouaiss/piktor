@@ -54,6 +54,8 @@ export interface Database {
           original_url: string
           thumbnail_url: string | null
           metadata: Json | null
+          views: number
+          downloads: number
           created_at: string
           updated_at: string
         }
@@ -65,6 +67,8 @@ export interface Database {
           original_url: string
           thumbnail_url?: string | null
           metadata?: Json | null
+          views?: number
+          downloads?: number
           created_at?: string
           updated_at?: string
         }
@@ -76,6 +80,8 @@ export interface Database {
           original_url?: string
           thumbnail_url?: string | null
           metadata?: Json | null
+          views?: number
+          downloads?: number
           created_at?: string
           updated_at?: string
         }
@@ -258,6 +264,20 @@ export interface FirebaseUser {
   }
 }
 
+export interface VisualMetadata {
+  prompt?: string;
+  product?: {
+    name?: string;
+    category?: string;
+  };
+  contextPreset?: string;
+  branding?: {
+    aesthetic?: string;
+    moodKeywords?: string[];
+  };
+  [key: string]: any;
+}
+
 export interface Visual {
   id: string
   userId: string
@@ -284,6 +304,7 @@ export interface Visual {
     guidanceScale?: number
     [key: string]: any
   }
+  metadata?: VisualMetadata
 
   // Content metadata
   tags: string[]

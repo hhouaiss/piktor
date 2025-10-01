@@ -29,6 +29,8 @@ import { useSimpleAuth } from "@/components/auth/simple-auth-provider";
 import { supabaseService } from "@/lib/supabase/database";
 import type { Visual, VisualFilters, VisualSort, PaginationOptions } from "@/lib/supabase/types";
 import { getPlaceholderUrl } from "@/lib/image-placeholders";
+import { extractProductName, formatLabel } from "@/lib/product-name-extractor";
+import { analyticsService } from "@/lib/supabase/analytics-service";
 import Link from "next/link";
 
 
@@ -181,40 +183,38 @@ export function VisualLibrary() {
   const handleFullscreenView = async (visual: Visual) => {
     setFullscreenVisual(visual);
 
-    // Increment view count
-    try {
-      await supabaseService.incrementVisualStats(visual.id, { views: 1 });
-
-      // Update local state
+    // Track view asynchronously (don't block UI)
+    analyticsService.trackView(visual.id).then(newViewCount => {
+      // Update local state with new view count
       setVisuals(prev => prev.map(v =>
-        v.id === visual.id ? { ...v, views: v.views + 1 } : v
+        v.id === visual.id ? { ...v, views: newViewCount } : v
       ));
-    } catch (error) {
-      console.error('Error incrementing view count:', error);
-    }
+    }).catch(error => {
+      console.error('Error tracking view:', error);
+    });
 
     trackImageGeneration.imageViewed({
       imageIndex: visuals.indexOf(visual),
-      productType: visual.name
+      productType: extractProductName(visual.metadata, visual.id)
     });
   };
 
   const handleDownload = async (visual: Visual) => {
     try {
-      // Increment download count in Supabase
-      await supabaseService.incrementVisualStats(visual.id, { downloads: 1 });
+      // Track download before downloading (ensures it's counted)
+      const newDownloadCount = await analyticsService.trackDownload(visual.id);
+
+      // Update local state with the actual count from database
+      setVisuals(prev => prev.map(v =>
+        v.id === visual.id ? { ...v, downloads: newDownloadCount } : v
+      ));
 
       // Track download analytics
       trackImageGeneration.imageDownloaded({
         imageIndex: visuals.indexOf(visual),
-        productType: visual.name,
-        filename: visual.name
+        productType: extractProductName(visual.metadata, visual.id),
+        filename: extractProductName(visual.metadata, visual.id)
       });
-
-      // Update local state
-      setVisuals(prev => prev.map(v =>
-        v.id === visual.id ? { ...v, downloads: v.downloads + 1 } : v
-      ));
 
       // Use the download API to handle Supabase Storage URLs properly
       const filename = `${visual.name}.jpg`;
@@ -447,16 +447,16 @@ export function VisualLibrary() {
             {/* Format badge */}
             <div className="absolute top-2 left-2">
               <span className="bg-black/70 text-white text-xs px-2 py-1 rounded">
-                {Array.isArray(visual.format) ? visual.format[0] : visual.format}
+                {formatLabel(visual.metadata?.contextPreset) || (Array.isArray(visual.format) ? visual.format[0] : visual.format)}
               </span>
             </div>
           </div>
 
           <div className="p-4">
             <h3 className="font-medium text-foreground line-clamp-2 mb-2">
-              {visual.name}
+              {extractProductName(visual.metadata, visual.id)}
             </h3>
-            
+
             <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">
               <span className="flex items-center">
                 <Calendar className="w-3 h-3 mr-1" />
