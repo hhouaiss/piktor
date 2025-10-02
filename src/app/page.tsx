@@ -17,6 +17,8 @@ import { UsageLimitReached } from "@/components/UsageLimitReached";
 import { GenerationEvaluation } from "@/components/GenerationEvaluation";
 import { trackImageGeneration, trackConversion, trackNavigation } from "@/lib/analytics";
 import { getAuthHeaders } from "@/lib/api-client";
+import { useSimpleAuth } from "@/components/auth/simple-auth-provider";
+import { useRouter } from "next/navigation";
 
 // Import admin utils for testing (only in development)
 if (process.env.NODE_ENV === 'development') {
@@ -39,6 +41,9 @@ interface LandingPageGeneratorState {
 
 // Internal component that uses the usage limit hooks
 function HomeContent() {
+  const router = useRouter();
+  const { user } = useSimpleAuth();
+
   const [generatorState, setGeneratorState] = useState<LandingPageGeneratorState>({
     uploadedImages: [],
     generatedImages: [],
@@ -732,18 +737,24 @@ function HomeContent() {
           </div> */}
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-6">
-            <Button 
-              onClick={scrollToGenerator}
-              size="xl" 
+            <Button
+              onClick={() => {
+                if (user) {
+                  router.push('/dashboard');
+                } else {
+                  router.push('/auth/signup');
+                }
+              }}
+              size="xl"
               className="bg-gradient-ocean-deep hover:opacity-90 text-white shadow-premium animate-scale-in font-bold group w-full sm:w-auto max-w-sm transition-all duration-200 hover:scale-105"
             >
-              Tester gratuitement maintenant
+              {user ? 'Accéder au dashboard' : 'Tester gratuitement maintenant'}
               <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
             </Button>
           </div>
-          
+
           <p className="text-sm text-sophisticated-gray-500 dark:text-sophisticated-gray-400">
-            Aucune inscription - Voir le résultat instantanément
+            {user ? 'Créez vos visuels en quelques clics' : 'Inscription gratuite - Aucune carte bancaire requise'}
           </p>
           </div>
         </div>
@@ -791,8 +802,9 @@ function HomeContent() {
         </div>
       </section>
 
-      {/* Image Generator Tool */}
-      <section id="image-generator" className="w-full px-4 py-12 sm:py-16 lg:py-20">
+      {/* Image Generator Tool - Hidden */}
+      {false && (
+        <section id="image-generator" className="w-full px-4 py-12 sm:py-16 lg:py-20">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-12">
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 bg-gradient-to-br from-ocean-blue-800 via-ocean-blue-600 to-warm-gold-600 bg-clip-text text-transparent dark:from-ocean-blue-300 dark:via-ocean-blue-400 dark:to-warm-gold-400 px-2">
@@ -1128,6 +1140,7 @@ function HomeContent() {
           </div>
         </div>
       </section>
+      )}
 
       {/* Demo CTA Section */}
       <section className="w-full px-4 py-12 sm:py-16 lg:py-20">

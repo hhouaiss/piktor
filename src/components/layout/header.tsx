@@ -1,35 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Sparkles } from "lucide-react";
 import { trackNavigation } from "@/lib/analytics";
+import { useSimpleAuth } from "@/components/auth/simple-auth-provider";
 
 export function Header() {
   const pathname = usePathname();
-  const isHomePage = pathname === '/';
+  const router = useRouter();
+  const { user } = useSimpleAuth();
   const closeMenu = () => {};
 
-  const scrollToGenerator = () => {
-    if (isHomePage) {
-      // If on home page, just scroll to the generator
-      const generatorSection = document.getElementById('image-generator');
-      if (generatorSection) {
-        generatorSection.scrollIntoView({ behavior: 'smooth' });
-        
-        // Track header CTA scroll
-        trackNavigation.scrollToGenerator({
-          source: 'header_cta',
-          currentPage: 'home'
-        });
-      }
+  const handleCTAClick = () => {
+    if (user) {
+      router.push('/dashboard');
     } else {
-      // If on another page, navigate to home page with hash
-      trackNavigation.navigateToGenerator({
-        fromPage: pathname || '/'
-      });
-      window.location.href = '/#image-generator';
+      router.push('/auth/signup');
     }
   };
 
@@ -53,25 +41,23 @@ export function Header() {
 
         {/* Desktop CTA Button */}
         <div className="hidden md:flex flex-1 items-center justify-end">
-          <Button 
-            variant="primary" 
-            size="default" 
-            className="font-semibold"
-            onClick={scrollToGenerator}
+          <Button
+            size="default"
+            className="bg-gradient-ocean-deep hover:opacity-90 text-white font-semibold shadow-md transition-all duration-200 hover:scale-105"
+            onClick={handleCTAClick}
           >
-            Tester gratuitement
+            {user ? 'Dashboard' : 'Tester gratuitement'}
           </Button>
         </div>
 
         {/* Mobile CTA Button */}
         <div className="flex md:hidden flex-1 items-center justify-end">
-          <Button 
-            variant="primary" 
-            size="default" 
-            className="font-semibold"
-            onClick={scrollToGenerator}
+          <Button
+            size="default"
+            className="bg-gradient-ocean-deep hover:opacity-90 text-white font-semibold shadow-md transition-all duration-200 hover:scale-105"
+            onClick={handleCTAClick}
           >
-            Tester gratuitement
+            {user ? 'Dashboard' : 'Tester gratuitement'}
           </Button>
         </div>
       </div>
