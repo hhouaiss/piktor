@@ -84,12 +84,9 @@ export function VisualLibrary() {
         setLoadingMore(true);
       }
 
-      // Build filters
+      // Build filters (removed search since we do client-side filtering by product name)
       const filters: VisualFilters = {};
       if (projectFilter) filters.projectId = projectFilter;
-      if (selectedFormat !== "all") filters.format = selectedFormat;
-      if (selectedTag !== "all") filters.tags = [selectedTag];
-      if (searchQuery) filters.search = searchQuery;
 
       // Build sort
       const sort: VisualSort = {
@@ -132,30 +129,30 @@ export function VisualLibrary() {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [projectFilter, selectedFormat, selectedTag, searchQuery, sortBy, sortOrder, visuals]);
+  }, [projectFilter, sortBy, sortOrder]);
 
   // Re-filter visuals when filters change
   useEffect(() => {
     if (authUser) {
       loadVisuals(authUser.id);
     }
-  }, [selectedFormat, selectedTag, sortBy, sortOrder, authUser]);
+  }, [sortBy, sortOrder, authUser]);
 
-  // Handle search with debounce
+  // Filter visuals by product name search
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (authUser && searchQuery !== undefined) {
-        loadVisuals(authUser.id);
-      }
-    }, 500);
+    if (!searchQuery.trim()) {
+      setFilteredVisuals(visuals);
+      return;
+    }
 
-    return () => clearTimeout(timer);
-  }, [searchQuery, authUser]);
+    const query = searchQuery.toLowerCase();
+    const filtered = visuals.filter((visual) => {
+      const productName = extractProductName(visual.metadata, visual.id).toLowerCase();
+      return productName.includes(query);
+    });
 
-  // Set filtered visuals to all visuals (filtering is now done server-side)
-  useEffect(() => {
-    setFilteredVisuals(visuals);
-  }, [visuals]);
+    setFilteredVisuals(filtered);
+  }, [visuals, searchQuery]);
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
@@ -411,34 +408,8 @@ export function VisualLibrary() {
             )}
             <Images className="absolute inset-0 w-16 h-16 m-auto text-sophisticated-gray-400 hidden" />
             
-            {/* Overlay with actions */}
-            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-2">
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => handleFullscreenView(visual)}
-                title="View in full screen"
-              >
-                <Eye className="w-4 h-4" />
-              </Button>
-              <Button 
-                size="sm" 
-                variant="secondary"
-                onClick={() => handleDownload(visual)}
-              >
-                <Download className="w-4 h-4" />
-              </Button>
-              <Button 
-                size="sm" 
-                variant="secondary"
-                onClick={() => handleToggleFavorite(visual)}
-              >
-                <Star className={`w-4 h-4 ${visual.isFavorite ? 'fill-current' : ''}`} />
-              </Button>
-            </div>
-
-            {/* Favorite indicator */}
-            {visual.isFavorite && (
+            {/* Favorite indicator - Hidden */}
+            {false && visual.isFavorite && (
               <div className="absolute top-2 right-2">
                 <Star className="w-5 h-5 text-warm-gold-500 fill-current" />
               </div>
@@ -457,24 +428,36 @@ export function VisualLibrary() {
               {extractProductName(visual.metadata, visual.id)}
             </h3>
 
-            <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">
-              <span className="flex items-center">
-                <Calendar className="w-3 h-3 mr-1" />
-                {formatDate(visual.createdAt)}
-              </span>
-              <div className="flex items-center space-x-3">
-                <span className="flex items-center">
-                  <Eye className="w-3 h-3 mr-1" />
-                  {visual.views}
-                </span>
-                <span className="flex items-center">
-                  <Download className="w-3 h-3 mr-1" />
-                  {visual.downloads}
-                </span>
-              </div>
+            <div className="flex items-center text-sm text-muted-foreground mb-3">
+              <Calendar className="w-3 h-3 mr-1" />
+              {formatDate(visual.createdAt)}
             </div>
 
-            <div className="flex flex-wrap gap-1 mb-3">
+            {/* Action buttons below date */}
+            <div className="flex items-center gap-2 mb-3">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleFullscreenView(visual)}
+                title="Voir en plein écran"
+                className="flex-1"
+              >
+                <Eye className="w-4 h-4 mr-1" />
+                Voir
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleDownload(visual)}
+                title="Télécharger"
+                className="flex-1"
+              >
+                <Download className="w-4 h-4 mr-1" />
+                Télécharger
+              </Button>
+            </div>
+
+            <div className="flex flex-wrap gap-1">
               {visual.tags.slice(0, 2).map((tag) => (
                 <span key={tag} className="bg-muted text-muted-foreground text-xs px-2 py-1 rounded">
                   {tag}
@@ -486,16 +469,6 @@ export function VisualLibrary() {
                 </span>
               )}
             </div>
-
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="w-full"
-              onClick={() => handleDownload(visual)}
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Télécharger
-            </Button>
           </div>
           </Card>
           );
@@ -658,84 +631,16 @@ export function VisualLibrary() {
         </div>
       </div>
 
-      {/* Filters and Controls */}
+      {/* Search Bar Only */}
       <Card className="p-6">
-        <div className="flex flex-col lg:flex-row gap-4">
-          {/* Search */}
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-            <Input
-              placeholder="Rechercher par nom, projet ou tag..."
-              value={searchQuery}
-              onChange={(e) => handleSearch(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-
-          {/* Filters */}
-          <div className="flex flex-col sm:flex-row gap-4">
-            <Select value={selectedFormat} onValueChange={setSelectedFormat}>
-              <SelectTrigger className="w-full sm:w-40">
-                <SelectValue placeholder="Format" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les formats</SelectItem>
-                {availableFormats.map((format) => (
-                  <SelectItem key={format} value={format}>{format}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={selectedTag} onValueChange={setSelectedTag}>
-              <SelectTrigger className="w-full sm:w-32">
-                <SelectValue placeholder="Tag" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les tags</SelectItem>
-                {availableTags.map((tag) => (
-                  <SelectItem key={tag} value={tag}>{tag}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={`${sortBy}-${sortOrder}`} onValueChange={(value) => {
-              const [sort, order] = value.split('-');
-              setSortBy(sort as SortBy);
-              setSortOrder(order as SortOrder);
-            }}>
-              <SelectTrigger className="w-full sm:w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="date-desc">Plus récent</SelectItem>
-                <SelectItem value="date-asc">Plus ancien</SelectItem>
-                <SelectItem value="name-asc">Nom A-Z</SelectItem>
-                <SelectItem value="name-desc">Nom Z-A</SelectItem>
-                <SelectItem value="downloads-desc">Plus téléchargés</SelectItem>
-                <SelectItem value="views-desc">Plus vus</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* View Mode */}
-          <div className="flex border border-border rounded-lg p-1">
-            <Button
-              variant={viewMode === "grid" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => handleViewModeChange("grid")}
-              className="h-8 px-3"
-            >
-              <Grid3X3 className="w-4 h-4" />
-            </Button>
-            <Button
-              variant={viewMode === "list" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => handleViewModeChange("list")}
-              className="h-8 px-3"
-            >
-              <List className="w-4 h-4" />
-            </Button>
-          </div>
+        <div className="relative max-w-2xl mx-auto">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
+          <Input
+            placeholder="Rechercher par nom de produit..."
+            value={searchQuery}
+            onChange={(e) => handleSearch(e.target.value)}
+            className="pl-10 h-12 text-base"
+          />
         </div>
       </Card>
 

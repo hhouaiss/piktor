@@ -377,21 +377,9 @@ export function DashboardHome() {
                         <h3 className="font-medium text-foreground truncate text-sm mb-1">
                           {extractProductName(visual.metadata, visual.id)}
                         </h3>
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <span className="flex items-center">
-                            <Calendar className="h-3 w-3 mr-1" />
-                            {formatDate(visual.createdAt)}
-                          </span>
-                          <div className="flex items-center space-x-2">
-                            <span className="flex items-center">
-                              <Eye className="h-3 w-3 mr-1" />
-                              {visual.views || 0}
-                            </span>
-                            <span className="flex items-center">
-                              <Download className="h-3 w-3 mr-1" />
-                              {visual.downloads || 0}
-                            </span>
-                          </div>
+                        <div className="flex items-center text-xs text-muted-foreground">
+                          <Calendar className="h-3 w-3 mr-1" />
+                          {formatDate(visual.createdAt)}
                         </div>
                         {visual.metadata?.contextPreset && (
                           <span className="inline-block mt-2 text-xs px-2 py-0.5 bg-ocean-blue-100 text-ocean-blue-700 rounded">
