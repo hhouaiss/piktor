@@ -246,65 +246,67 @@ export function DashboardHome() {
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="p-6 hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Visuels créés</p>
-              <p className="text-2xl font-bold text-foreground">{displayStats.totalVisuals}</p>
-              <p className="text-xs text-success-600">
-                +{displayStats.thisMonth} ce mois-ci
-              </p>
+      {/* Stats Cards - Hidden */}
+      {false && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <Card className="p-6 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Visuels créés</p>
+                <p className="text-2xl font-bold text-foreground">{displayStats.totalVisuals}</p>
+                <p className="text-xs text-success-600">
+                  +{displayStats.thisMonth} ce mois-ci
+                </p>
+              </div>
+              <div className="h-12 w-12 bg-ocean-blue-100 rounded-lg flex items-center justify-center">
+                <Sparkles className="h-6 w-6 text-ocean-blue-600" />
+              </div>
             </div>
-            <div className="h-12 w-12 bg-ocean-blue-100 rounded-lg flex items-center justify-center">
-              <Sparkles className="h-6 w-6 text-ocean-blue-600" />
-            </div>
-          </div>
-        </Card>
+          </Card>
 
-        <Card className="p-6 hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Téléchargements</p>
-              <p className="text-2xl font-bold text-foreground">{displayStats.downloads}</p>
-              <p className="text-xs text-muted-foreground flex items-center">
-                <TrendingUp className="h-3 w-3 mr-1" />
-                +12% vs mois dernier
-              </p>
+          <Card className="p-6 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Téléchargements</p>
+                <p className="text-2xl font-bold text-foreground">{displayStats.downloads}</p>
+                <p className="text-xs text-muted-foreground flex items-center">
+                  <TrendingUp className="h-3 w-3 mr-1" />
+                  +12% vs mois dernier
+                </p>
+              </div>
+              <div className="h-12 w-12 bg-warm-gold-100 rounded-lg flex items-center justify-center">
+                <Download className="h-6 w-6 text-warm-gold-600" />
+              </div>
             </div>
-            <div className="h-12 w-12 bg-warm-gold-100 rounded-lg flex items-center justify-center">
-              <Download className="h-6 w-6 text-warm-gold-600" />
-            </div>
-          </div>
-        </Card>
+          </Card>
 
-        <Card className="p-6 hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Vues totales</p>
-              <p className="text-2xl font-bold text-foreground">{displayStats.views}</p>
-              <p className="text-xs text-muted-foreground">Sur tous vos visuels</p>
+          <Card className="p-6 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Vues totales</p>
+                <p className="text-2xl font-bold text-foreground">{displayStats.views}</p>
+                <p className="text-xs text-muted-foreground">Sur tous vos visuels</p>
+              </div>
+              <div className="h-12 w-12 bg-sophisticated-gray-100 rounded-lg flex items-center justify-center">
+                <Eye className="h-6 w-6 text-sophisticated-gray-600" />
+              </div>
             </div>
-            <div className="h-12 w-12 bg-sophisticated-gray-100 rounded-lg flex items-center justify-center">
-              <Eye className="h-6 w-6 text-sophisticated-gray-600" />
-            </div>
-          </div>
-        </Card>
+          </Card>
 
-        <Card className="p-6 hover:shadow-md transition-shadow border-primary/20">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Crédits restants</p>
-              <p className="text-2xl font-bold text-primary">{displayStats.creditsRemaining}</p>
-              <p className="text-xs text-muted-foreground">sur 50 ce mois-ci</p>
+          <Card className="p-6 hover:shadow-md transition-shadow border-primary/20">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Crédits restants</p>
+                <p className="text-2xl font-bold text-primary">{displayStats.creditsRemaining}</p>
+                <p className="text-xs text-muted-foreground">sur 50 ce mois-ci</p>
+              </div>
+              <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                <Zap className="h-6 w-6 text-primary" />
+              </div>
             </div>
-            <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center">
-              <Zap className="h-6 w-6 text-primary" />
-            </div>
-          </div>
-        </Card>
-      </div>
+          </Card>
+        </div>
+      )}
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -335,66 +337,72 @@ export function DashboardHome() {
               </Button>
             </Card>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {recentImages.map((visual) => (
-                <Card key={visual.id} className="group hover:shadow-lg transition-all overflow-hidden">
-                  <div
-                    className="block cursor-pointer"
-                    onClick={async () => {
-                      // Track view
-                      const newViewCount = await analyticsService.trackView(visual.id);
-                      setRecentImages(prev => prev.map(v =>
-                        v.id === visual.id ? { ...v, views: newViewCount } : v
-                      ));
-
-                      // Navigate to library
-                      window.location.href = '/dashboard/library';
-                    }}
+            <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
+              <div className="flex md:grid md:grid-cols-3 gap-4 pb-4 md:pb-0" style={{ scrollSnapType: 'x mandatory' }}>
+                {recentImages.map((visual, index) => (
+                  <Card
+                    key={visual.id}
+                    className={`group hover:shadow-lg transition-all overflow-hidden flex-shrink-0 w-[280px] md:w-auto ${index >= 5 ? 'hidden md:block' : ''}`}
+                    style={{ scrollSnapAlign: 'start' }}
                   >
-                    <div className="aspect-square bg-sophisticated-gray-100 flex items-center justify-center overflow-hidden relative">
-                      <Image
-                        src={visual.originalImageUrl || visual.thumbnailUrl || getPlaceholderUrl('medium')}
-                        alt={extractProductName(visual.metadata, visual.id)}
-                        fill
-                        className="object-cover group-hover:scale-105 transition-transform duration-300"
-                        placeholder="blur"
-                        blurDataURL={getPlaceholderUrl('small')}
-                        onError={(e) => {
-                          const target = e.currentTarget as HTMLImageElement;
-                          target.src = getPlaceholderUrl('medium');
-                          target.onerror = null;
-                        }}
-                      />
-                    </div>
-                    <div className="p-3 bg-white dark:bg-gray-800">
-                      <h3 className="font-medium text-foreground truncate text-sm mb-1">
-                        {extractProductName(visual.metadata, visual.id)}
-                      </h3>
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span className="flex items-center">
-                          <Calendar className="h-3 w-3 mr-1" />
-                          {formatDate(visual.createdAt)}
-                        </span>
-                        <div className="flex items-center space-x-2">
-                          <span className="flex items-center">
-                            <Eye className="h-3 w-3 mr-1" />
-                            {visual.views || 0}
-                          </span>
-                          <span className="flex items-center">
-                            <Download className="h-3 w-3 mr-1" />
-                            {visual.downloads || 0}
-                          </span>
-                        </div>
+                    <div
+                      className="block cursor-pointer"
+                      onClick={async () => {
+                        // Track view
+                        const newViewCount = await analyticsService.trackView(visual.id);
+                        setRecentImages(prev => prev.map(v =>
+                          v.id === visual.id ? { ...v, views: newViewCount } : v
+                        ));
+
+                        // Navigate to library
+                        window.location.href = '/dashboard/library';
+                      }}
+                    >
+                      <div className="aspect-square bg-sophisticated-gray-100 flex items-center justify-center overflow-hidden relative">
+                        <Image
+                          src={visual.originalImageUrl || visual.thumbnailUrl || getPlaceholderUrl('medium')}
+                          alt={extractProductName(visual.metadata, visual.id)}
+                          fill
+                          className="object-cover group-hover:scale-105 transition-transform duration-300"
+                          placeholder="blur"
+                          blurDataURL={getPlaceholderUrl('small')}
+                          onError={(e) => {
+                            const target = e.currentTarget as HTMLImageElement;
+                            target.src = getPlaceholderUrl('medium');
+                            target.onerror = null;
+                          }}
+                        />
                       </div>
-                      {visual.metadata?.contextPreset && (
-                        <span className="inline-block mt-2 text-xs px-2 py-0.5 bg-ocean-blue-100 text-ocean-blue-700 rounded">
-                          {formatLabel(visual.metadata.contextPreset)}
-                        </span>
-                      )}
+                      <div className="p-3 bg-white dark:bg-gray-800">
+                        <h3 className="font-medium text-foreground truncate text-sm mb-1">
+                          {extractProductName(visual.metadata, visual.id)}
+                        </h3>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span className="flex items-center">
+                            <Calendar className="h-3 w-3 mr-1" />
+                            {formatDate(visual.createdAt)}
+                          </span>
+                          <div className="flex items-center space-x-2">
+                            <span className="flex items-center">
+                              <Eye className="h-3 w-3 mr-1" />
+                              {visual.views || 0}
+                            </span>
+                            <span className="flex items-center">
+                              <Download className="h-3 w-3 mr-1" />
+                              {visual.downloads || 0}
+                            </span>
+                          </div>
+                        </div>
+                        {visual.metadata?.contextPreset && (
+                          <span className="inline-block mt-2 text-xs px-2 py-0.5 bg-ocean-blue-100 text-ocean-blue-700 rounded">
+                            {formatLabel(visual.metadata.contextPreset)}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </Card>
-              ))}
+                  </Card>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -426,27 +434,6 @@ export function DashboardHome() {
             </div>
           </Card>
 
-          {/* Premium Tip */}
-          <Card className="p-6 bg-gradient-to-br from-primary/5 to-warm-gold-50 border-primary/20">
-            <div className="flex items-start space-x-3">
-              <div className="h-10 w-10 bg-primary rounded-lg flex items-center justify-center flex-shrink-0">
-                <Crown className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <h4 className="font-semibold text-foreground">Conseil Pro</h4>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Utilisez plusieurs angles de votre produit pour créer une bibliothèque complète 
-                  de visuels professionnels.
-                </p>
-                <Button variant="link" className="p-0 h-auto text-primary mt-2" asChild>
-                  <Link href="/dashboard/tutorials">
-                    En savoir plus →
-                  </Link>
-                </Button>
-              </div>
-            </div>
-          </Card>
-
           {/* Usage Progress */}
           <Card className="p-6">
             <h3 className="text-lg font-semibold text-foreground mb-4">Utilisation mensuelle</h3>
@@ -457,7 +444,7 @@ export function DashboardHome() {
                   <span className="font-medium">{displayStats.creditsUsed}/{displayStats.creditsUsed + displayStats.creditsRemaining}</span>
                 </div>
                 <div className="w-full bg-sophisticated-gray-200 rounded-full h-2">
-                  <div 
+                  <div
                     className="bg-primary h-2 rounded-full transition-all duration-500"
                     style={{ width: `${(displayStats.creditsUsed / (displayStats.creditsUsed + displayStats.creditsRemaining)) * 100}%` }}
                   ></div>
@@ -466,6 +453,27 @@ export function DashboardHome() {
               <p className="text-xs text-muted-foreground">
                 Renouvellement le 15 octobre
               </p>
+            </div>
+          </Card>
+
+          {/* Premium Tip */}
+          <Card className="p-6 bg-gradient-to-br from-primary/5 to-warm-gold-50 border-primary/20">
+            <div className="flex items-start space-x-3">
+              <div className="h-10 w-10 bg-primary rounded-lg flex items-center justify-center flex-shrink-0">
+                <Crown className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h4 className="font-semibold text-foreground">Conseil Pro</h4>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Utilisez plusieurs angles de votre produit pour créer une bibliothèque complète
+                  de visuels professionnels.
+                </p>
+                <Button variant="link" className="p-0 h-auto text-primary mt-2" asChild>
+                  <Link href="/dashboard/tutorials">
+                    En savoir plus →
+                  </Link>
+                </Button>
+              </div>
             </div>
           </Card>
         </div>
