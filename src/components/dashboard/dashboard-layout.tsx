@@ -59,33 +59,34 @@ const sidebarItems: SidebarItem[] = [
     description: "Gérer vos visuels générés"
   },
   {
-    id: "settings",
-    label: "Paramètres",
-    href: "/dashboard/settings",
-    icon: Settings,
-    description: "Personnaliser vos visuels"
-  },
-  {
-    id: "tutorials",
-    label: "Tutoriels",
-    href: "/dashboard/tutorials",
-    icon: BookOpen,
-    description: "Aide et ressources"
-  },
-  {
     id: "account",
     label: "Compte",
     href: "/dashboard/account",
     icon: User,
     description: "Profil et abonnement"
-  },
-  {
-    id: "support",
-    label: "Support",
-    href: "/dashboard/support",
-    icon: MessageCircle,
-    description: "Assistance et tickets"
   }
+  // Hidden items: settings, tutorials, support
+  // {
+  //   id: "settings",
+  //   label: "Paramètres",
+  //   href: "/dashboard/settings",
+  //   icon: Settings,
+  //   description: "Personnaliser vos visuels"
+  // },
+  // {
+  //   id: "tutorials",
+  //   label: "Tutoriels",
+  //   href: "/dashboard/tutorials",
+  //   icon: BookOpen,
+  //   description: "Aide et ressources"
+  // },
+  // {
+  //   id: "support",
+  //   label: "Support",
+  //   href: "/dashboard/support",
+  //   icon: MessageCircle,
+  //   description: "Assistance et tickets"
+  // }
 ];
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {

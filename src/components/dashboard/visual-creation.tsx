@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -138,7 +138,7 @@ function VisualCreationContent() {
     environment: "",
     lighting: "",
     angle: "",
-    formats: []
+    formats: ["ecommerce"] // Default format since UI is hidden
   });
   const [generatedImages, setGeneratedImages] = useState<DashboardGeneratedImage[]>([]);
   const [downloadingImages, setDownloadingImages] = useState<Set<string>>(new Set());
@@ -152,6 +152,57 @@ function VisualCreationContent() {
   const { canGenerate, remainingGenerations, isLimitReached, environment, isAdminOverride } = useCanGenerate();
   const { recordGeneration } = useGenerationRecorder();
   const { resetUserUsage, usageData } = useUsageLimit();
+
+  // Restore state from localStorage on mount
+  useEffect(() => {
+    // Only run on client side
+    if (typeof window === 'undefined') return;
+
+    try {
+      const savedState = localStorage.getItem('piktor_creation_state');
+      if (savedState) {
+        const parsed = JSON.parse(savedState);
+
+        // Only restore if we have generated images
+        if (parsed.generatedImages && parsed.generatedImages.length > 0) {
+          setCurrentStep(3); // Go to generation step
+          setProductName(parsed.productName || "");
+          setProductCategory(parsed.productCategory || "");
+          setSettings(parsed.settings || {
+            style: "",
+            environment: "",
+            lighting: "",
+            angle: "",
+            formats: ["ecommerce"]
+          });
+          setGeneratedImages(parsed.generatedImages || []);
+        }
+      }
+    } catch (error) {
+      console.error('Error restoring creation state:', error);
+    }
+  }, []);
+
+  // Save state to localStorage whenever generated images change
+  useEffect(() => {
+    // Only run on client side
+    if (typeof window === 'undefined') return;
+
+    if (generatedImages.length > 0) {
+      try {
+        const stateToSave = {
+          productName,
+          productCategory,
+          settings,
+          generatedImages,
+          timestamp: Date.now()
+        };
+        localStorage.setItem('piktor_creation_state', JSON.stringify(stateToSave));
+      } catch (error) {
+        console.error('Error saving creation state:', error);
+      }
+    }
+  }, [generatedImages, productName, productCategory, settings]);
 
   // Base64 conversion function
   const convertFileToBase64 = (file: File): Promise<{ data: string; mimeType: string }> => {
@@ -909,40 +960,42 @@ function VisualCreationContent() {
         </div>
       </div>
 
-      {/* Format Selection */}
-      <div className="space-y-4">
-        <Label className="text-base font-semibold">
-          Formats de sortie (sélectionner au moins un)
-        </Label>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          {formatOptions.map((format) => (
-            <Card 
-              key={format.value}
-              className={`p-3 cursor-pointer transition-colors ${
-                settings.formats.includes(format.value) 
-                  ? 'border-primary bg-primary/5' 
-                  : 'hover:bg-muted/50'
-              }`}
-              onClick={() => {
-                setSettings(prev => ({
-                  ...prev,
-                  formats: prev.formats.includes(format.value)
-                    ? prev.formats.filter(f => f !== format.value)
-                    : [...prev.formats, format.value]
-                }));
-              }}
-            >
-              <div className="text-center space-y-1">
-                <p className="font-medium text-sm">{format.label}</p>
-                <p className="text-xs text-muted-foreground">{format.size}</p>
-                {settings.formats.includes(format.value) && (
-                  <Check className="w-4 h-4 mx-auto text-primary" />
-                )}
-              </div>
-            </Card>
-          ))}
+      {/* Format Selection - Hidden until AI model respects format constraints */}
+      {false && (
+        <div className="space-y-4">
+          <Label className="text-base font-semibold">
+            Formats de sortie (sélectionner au moins un)
+          </Label>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {formatOptions.map((format) => (
+              <Card
+                key={format.value}
+                className={`p-3 cursor-pointer transition-colors ${
+                  settings.formats.includes(format.value)
+                    ? 'border-primary bg-primary/5'
+                    : 'hover:bg-muted/50'
+                }`}
+                onClick={() => {
+                  setSettings(prev => ({
+                    ...prev,
+                    formats: prev.formats.includes(format.value)
+                      ? prev.formats.filter(f => f !== format.value)
+                      : [...prev.formats, format.value]
+                  }));
+                }}
+              >
+                <div className="text-center space-y-1">
+                  <p className="font-medium text-sm">{format.label}</p>
+                  <p className="text-xs text-muted-foreground">{format.size}</p>
+                  {settings.formats.includes(format.value) && (
+                    <Check className="w-4 h-4 mx-auto text-primary" />
+                  )}
+                </div>
+              </Card>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Custom Prompt */}
       <div className="space-y-3">
@@ -965,11 +1018,11 @@ function VisualCreationContent() {
   const renderStep3 = () => (
     <div className="space-y-8">
       <div className="text-center mb-8">
-        <h2 className="text-2xl font-bold text-foreground mb-2">
-          {isGenerating ? "Génération en cours..." : 
+        <h2 className="text-xl md:text-2xl font-bold text-foreground mb-2">
+          {isGenerating ? "Génération en cours..." :
            generatedImages.length > 0 ? "Vos visuels sont prêts !" : "Générer vos visuels"}
         </h2>
-        <p className="text-muted-foreground">
+        <p className="text-sm md:text-base text-muted-foreground">
           {isGenerating ? "L&apos;IA crée vos visuels personnalisés..." :
            generatedImages.length > 0 ? "Téléchargez et utilisez vos créations" : "Cliquez sur générer pour créer vos visuels IA"}
         </p>
@@ -977,27 +1030,27 @@ function VisualCreationContent() {
 
       {!isGenerating && generatedImages.length === 0 && (
         <div className="text-center">
-          <Card className="p-12 max-w-2xl mx-auto">
+          <Card className="p-4 md:p-8 lg:p-12 max-w-2xl mx-auto">
             <div className="space-y-6">
-              <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
-                <Sparkles className="w-10 h-10 text-primary" />
+              <div className="w-16 h-16 md:w-20 md:h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+                <Sparkles className="w-8 h-8 md:w-10 md:h-10 text-primary" />
               </div>
-              
+
               <div>
-                <h3 className="text-xl font-semibold text-foreground mb-2">Configuration Personnalisée</h3>
-                <div className="text-left bg-muted p-4 rounded-lg space-y-4">
+                <h3 className="text-lg md:text-xl font-semibold text-foreground mb-2">Configuration Personnalisée</h3>
+                <div className="text-left bg-muted p-3 md:p-4 rounded-lg space-y-3 md:space-y-4 text-sm md:text-base">
                   {/* Product Information */}
                   <div className="space-y-1">
-                    <p><strong>Produit:</strong> {productName}</p>
-                    <p><strong>Catégorie:</strong> {productCategory ? productCategory.charAt(0).toUpperCase() + productCategory.slice(1) : 'Non spécifiée'}</p>
-                    <p><strong>Images source:</strong> {uploadedImages.length} photo(s) de référence</p>
+                    <p className="break-words"><strong>Produit:</strong> {productName}</p>
+                    <p className="break-words"><strong>Catégorie:</strong> {productCategory ? productCategory.charAt(0).toUpperCase() + productCategory.slice(1) : 'Non spécifiée'}</p>
+                    <p className="break-words"><strong>Images source:</strong> {uploadedImages.length} photo(s) de référence</p>
                   </div>
 
                   {/* Style Configuration */}
                   <div className="border-t pt-3 space-y-1">
-                    <p><strong>Style artistique:</strong> {styleOptions.find(s => s.value === settings.style)?.label || 'Non sélectionné'}</p>
+                    <p className="break-words"><strong>Style artistique:</strong> {styleOptions.find(s => s.value === settings.style)?.label || 'Non sélectionné'}</p>
                     {styleOptions.find(s => s.value === settings.style)?.description && (
-                      <p className="text-sm text-muted-foreground italic">
+                      <p className="text-xs md:text-sm text-muted-foreground italic break-words">
                         {styleOptions.find(s => s.value === settings.style)?.description}
                       </p>
                     )}
@@ -1005,30 +1058,32 @@ function VisualCreationContent() {
 
                   {/* Environment Configuration */}
                   <div className="border-t pt-3 space-y-1">
-                    <p><strong>Environnement:</strong> {environmentOptions.find(e => e.value === settings.environment)?.label || 'Non sélectionné'}</p>
+                    <p className="break-words"><strong>Environnement:</strong> {environmentOptions.find(e => e.value === settings.environment)?.label || 'Non sélectionné'}</p>
                   </div>
 
                   {/* Technical Configuration */}
                   <div className="border-t pt-3 space-y-1">
-                    <p><strong>Éclairage:</strong> {lightingOptions.find(l => l.value === settings.lighting)?.label || 'Non sélectionné'}</p>
-                    <p><strong>Angle de vue:</strong> {angleOptions.find(a => a.value === settings.angle)?.label || 'Non sélectionné'}</p>
+                    <p className="break-words"><strong>Éclairage:</strong> {lightingOptions.find(l => l.value === settings.lighting)?.label || 'Non sélectionné'}</p>
+                    <p className="break-words"><strong>Angle de vue:</strong> {angleOptions.find(a => a.value === settings.angle)?.label || 'Non sélectionné'}</p>
                   </div>
 
-                  {/* Output Configuration */}
-                  <div className="border-t pt-3 space-y-1">
-                    <p><strong>Formats de sortie:</strong> {settings.formats.length} format(s)</p>
-                    {settings.formats.length > 0 && (
-                      <div className="text-sm text-muted-foreground">
-                        {settings.formats.map(format => formatOptions.find(f => f.value === format)?.label).join(', ')}
-                      </div>
-                    )}
-                  </div>
+                  {/* Output Configuration - Hidden */}
+                  {false && (
+                    <div className="border-t pt-3 space-y-1">
+                      <p><strong>Formats de sortie:</strong> {settings.formats.length} format(s)</p>
+                      {settings.formats.length > 0 && (
+                        <div className="text-sm text-muted-foreground">
+                          {settings.formats.map(format => formatOptions.find(f => f.value === format)?.label).join(', ')}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Custom Instructions */}
                   {settings.customPrompt && (
                     <div className="border-t pt-3 space-y-1">
-                      <p><strong>Instructions personnalisées:</strong></p>
-                      <p className="text-sm bg-background p-2 rounded border italic">
+                      <p className="break-words"><strong>Instructions personnalisées:</strong></p>
+                      <p className="text-xs md:text-sm bg-background p-2 rounded border italic break-words">
                         &ldquo;{settings.customPrompt}&rdquo;
                       </p>
                     </div>
@@ -1036,11 +1091,11 @@ function VisualCreationContent() {
 
                   {/* AI Enhancement Notice */}
                   <div className="border-t pt-3">
-                    <div className="flex items-center gap-2 text-sm text-blue-600">
-                      <Sparkles className="w-4 h-4" />
+                    <div className="flex items-center gap-2 text-xs md:text-sm text-blue-600">
+                      <Sparkles className="w-4 h-4 flex-shrink-0" />
                       <span className="font-medium">IA Personnalisée Activée</span>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="text-xs text-muted-foreground mt-1 break-words">
                       Vos paramètres seront intégrés dans un prompt IA avancé pour générer exactement ce que vous avez configuré.
                     </p>
                   </div>
@@ -1196,9 +1251,13 @@ function VisualCreationContent() {
           </div>
 
           <div className="text-center pt-6">
-            <Button 
-              size="lg" 
+            <Button
+              size="lg"
+              variant="outline"
               onClick={() => {
+                // Clear localStorage
+                localStorage.removeItem('piktor_creation_state');
+
                 // Reset form for new creation
                 setCurrentStep(1);
                 setUploadedImages([]);
@@ -1209,9 +1268,10 @@ function VisualCreationContent() {
                   environment: "",
                   lighting: "",
                   angle: "",
-                  formats: []
+                  formats: ["ecommerce"]
                 });
                 setGeneratedImages([]);
+                setGenerationError(null);
               }}
             >
               <Plus className="w-5 h-5 mr-2" />
@@ -1238,9 +1298,15 @@ function VisualCreationContent() {
       </div>
 
       {/* Stepper */}
-      <FlexibleStepper 
-        steps={steps} 
-        currentStep={currentStep} 
+      <FlexibleStepper
+        steps={steps.map(step => ({
+          ...step,
+          status: step.step < currentStep ? 'completed' as const :
+                  step.step === currentStep ? 'current' as const :
+                  'pending' as const,
+          isAccessible: step.step <= currentStep || step.step === currentStep + 1
+        }))}
+        currentStep={currentStep}
         className="mb-8"
       />
 
