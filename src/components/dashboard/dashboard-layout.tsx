@@ -219,25 +219,29 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
           </div>
 
-          {/* Center section - Search bar */}
-          <div className="flex-1 max-w-md mx-8 hidden md:block">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-              <input
-                type="text"
-                placeholder="Rechercher vos visuels..."
-                className="w-full pl-9 pr-4 py-2 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent"
-              />
+          {/* Center section - Search bar - Hidden */}
+          {false && (
+            <div className="flex-1 max-w-md mx-8 hidden md:block">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <input
+                  type="text"
+                  placeholder="Rechercher vos visuels..."
+                  className="w-full pl-9 pr-4 py-2 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent"
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Right section */}
           <div className="flex items-center space-x-4">
-            {/* Notifications */}
-            <Button variant="ghost" size="sm" className="relative">
-              <Bell className="h-4 w-4" />
-              <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground rounded-full text-xs w-2 h-2"></span>
-            </Button>
+            {/* Notifications - Hidden */}
+            {false && (
+              <Button variant="ghost" size="sm" className="relative">
+                <Bell className="h-4 w-4" />
+                <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground rounded-full text-xs w-2 h-2"></span>
+              </Button>
+            )}
 
             {/* Profile dropdown */}
             <div className="relative">

@@ -231,7 +231,8 @@ export function DashboardHome() {
             Prêt à créer de nouveaux visuels exceptionnels pour votre marque ?
           </p>
         </div>
-        <div className="flex gap-2">
+        {/* Show button on mobile only */}
+        <div className="flex gap-2 lg:hidden">
           <Button
             asChild
             size="lg"
@@ -397,30 +398,45 @@ export function DashboardHome() {
 
         {/* Quick Actions & Tips */}
         <div className="space-y-6">
-          {/* Quick Actions */}
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold text-foreground mb-4">Actions rapides</h3>
-            <div className="space-y-3">
-              <Button variant="outline" className="w-full justify-start" asChild>
-                <Link href="/dashboard/create">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Nouveau visuel
-                </Link>
-              </Button>
-              <Button variant="outline" className="w-full justify-start" asChild>
-                <Link href="/dashboard/library">
-                  <BarChart3 className="w-4 h-4 mr-2" />
-                  Voir statistiques
-                </Link>
-              </Button>
-              <Button variant="outline" className="w-full justify-start" asChild>
-                <Link href="/dashboard/tutorials">
-                  <Clock className="w-4 h-4 mr-2" />
-                  Tutoriels rapides
-                </Link>
-              </Button>
-            </div>
-          </Card>
+          {/* Create New Visual CTA - Desktop Only */}
+          <Button
+            asChild
+            size="lg"
+            className="bg-gradient-ocean-deep hover:opacity-90 text-white shadow-lg w-full hidden lg:flex"
+            onClick={handleCreateNewVisual}
+          >
+            <Link href="/dashboard/create">
+              <Plus className="w-5 h-5 mr-2" />
+              Créer un nouveau visuel
+            </Link>
+          </Button>
+
+          {/* Quick Actions - Hidden */}
+          {false && (
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold text-foreground mb-4">Actions rapides</h3>
+              <div className="space-y-3">
+                <Button variant="outline" className="w-full justify-start" asChild>
+                  <Link href="/dashboard/create">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Nouveau visuel
+                  </Link>
+                </Button>
+                <Button variant="outline" className="w-full justify-start" asChild>
+                  <Link href="/dashboard/library">
+                    <BarChart3 className="w-4 h-4 mr-2" />
+                    Voir statistiques
+                  </Link>
+                </Button>
+                <Button variant="outline" className="w-full justify-start" asChild>
+                  <Link href="/dashboard/tutorials">
+                    <Clock className="w-4 h-4 mr-2" />
+                    Tutoriels rapides
+                  </Link>
+                </Button>
+              </div>
+            </Card>
+          )}
 
           {/* Usage Progress */}
           <Card className="p-6">
