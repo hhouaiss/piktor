@@ -4,19 +4,21 @@ import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { 
-  LayoutDashboard, 
-  Plus, 
-  Images, 
-  Settings, 
-  BookOpen, 
-  User, 
-  MessageCircle, 
-  Menu, 
+import {
+  LayoutDashboard,
+  Plus,
+  Images,
+  Settings,
+  BookOpen,
+  User,
+  MessageCircle,
+  Menu,
   X,
   Search,
   Bell,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   LogOut,
   Sparkles
 } from "lucide-react";
@@ -195,17 +197,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               <span className="sr-only">Ouvrir le menu</span>
             </Button>
 
-            {/* Desktop sidebar toggle */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="hidden lg:flex"
-              onClick={toggleSidebar}
-            >
-              <Menu className="h-4 w-4" />
-              <span className="sr-only">Basculer la sidebar</span>
-            </Button>
-
             {/* Logo - only show on mobile when menu is closed */}
             <div className={cn(
               "flex items-center space-x-3",
@@ -298,7 +289,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             {sidebarItems.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname?.startsWith(item.href));
-              
+
               return (
                 <Link
                   key={item.id}
@@ -337,6 +328,29 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               );
             })}
           </nav>
+
+          {/* Chevron Toggle Button */}
+          <div className="p-4 border-t border-sidebar-border">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={toggleSidebar}
+              className={cn(
+                "w-full flex items-center justify-center hover:bg-sidebar-accent transition-all duration-200",
+                sidebarCollapsed ? "px-2" : "justify-between px-3"
+              )}
+              title={sidebarCollapsed ? "Développer le menu" : "Réduire le menu"}
+            >
+              {!sidebarCollapsed && (
+                <span className="text-sm text-sidebar-foreground">Réduire</span>
+              )}
+              {sidebarCollapsed ? (
+                <ChevronRight className="h-4 w-4 text-sidebar-foreground" />
+              ) : (
+                <ChevronLeft className="h-4 w-4 text-sidebar-foreground" />
+              )}
+            </Button>
+          </div>
         </aside>
 
         {/* Mobile Sidebar Overlay */}
