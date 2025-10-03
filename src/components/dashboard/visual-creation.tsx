@@ -52,7 +52,7 @@ interface GenerationSettings {
   environment: string;
   lighting: string;
   angle: string;
-  formats: string[];
+  format: string; // Changed to single format selection
   customPrompt?: string;
 }
 
@@ -88,13 +88,14 @@ const angleOptions = [
   { value: "plongee", label: "Plongée", description: "Vue du dessus" }
 ];
 
+// Meilleurs formats pour les visuels meubles e-commerce (Compatible Gemini 2.5 Flash Image)
 const formatOptions = [
-  { value: "instagram-post", label: "Instagram Post", size: "1:1" },
-  { value: "instagram-story", label: "Instagram Story", size: "9:16" },
-  { value: "facebook", label: "Facebook", size: "16:9" },
-  { value: "ecommerce", label: "E-commerce", size: "4:3" },
-  { value: "print", label: "Print", size: "A4" },
-  { value: "web-banner", label: "Bannière Web", size: "728x90" }
+  { value: "ecommerce-square", label: "E-commerce Carré", size: "1:1", aspectRatio: "1:1", description: "Fiches produits Amazon, eBay" },
+  { value: "instagram-post", label: "Publication Instagram", size: "1:1", aspectRatio: "1:1", description: "Format carré réseaux sociaux" },
+  { value: "instagram-story", label: "Story Instagram", size: "9:16", aspectRatio: "9:16", description: "Format vertical mobile" },
+  { value: "facebook-cover", label: "Couverture Facebook", size: "16:9", aspectRatio: "16:9", description: "Bannières web et réseaux" },
+  { value: "product-detail", label: "Détail Produit", size: "4:3", aspectRatio: "4:3", description: "Pages produits détaillées" },
+  { value: "lifestyle-horizontal", label: "Lifestyle Horizontal", size: "3:2", aspectRatio: "3:2", description: "Catalogues et bannières" }
 ];
 
 const steps = [
@@ -138,7 +139,7 @@ function VisualCreationContent() {
     environment: "",
     lighting: "",
     angle: "",
-    formats: ["ecommerce"] // Default format since UI is hidden
+    format: "ecommerce-square" // Default format (single selection)
   });
   const [generatedImages, setGeneratedImages] = useState<DashboardGeneratedImage[]>([]);
   const [downloadingImages, setDownloadingImages] = useState<Set<string>>(new Set());
@@ -173,7 +174,7 @@ function VisualCreationContent() {
             environment: "",
             lighting: "",
             angle: "",
-            formats: ["ecommerce"]
+            format: "ecommerce-square"
           });
           setGeneratedImages(parsed.generatedImages || []);
         }
@@ -228,11 +229,11 @@ function VisualCreationContent() {
   const determineContextFromSettings = (settings: GenerationSettings) => {
     // Map environment and format to appropriate context
     if (settings.environment === 'studio') return 'packshot';
-    if (settings.formats.includes('instagram-post') || settings.formats.includes('facebook')) return 'social_media_square';
-    if (settings.formats.includes('instagram-story')) return 'social_media_story';
-    if (settings.formats.includes('web-banner')) return 'hero';
-    if (settings.formats.includes('print')) return 'lifestyle';
-    
+    if (settings.format === 'instagram-post' || settings.format === 'facebook-cover') return 'social_media_square';
+    if (settings.format === 'instagram-story') return 'social_media_story';
+    if (settings.format === 'lifestyle-horizontal') return 'hero';
+    if (settings.format === 'product-detail') return 'lifestyle';
+
     // Default based on environment
     if (settings.environment === 'salon' || settings.environment === 'chambre' || settings.environment === 'cuisine') {
       return 'lifestyle';
@@ -403,7 +404,7 @@ function VisualCreationContent() {
           environment: settings.environment || 'salon',
           lighting: settings.lighting || 'naturelle',
           angle: settings.angle || 'trois-quarts',
-          formats: settings.formats.length > 0 ? settings.formats : ['ecommerce'],
+          formats: [settings.format], // Single format wrapped in array for API compatibility
           customPrompt: settings.customPrompt
         },
         referenceImages: base64Images
@@ -430,7 +431,7 @@ function VisualCreationContent() {
           referenceImages: base64Images,
           generationParams: {
             contextPreset: determineContextFromSettings(settings),
-            variations: Math.min(settings.formats.length, 2),
+            variations: 1, // Single format = single variation
             quality: 'high'
           }
         };
@@ -514,7 +515,7 @@ function VisualCreationContent() {
             environment: settings.environment,
             lighting: settings.lighting,
             angle: settings.angle,
-            format: variation.format || settings.formats[index] || settings.formats[0],
+            format: variation.format || settings.format,
             customInstructions: settings.customPrompt,
             generationMethod: generationMethod,
             isDashboardEnhanced: isDashboardResponse
@@ -674,7 +675,7 @@ function VisualCreationContent() {
   };
 
   const canProceedFromStep1 = () => uploadedImages.length > 0 && productName.trim() !== "";
-  const canProceedFromStep2 = () => settings.style && settings.environment && settings.lighting && settings.angle && settings.formats.length > 0;
+  const canProceedFromStep2 = () => settings.style && settings.environment && settings.lighting && settings.angle && settings.format;
   const canGenerateImages = () => canProceedFromStep1() && canProceedFromStep2() && canGenerate;
 
   const renderStep1 = () => (
@@ -960,42 +961,59 @@ function VisualCreationContent() {
         </div>
       </div>
 
-      {/* Format Selection - Hidden until AI model respects format constraints */}
-      {false && (
-        <div className="space-y-4">
+      {/* Format Selection - Powered by Gemini 2.5 Flash Image */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
           <Label className="text-base font-semibold">
-            Formats de sortie (sélectionner au moins un)
+            Format de sortie *
           </Label>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {formatOptions.map((format) => (
-              <Card
-                key={format.value}
-                className={`p-3 cursor-pointer transition-colors ${
-                  settings.formats.includes(format.value)
-                    ? 'border-primary bg-primary/5'
-                    : 'hover:bg-muted/50'
-                }`}
-                onClick={() => {
-                  setSettings(prev => ({
-                    ...prev,
-                    formats: prev.formats.includes(format.value)
-                      ? prev.formats.filter(f => f !== format.value)
-                      : [...prev.formats, format.value]
-                  }));
-                }}
-              >
-                <div className="text-center space-y-1">
-                  <p className="font-medium text-sm">{format.label}</p>
-                  <p className="text-xs text-muted-foreground">{format.size}</p>
-                  {settings.formats.includes(format.value) && (
-                    <Check className="w-4 h-4 mx-auto text-primary" />
-                  )}
-                </div>
-              </Card>
-            ))}
-          </div>
+          <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+            Gemini 2.5 Flash Image
+          </span>
         </div>
-      )}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {formatOptions.map((format) => (
+            <Card
+              key={format.value}
+              className={`p-4 cursor-pointer transition-colors ${
+                settings.format === format.value
+                  ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
+                  : 'hover:bg-muted/50'
+              }`}
+              onClick={() => {
+                setSettings(prev => ({
+                  ...prev,
+                  format: format.value
+                }));
+              }}
+            >
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                      settings.format === format.value
+                        ? 'border-primary'
+                        : 'border-muted-foreground/30'
+                    }`}>
+                      {settings.format === format.value && (
+                        <div className="w-2 h-2 rounded-full bg-primary" />
+                      )}
+                    </div>
+                    <p className="font-medium text-sm">{format.label}</p>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold text-muted-foreground">{format.size}</p>
+                  <p className="text-xs text-muted-foreground">{format.description}</p>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Choisissez le format adapté à votre plateforme de diffusion
+        </p>
+      </div>
 
       {/* Custom Prompt */}
       <div className="space-y-3">
@@ -1067,17 +1085,13 @@ function VisualCreationContent() {
                     <p className="break-words"><strong>Angle de vue:</strong> {angleOptions.find(a => a.value === settings.angle)?.label || 'Non sélectionné'}</p>
                   </div>
 
-                  {/* Output Configuration - Hidden */}
-                  {false && (
-                    <div className="border-t pt-3 space-y-1">
-                      <p><strong>Formats de sortie:</strong> {settings.formats.length} format(s)</p>
-                      {settings.formats.length > 0 && (
-                        <div className="text-sm text-muted-foreground">
-                          {settings.formats.map(format => formatOptions.find(f => f.value === format)?.label).join(', ')}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  {/* Output Configuration */}
+                  <div className="border-t pt-3 space-y-1">
+                    <p className="break-words"><strong>Format de sortie:</strong> {formatOptions.find(f => f.value === settings.format)?.label || 'Non sélectionné'}</p>
+                    <p className="text-xs md:text-sm text-muted-foreground break-words">
+                      {formatOptions.find(f => f.value === settings.format)?.description}
+                    </p>
+                  </div>
 
                   {/* Custom Instructions */}
                   {settings.customPrompt && (
@@ -1116,7 +1130,7 @@ function VisualCreationContent() {
                 ) : (
                   <>
                     <Sparkles className="w-5 h-5 mr-2" />
-                    Générer mes visuels ({Math.min(settings.formats.length, 2)} variations)
+                    Générer mon visuel
                   </>
                 )}
               </Button>
@@ -1268,7 +1282,7 @@ function VisualCreationContent() {
                   environment: "",
                   lighting: "",
                   angle: "",
-                  formats: ["ecommerce"]
+                  format: "ecommerce-square"
                 });
                 setGeneratedImages([]);
                 setGenerationError(null);

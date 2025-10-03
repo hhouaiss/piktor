@@ -242,15 +242,34 @@ ${productionPromptResult.prompt.split('🔧 PRODUCTION QUALITY ENHANCEMENT:')[1]
       
       if (validImages.length > 0) {
         console.log('[Dashboard API] Using multimodal generation with reference images:', validImages.length);
-        
+
+        // Map format values to their aspect ratios for Gemini 2.5 Flash Image
+        const formatOptions = [
+          { value: "ecommerce-square", aspectRatio: "1:1" },
+          { value: "instagram-post", aspectRatio: "1:1" },
+          { value: "instagram-story", aspectRatio: "9:16" },
+          { value: "facebook-cover", aspectRatio: "16:9" },
+          { value: "product-detail", aspectRatio: "4:3" },
+          { value: "lifestyle-horizontal", aspectRatio: "3:2" }
+        ];
+
+        // Get aspect ratios for selected formats
+        const aspectRatios = settings.formats.map(formatValue => {
+          const formatOption = formatOptions.find(f => f.value === formatValue);
+          return formatOption?.aspectRatio || "1:1"; // Default to square if not found
+        });
+
+        console.log('[Dashboard API] Generating with aspect ratios:', aspectRatios, 'for formats:', settings.formats);
+
         // Use hybrid prompt with reference images for best results
         variations = await generateMultipleImagesWithReferences(
           hybridPrompt,
           validImages,
           settings.formats.length, // Generate one image per format
-          productionSpecs.generationParams.contextPreset as ContextPreset
+          productionSpecs.generationParams.contextPreset as ContextPreset,
+          aspectRatios // Pass aspect ratios per format
         );
-        
+
         generationMethod = 'multimodal-dashboard-hybrid';
         console.log('[Dashboard API] Generated variations with reference images:', variations.length);
       } else {
@@ -262,8 +281,24 @@ ${productionPromptResult.prompt.split('🔧 PRODUCTION QUALITY ENHANCEMENT:')[1]
       
       // Fallback to text-only generation using dashboard prompt
       console.log('[Dashboard API] Falling back to text-only generation with dashboard prompt');
-      
-      const aspectRatio = getGeminiAspectRatio(productionSpecs.generationParams.contextPreset as ContextPreset);
+
+      // Map format values to their aspect ratios for Gemini 2.5 Flash Image
+      const formatOptions = [
+        { value: "ecommerce-square", aspectRatio: "1:1" },
+        { value: "instagram-post", aspectRatio: "1:1" },
+        { value: "instagram-story", aspectRatio: "9:16" },
+        { value: "facebook-cover", aspectRatio: "16:9" },
+        { value: "product-detail", aspectRatio: "4:3" },
+        { value: "lifestyle-horizontal", aspectRatio: "3:2" }
+      ];
+
+      // Get aspect ratios for selected formats
+      const aspectRatios = settings.formats.map(formatValue => {
+        const formatOption = formatOptions.find(f => f.value === formatValue);
+        return formatOption?.aspectRatio || "1:1"; // Default to square if not found
+      });
+
+      const aspectRatio = aspectRatios[0] || getGeminiAspectRatio(productionSpecs.generationParams.contextPreset as ContextPreset);
       const geminiRequest = {
         prompt: `${dashboardPrompt}
 
@@ -271,12 +306,15 @@ ${productionPromptResult.prompt.split('🔧 PRODUCTION QUALITY ENHANCEMENT:')[1]
         aspectRatio: aspectRatio,
       };
 
+      console.log('[Dashboard API] Text-only fallback with aspect ratios:', aspectRatios, 'for formats:', settings.formats);
+
       variations = await generateMultipleImagesWithGemini(
         geminiRequest,
         settings.formats.length,
-        productionSpecs.generationParams.contextPreset as ContextPreset
+        productionSpecs.generationParams.contextPreset as ContextPreset,
+        aspectRatios // Pass aspect ratios per format
       );
-      
+
       generationMethod = 'text-only-dashboard-enhanced';
       console.log('[Dashboard API] Generated variations using text-only fallback:', variations.length);
     }

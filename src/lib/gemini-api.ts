@@ -80,19 +80,28 @@ export interface GeminiGenerationResult {
  * Convert context preset to appropriate aspect ratio for Gemini API
  */
 export function getGeminiAspectRatio(contextPreset: ContextPreset): string {
+  let aspectRatio: string;
+
   switch (contextPreset) {
     case 'social_media_story':
-      return '9:16'; // Vertical for Instagram/Facebook stories
+      aspectRatio = '9:16'; // Vertical for Instagram/Facebook stories
+      break;
     case 'hero':
     case 'lifestyle':
-      return '3:2'; // Horizontal for banners and lifestyle
+      aspectRatio = '3:2'; // Horizontal for banners and lifestyle
+      break;
     case 'social_media_square':
-      return '1:1'; // Perfect square for Instagram posts
+      aspectRatio = '1:1'; // Perfect square for Instagram posts
+      break;
     case 'packshot':
     case 'detail':
     default:
-      return '1:1'; // Square for packshots and default
+      aspectRatio = '1:1'; // Square for packshots and default
+      break;
   }
+
+  console.log(`🎯 getGeminiAspectRatio(${contextPreset}) → ${aspectRatio}`);
+  return aspectRatio;
 }
 
 /**
@@ -190,11 +199,30 @@ export async function generateImageWithGemini(
     }
 
     console.log(`Making Gemini API request with ${contents.length} content items`);
-    
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-image-preview",
+
+    // Build request with correct config syntax for Gemini 2.5 Flash Image
+    const requestConfig: any = {
+      model: "gemini-2.5-flash-image",
       contents,
-    });
+      config: {
+        responseModalities: ['Image'], // Required for image generation
+      }
+    };
+
+    // Add imageConfig with aspectRatio if specified
+    if (request.aspectRatio) {
+      requestConfig.config.imageConfig = {
+        aspectRatio: request.aspectRatio
+      };
+      console.log(`✅ ASPECT RATIO CONFIG SET: ${request.aspectRatio}`);
+    } else {
+      console.warn(`⚠️ NO ASPECT RATIO PROVIDED - will use default 1:1`);
+    }
+
+    console.log(`📋 Full request config:`, JSON.stringify(requestConfig, null, 2));
+    console.log(`📤 Sending request to Gemini API...`);
+    const response = await ai.models.generateContent(requestConfig);
+    console.log(`📥 Received response from Gemini API`);
 
     // Extract image data from response
     const candidate = response.candidates?.[0];
@@ -226,7 +254,7 @@ export async function generateImageWithGemini(
         candidates: response.candidates,
       },
       metadata: {
-        model: "gemini-2.5-flash-image-preview",
+        model: "gemini-2.5-flash-image",
         timestamp: new Date().toISOString(),
         usage: {
           totalTokens: response.usageMetadata?.totalTokenCount,
@@ -248,7 +276,7 @@ export async function generateImageWithGemini(
       success: false,
       error: errorMessage,
       metadata: {
-        model: "gemini-2.5-flash-image-preview",
+        model: "gemini-2.5-flash-image",
         timestamp: new Date().toISOString(),
       }
     };
@@ -333,25 +361,39 @@ export async function analyzeImageWithGemini(
 
 /**
  * Generate multiple images with Gemini API
+ * Now supports custom aspect ratios per variation for Gemini 2.5 Flash Image
  */
 export async function generateMultipleImagesWithGemini(
   baseRequest: GeminiImageGenerationRequest,
   variations: number,
-  contextPreset: ContextPreset
+  contextPreset: ContextPreset,
+  aspectRatios?: string[] // Optional array of aspect ratios per variation
 ): Promise<GeminiGenerationResult[]> {
   const results: GeminiGenerationResult[] = [];
-  
+
   for (let i = 0; i < variations; i++) {
     try {
+      // Use custom aspect ratio if provided, otherwise use base request's aspect ratio
+      const aspectRatio = aspectRatios && aspectRatios[i]
+        ? aspectRatios[i]
+        : (baseRequest.aspectRatio || getGeminiAspectRatio(contextPreset));
+
       // Add variation to the prompt for different results
       const request = {
         ...baseRequest,
         prompt: `${baseRequest.prompt} (variation ${i + 1})`,
+        aspectRatio,
         seed: baseRequest.seed ? baseRequest.seed + i : Math.floor(Math.random() * 1000000),
       };
 
+      console.log(`[Gemini] ==========================================`);
+      console.log(`[Gemini] Generating text-only variation ${i + 1}`);
+      console.log(`[Gemini] Aspect ratio requested: ${aspectRatio}`);
+      console.log(`[Gemini] Request object:`, JSON.stringify({ aspectRatio: request.aspectRatio, prompt: request.prompt.substring(0, 100) }, null, 2));
+      console.log(`[Gemini] ==========================================`);
+
       const response = await generateImageWithGemini(request);
-      
+
       if (response.success && response.data?.imageData) {
         const dataUrl = base64ToDataUrl(response.data.imageData, 'image/jpeg');
         results.push({
@@ -359,9 +401,9 @@ export async function generateMultipleImagesWithGemini(
           imageData: response.data.imageData,
           prompt: request.prompt,
           metadata: {
-            model: 'gemini-2.5-flash-image-preview',
+            model: 'gemini-2.5-flash-image',
             timestamp: new Date().toISOString(),
-            size: request.aspectRatio || '1:1',
+            size: aspectRatio,
             variation: i + 1,
             contextPreset,
             generationMethod: 'text-to-image',
@@ -405,7 +447,7 @@ export async function editImageWithGemini(
 
     // For editing, we use Gemini 2.5 Flash Image with both image and text
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-image-preview",
+      model: "gemini-2.5-flash-image",
       contents: [
         {
           inlineData: {
@@ -441,7 +483,7 @@ export async function editImageWithGemini(
       imageData: generatedImageData,
       prompt: prompt,
       metadata: {
-        model: 'gemini-2.5-flash-image-preview',
+        model: 'gemini-2.5-flash-image',
         timestamp: new Date().toISOString(),
         size: getGeminiAspectRatio(contextPreset),
         variation: 1,
@@ -630,27 +672,49 @@ export async function generateImageWithReferences(
 
 /**
  * Generate multiple variations with reference images
+ * Now supports custom aspect ratios per variation for Gemini 2.5 Flash Image
  */
 export async function generateMultipleImagesWithReferences(
   basePrompt: string,
   referenceImages: Array<{ data: string; mimeType: string }>,
   variations: number,
-  contextPreset: ContextPreset
+  contextPreset: ContextPreset,
+  aspectRatios?: string[] // Optional array of aspect ratios per variation
 ): Promise<GeminiGenerationResult[]> {
   const results: GeminiGenerationResult[] = [];
   const optimizedImages = optimizeReferenceImages(referenceImages);
-  
+
+  console.log(`🎨 generateMultipleImagesWithReferences called with:`);
+  console.log(`   - contextPreset: ${contextPreset}`);
+  console.log(`   - variations: ${variations}`);
+  console.log(`   - aspectRatios param: ${aspectRatios ? JSON.stringify(aspectRatios) : 'NOT PROVIDED'}`);
+  console.log(`   - referenceImages count: ${referenceImages.length}`);
+
   for (let i = 0; i < variations; i++) {
     try {
+      // Use custom aspect ratio if provided, otherwise use contextPreset default
+      const aspectRatio = aspectRatios && aspectRatios[i]
+        ? aspectRatios[i]
+        : getGeminiAspectRatio(contextPreset);
+
+      console.log(`\n🔄 VARIATION ${i + 1}/${variations}:`);
+      console.log(`   - contextPreset: ${contextPreset}`);
+      console.log(`   - aspectRatios param: ${aspectRatios ? 'PROVIDED' : 'NOT PROVIDED'}`);
+      console.log(`   - aspectRatios[${i}]: ${aspectRatios?.[i] || 'undefined'}`);
+      console.log(`   - computed aspectRatio: ${aspectRatio}`);
+      console.log(`   - from getGeminiAspectRatio(${contextPreset}): ${getGeminiAspectRatio(contextPreset)}`);
+
       const request: GeminiImageGenerationRequest = {
         prompt: `${basePrompt} (variation ${i + 1})`,
-        aspectRatio: getGeminiAspectRatio(contextPreset),
+        aspectRatio,
         referenceImages: optimizedImages,
         seed: Math.floor(Math.random() * 1000000) + i,
       };
 
+      console.log(`   - Final request.aspectRatio: ${request.aspectRatio}`);
+
       const response = await generateImageWithGemini(request);
-      
+
       if (response.success && response.data?.imageData) {
         const dataUrl = base64ToDataUrl(response.data.imageData, 'image/jpeg');
         results.push({
@@ -658,9 +722,9 @@ export async function generateMultipleImagesWithReferences(
           imageData: response.data.imageData,
           prompt: request.prompt,
           metadata: {
-            model: 'gemini-2.5-flash-image-preview',
+            model: 'gemini-2.5-flash-image',
             timestamp: new Date().toISOString(),
-            size: request.aspectRatio || '1:1',
+            size: aspectRatio,
             variation: i + 1,
             contextPreset,
             generationMethod: 'text-to-image',
@@ -730,7 +794,7 @@ export async function editImageToAssetType(
 
     // Use Gemini 2.5 Flash Image for editing with both image and text
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-image-preview",
+      model: "gemini-2.5-flash-image",
       contents: [
         {
           inlineData: {
@@ -770,7 +834,7 @@ export async function editImageToAssetType(
       imageData: generatedImageData,
       prompt: prompt,
       metadata: {
-        model: 'gemini-2.5-flash-image-preview',
+        model: 'gemini-2.5-flash-image',
         timestamp: new Date().toISOString(),
         size: getGeminiAspectRatio(finalContextPreset),
         variation: 1,
