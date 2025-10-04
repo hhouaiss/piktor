@@ -88,13 +88,10 @@ const angleOptions = [
   { value: "plongee", label: "Plongée", description: "Vue du dessus" }
 ];
 
-// Meilleurs formats pour les visuels meubles e-commerce (Compatible Gemini 2.5 Flash Image)
+// Meilleurs formats pour les visuels meubles e-commerce
 const formatOptions = [
-  { value: "ecommerce-square", label: "E-commerce Carré", size: "1:1", aspectRatio: "1:1", description: "Fiches produits Amazon, eBay" },
-  { value: "instagram-post", label: "Publication Instagram", size: "1:1", aspectRatio: "1:1", description: "Format carré réseaux sociaux" },
+  { value: "square-format", label: "Format carré", size: "1:1", aspectRatio: "1:1", description: "Packshot produit, post Instagram" },
   { value: "instagram-story", label: "Story Instagram", size: "9:16", aspectRatio: "9:16", description: "Format vertical mobile" },
-  { value: "facebook-cover", label: "Couverture Facebook", size: "16:9", aspectRatio: "16:9", description: "Bannières web et réseaux" },
-  { value: "product-detail", label: "Détail Produit", size: "4:3", aspectRatio: "4:3", description: "Pages produits détaillées" },
   { value: "lifestyle-horizontal", label: "Lifestyle Horizontal", size: "3:2", aspectRatio: "3:2", description: "Catalogues et bannières" }
 ];
 
@@ -139,7 +136,7 @@ function VisualCreationContent() {
     environment: "",
     lighting: "",
     angle: "",
-    format: "ecommerce-square" // Default format (single selection)
+    format: "square-format" // Default format (single selection)
   });
   const [generatedImages, setGeneratedImages] = useState<DashboardGeneratedImage[]>([]);
   const [downloadingImages, setDownloadingImages] = useState<Set<string>>(new Set());
@@ -174,7 +171,7 @@ function VisualCreationContent() {
             environment: "",
             lighting: "",
             angle: "",
-            format: "ecommerce-square"
+            format: "square-format"
           });
           setGeneratedImages(parsed.generatedImages || []);
         }
@@ -229,16 +226,15 @@ function VisualCreationContent() {
   const determineContextFromSettings = (settings: GenerationSettings) => {
     // Map environment and format to appropriate context
     if (settings.environment === 'studio') return 'packshot';
-    if (settings.format === 'instagram-post' || settings.format === 'facebook-cover') return 'social_media_square';
+    if (settings.format === 'square-format') return 'social_media_square';
     if (settings.format === 'instagram-story') return 'social_media_story';
     if (settings.format === 'lifestyle-horizontal') return 'hero';
-    if (settings.format === 'product-detail') return 'lifestyle';
 
     // Default based on environment
     if (settings.environment === 'salon' || settings.environment === 'chambre' || settings.environment === 'cuisine') {
       return 'lifestyle';
     }
-    
+
     return 'lifestyle'; // Safe default
   };
 
@@ -961,16 +957,11 @@ function VisualCreationContent() {
         </div>
       </div>
 
-      {/* Format Selection - Powered by Gemini 2.5 Flash Image */}
+      {/* Format Selection */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <Label className="text-base font-semibold">
-            Format de sortie *
-          </Label>
-          <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
-            Gemini 2.5 Flash Image
-          </span>
-        </div>
+        <Label className="text-base font-semibold">
+          Format de sortie *
+        </Label>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {formatOptions.map((format) => (
             <Card
@@ -1282,7 +1273,7 @@ function VisualCreationContent() {
                   environment: "",
                   lighting: "",
                   angle: "",
-                  format: "ecommerce-square"
+                  format: "square-format"
                 });
                 setGeneratedImages([]);
                 setGenerationError(null);
