@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import {
   User,
   Crown,
@@ -17,10 +18,16 @@ import {
   Edit,
   Save,
   X,
-  Loader2
+  Loader2,
+  Sparkles,
+  Zap,
+  ArrowRight,
+  TrendingUp
 } from "lucide-react";
 import { trackEvent } from "@/lib/analytics";
 import { useSimpleAuth } from "@/components/auth/simple-auth-provider";
+import { getActivePlans, calculateYearlySavings, type Plan, type BillingInterval } from "@/lib/pricing/plans";
+import { formatPriceFromEuros, calculateSavingsPercentage, formatDate } from "@/lib/pricing/utils";
 
 interface UserProfile {
   displayName: string;
@@ -72,37 +79,20 @@ const mockBillingHistory: BillingHistory[] = [
   }
 ];
 
-const planFeatures = {
-  starter: {
-    name: "Starter",
-    credits: 50,
-    price: 19,
-    features: ["50 crédits/mois", "Tous les styles", "Formats standard", "Support email"]
-  },
-  pro: {
-    name: "Pro",
-    credits: 200,
-    price: 49,
-    features: ["200 crédits/mois", "Tous les styles", "Tous les formats", "Support prioritaire", "API access"]
-  },
-  enterprise: {
-    name: "Enterprise",
-    credits: 1000,
-    price: 199,
-    features: ["1000 crédits/mois", "Styles personnalisés", "Tous les formats", "Support dédié", "API access", "Formation équipe"]
-  }
-};
-
 export function AccountPage() {
   const { user, loading: authLoading, updateProfile } = useSimpleAuth();
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [billingInterval, setBillingInterval] = useState<BillingInterval>('month');
   const [editedProfile, setEditedProfile] = useState<UserProfile>({
     displayName: '',
     email: '',
     company: '',
     phone: ''
   });
+
+  // Get active plans for MVP stage
+  const activePlans = getActivePlans(true); // true = MVP stage
 
   // Initialize profile data from Supabase user
   useEffect(() => {
@@ -118,17 +108,21 @@ export function AccountPage() {
   }, [user]);
 
   // Mock subscription data for now (until billing is implemented)
+  // In MVP stage, users start on free plan
   const subscription: Subscription = {
-    plan: "pro",
+    plan: "free", // MVP: Start everyone on free
     status: "active",
-    currentPeriodEnd: "2024-10-15",
-    creditsTotal: user?.usage?.creditsTotal || 50,
+    currentPeriodEnd: "2025-11-04",
+    creditsTotal: 25, // Free tier: 25 generations
     creditsUsed: user?.usage?.creditsUsed || 0,
     billingCycle: "monthly",
-    nextBillingAmount: 49
+    nextBillingAmount: 0
   };
 
   const [billingHistory] = useState<BillingHistory[]>(mockBillingHistory);
+
+  // Get current plan details
+  const currentPlan = activePlans.find(p => p.id === subscription.plan) || activePlans[0];
 
   useEffect(() => {
     trackEvent('account_viewed', {
@@ -182,18 +176,25 @@ export function AccountPage() {
     setIsEditingProfile(false);
   };
 
-  const handlePlanChange = (newPlan: "starter" | "pro" | "enterprise") => {
+  const handlePlanChange = (plan: Plan) => {
     trackEvent('plan_change_clicked', {
       event_category: 'subscription',
-      event_label: newPlan,
+      event_label: plan.id,
       custom_parameters: {
         current_plan: subscription.plan,
-        target_plan: newPlan
+        target_plan: plan.id,
+        billing_interval: billingInterval
       }
     });
-    
-    // TODO: Implement plan change logic
-    console.log('Changing plan to:', newPlan);
+
+    // TODO: Implement Stripe checkout
+    // For MVP: Show coming soon message
+    alert(`Bientôt disponible ! Le plan ${plan.name} sera activé avec Stripe sous peu.`);
+    console.log('Plan upgrade requested:', {
+      planId: plan.id,
+      interval: billingInterval,
+      price: billingInterval === 'month' ? plan.price.monthly : plan.price.yearly
+    });
   };
 
   const handleDownloadInvoice = (invoice: BillingHistory) => {
@@ -397,19 +398,27 @@ export function AccountPage() {
 
       {/* Subscription Section */}
       <Card className="p-6">
-        <h2 className="text-xl font-semibold text-foreground mb-6">
-          Abonnement actuel
-        </h2>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-semibold text-foreground">
+            Abonnement actuel
+          </h2>
+          {subscription.plan === 'free' && (
+            <Badge className="bg-blue-100 text-blue-800 border-blue-200">
+              <Sparkles className="w-3 h-3 mr-1" />
+              Phase Beta
+            </Badge>
+          )}
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Current Plan */}
           <div className="lg:col-span-2">
-            <div className="border border-primary/20 bg-primary/5 rounded-lg p-6">
+            <div className="border border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10 rounded-lg p-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center">
                   <Crown className="w-6 h-6 text-primary mr-2" />
                   <h3 className="text-lg font-semibold text-foreground">
-                    Plan {planFeatures[subscription.plan].name}
+                    {currentPlan.name}
                   </h3>
                 </div>
                 <span className={getStatusBadge(subscription.status)}>
@@ -417,17 +426,21 @@ export function AccountPage() {
                 </span>
               </div>
 
+              <p className="text-sm text-muted-foreground mb-4">
+                {currentPlan.description}
+              </p>
+
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
-                  <p className="text-sm text-muted-foreground">Crédits mensuels</p>
+                  <p className="text-sm text-muted-foreground">Générations mensuelles</p>
                   <p className="text-2xl font-bold text-foreground">
-                    {planFeatures[subscription.plan].credits}
+                    {currentPlan.limits.generations === -1 ? 'Illimité' : currentPlan.limits.generations}
                   </p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Prix mensuel</p>
                   <p className="text-2xl font-bold text-foreground">
-                    {planFeatures[subscription.plan].price}€
+                    {formatPriceFromEuros(currentPlan.price.monthly)}
                   </p>
                 </div>
               </div>
@@ -435,17 +448,20 @@ export function AccountPage() {
               {/* Credits Usage */}
               <div className="mb-4">
                 <div className="flex justify-between text-sm mb-2">
-                  <span className="text-muted-foreground">Crédits utilisés ce mois</span>
+                  <span className="text-muted-foreground">Générations utilisées ce mois</span>
                   <span className="font-medium">
                     {subscription.creditsUsed} / {subscription.creditsTotal}
                   </span>
                 </div>
-                <div className="w-full bg-sophisticated-gray-200 rounded-full h-2">
-                  <div 
-                    className="bg-primary h-2 rounded-full transition-all duration-500"
-                    style={{ width: `${(subscription.creditsUsed / subscription.creditsTotal) * 100}%` }}
+                <div className="w-full bg-sophisticated-gray-200 rounded-full h-2.5">
+                  <div
+                    className="bg-gradient-ocean-deep h-2.5 rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(100, (subscription.creditsUsed / subscription.creditsTotal) * 100)}%` }}
                   ></div>
                 </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {subscription.creditsTotal - subscription.creditsUsed} générations restantes
+                </p>
               </div>
 
               <div className="flex flex-col sm:flex-row gap-2 text-sm text-muted-foreground">
@@ -453,55 +469,193 @@ export function AccountPage() {
                   <Calendar className="w-4 h-4 mr-1" />
                   Renouvellement le {formatDate(subscription.currentPeriodEnd)}
                 </span>
-                <span className="flex items-center">
-                  <CreditCard className="w-4 h-4 mr-1" />
-                  Prochain paiement: {subscription.nextBillingAmount}€
-                </span>
+                {subscription.nextBillingAmount > 0 && (
+                  <span className="flex items-center">
+                    <CreditCard className="w-4 h-4 mr-1" />
+                    Prochain paiement: {formatPriceFromEuros(subscription.nextBillingAmount)}
+                  </span>
+                )}
               </div>
             </div>
+
+            {/* MVP Beta Notice */}
+            {subscription.plan === 'free' && (
+              <div className="mt-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">
+                      Vous êtes un beta tester !
+                    </h4>
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                      Merci de tester Piktor pendant la phase beta. Vos retours sont précieux !
+                      Passez au plan Early Adopter pour obtenir le tarif fondateur à vie (50% de réduction).
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Plan Features */}
           <div>
             <h4 className="font-medium text-foreground mb-3">Fonctionnalités incluses</h4>
-            <ul className="space-y-2">
-              {planFeatures[subscription.plan].features.map((feature, index) => (
-                <li key={index} className="flex items-center text-sm">
-                  <Check className="w-4 h-4 text-success-600 mr-2 flex-shrink-0" />
-                  <span className="text-muted-foreground">{feature}</span>
+            <ul className="space-y-2.5">
+              {currentPlan.features.map((feature, index) => (
+                <li key={index} className="flex items-start text-sm">
+                  {feature.included ? (
+                    <Check className="w-4 h-4 text-success-600 mr-2 flex-shrink-0 mt-0.5" />
+                  ) : (
+                    <X className="w-4 h-4 text-muted-foreground mr-2 flex-shrink-0 mt-0.5" />
+                  )}
+                  <span className={feature.included ? 'text-foreground' : 'text-muted-foreground line-through'}>
+                    {feature.text}
+                  </span>
                 </li>
               ))}
             </ul>
           </div>
         </div>
 
-        {/* Plan Change Options */}
+        {/* Upgrade Section - MVP Stage */}
         <div className="mt-8 pt-6 border-t border-border">
-          <h4 className="font-medium text-foreground mb-4">Changer d&apos;abonnement</h4>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {Object.entries(planFeatures).map(([planKey, plan]) => (
-              <Card key={planKey} className={`p-4 ${planKey === subscription.plan ? 'border-primary bg-primary/5' : ''}`}>
-                <div className="text-center">
-                  <h5 className="font-semibold text-foreground">{plan.name}</h5>
-                  <p className="text-2xl font-bold text-primary my-2">{plan.price}€<span className="text-sm font-normal">/mois</span></p>
-                  <p className="text-sm text-muted-foreground mb-4">{plan.credits} crédits/mois</p>
-                  
-                  {planKey === subscription.plan ? (
-                    <Button variant="outline" disabled className="w-full">
-                      Plan actuel
-                    </Button>
-                  ) : (
-                    <Button 
-                      variant="outline" 
-                      className="w-full"
-                      onClick={() => handlePlanChange(planKey as "starter" | "pro" | "enterprise")}
-                    >
-                      {parseInt(planKey) > parseInt(subscription.plan) ? 'Upgrade' : 'Downgrade'}
-                    </Button>
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="font-medium text-foreground">Passer à un plan supérieur</h4>
+
+            {/* Billing Toggle */}
+            <div className="flex items-center gap-2 bg-muted p-1 rounded-lg">
+              <button
+                onClick={() => setBillingInterval('month')}
+                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                  billingInterval === 'month'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Mensuel
+              </button>
+              <button
+                onClick={() => setBillingInterval('year')}
+                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                  billingInterval === 'year'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Annuel
+                <span className="ml-1 text-xs text-success-600">-17%</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {activePlans.map((plan) => {
+              const isCurrentPlan = plan.id === subscription.plan;
+              const price = billingInterval === 'month' ? plan.price.monthly : plan.price.yearly;
+              const effectiveMonthlyPrice = billingInterval === 'year' ? Math.round(plan.price.yearly / 12) : plan.price.monthly;
+              const savingsPercent = billingInterval === 'year' ? calculateSavingsPercentage(plan.price.monthly, plan.price.yearly) : 0;
+
+              return (
+                <Card
+                  key={plan.id}
+                  className={`relative overflow-hidden ${
+                    plan.highlighted
+                      ? 'border-primary shadow-lg scale-105'
+                      : isCurrentPlan
+                      ? 'border-primary/50 bg-primary/5'
+                      : ''
+                  }`}
+                >
+                  {plan.badge && (
+                    <div className="absolute top-0 right-0 bg-gradient-ocean-deep text-white text-xs font-bold px-3 py-1 rounded-bl-lg">
+                      {plan.badge}
+                    </div>
                   )}
+
+                  <div className="p-6">
+                    <div className="mb-4">
+                      <h5 className="text-lg font-bold text-foreground mb-1">{plan.name}</h5>
+                      <p className="text-sm text-muted-foreground">{plan.description}</p>
+                    </div>
+
+                    <div className="mb-4">
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-3xl font-bold text-foreground">
+                          {formatPriceFromEuros(price)}
+                        </span>
+                        {billingInterval === 'year' && (
+                          <span className="text-muted-foreground text-sm">/an</span>
+                        )}
+                        {billingInterval === 'month' && (
+                          <span className="text-muted-foreground text-sm">/mois</span>
+                        )}
+                      </div>
+                      {billingInterval === 'year' && (
+                        <p className="text-xs text-success-600 mt-1">
+                          Soit {formatPriceFromEuros(effectiveMonthlyPrice)}/mois • Économisez {savingsPercent}%
+                        </p>
+                      )}
+                      {plan.savings && (
+                        <p className="text-xs text-warm-gold-600 dark:text-warm-gold-400 font-semibold mt-1">
+                          {plan.savings}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="mb-6 space-y-2">
+                      {plan.features.slice(0, 4).map((feature, idx) => (
+                        <div key={idx} className="flex items-center text-sm">
+                          <Check className="w-4 h-4 text-success-600 mr-2 flex-shrink-0" />
+                          <span className="text-muted-foreground">{feature.text}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {isCurrentPlan ? (
+                      <Button variant="outline" disabled className="w-full">
+                        <Check className="w-4 h-4 mr-2" />
+                        Plan actuel
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={() => handlePlanChange(plan)}
+                        className={`w-full ${
+                          plan.highlighted
+                            ? 'bg-gradient-ocean-deep hover:opacity-90'
+                            : ''
+                        }`}
+                        variant={plan.highlighted ? 'default' : 'outline'}
+                      >
+                        {plan.ctaText}
+                        <ArrowRight className="w-4 h-4 ml-2" />
+                      </Button>
+                    )}
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Enterprise CTA */}
+          <div className="mt-6 bg-gradient-to-r from-sophisticated-gray-50 to-ocean-blue-50/30 dark:from-sophisticated-gray-800 dark:to-ocean-blue-900/20 rounded-lg p-6 border border-border">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <TrendingUp className="w-6 h-6 text-ocean-blue-600 flex-shrink-0" />
+                <div>
+                  <h5 className="font-semibold text-foreground mb-1">
+                    Besoin d&apos;un plan sur mesure ?
+                  </h5>
+                  <p className="text-sm text-muted-foreground">
+                    Générations illimitées, environnements personnalisés, support dédié et plus encore.
+                  </p>
                 </div>
-              </Card>
-            ))}
+              </div>
+              <Button variant="outline" asChild className="whitespace-nowrap">
+                <a href="https://calendar.notion.so/meet/hassanhouaiss/piktor" target="_blank" rel="noopener noreferrer">
+                  Nous contacter
+                </a>
+              </Button>
+            </div>
           </div>
         </div>
       </Card>

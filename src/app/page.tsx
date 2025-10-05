@@ -19,6 +19,7 @@ import { trackImageGeneration, trackConversion, trackNavigation } from "@/lib/an
 import { getAuthHeaders } from "@/lib/api-client";
 import { useSimpleAuth } from "@/components/auth/simple-auth-provider";
 import { useRouter } from "next/navigation";
+import { BeforeAfterSlider } from "@/components/ui/before-after-slider";
 
 // Import admin utils for testing (only in development)
 if (process.env.NODE_ENV === 'development') {
@@ -456,19 +457,19 @@ function HomeContent() {
     }
   };
 
-  // Scroll to generator function
-  const scrollToGenerator = () => {
-    const generatorSection = document.getElementById('image-generator');
-    if (generatorSection) {
-      generatorSection.scrollIntoView({ behavior: 'smooth' });
-      
-      // Track scroll to generator
-      trackNavigation.scrollToGenerator({
-        source: 'hero_cta',
-        currentPage: 'home'
-      });
-    }
-  };
+  // Scroll to generator function (currently unused but kept for potential future use)
+  // const scrollToGenerator = () => {
+  //   const generatorSection = document.getElementById('image-generator');
+  //   if (generatorSection) {
+  //     generatorSection.scrollIntoView({ behavior: 'smooth' });
+  //
+  //     // Track scroll to generator
+  //     trackNavigation.scrollToGenerator({
+  //       source: 'hero_cta',
+  //       currentPage: 'home'
+  //     });
+  //   }
+  // };
 
   // Dynamic Sliding Gallery Component
   const DynamicGallery = () => {
@@ -698,65 +699,98 @@ function HomeContent() {
     );
   };
 
+  // Before/After Image Pairs
+  const imagePairs = [
+    {
+      before: '/gallery/before/canape-moderne-before.jpg',
+      after: '/gallery/after/canape-moderne-after.jpg',
+      alt: 'Canapé moderne',
+      title: 'Canapé moderne - Transformation showroom'
+    },
+    {
+      before: '/gallery/before/canape-cosy-before.jpg',
+      after: '/gallery/after/canape-cosy-design-after.jpg',
+      alt: 'Canapé cosy design',
+      title: 'Canapé cosy - Mise en scène premium'
+    },
+    {
+      before: '/gallery/before/chaise-moderne-before.jpg',
+      after: '/gallery/after/chaise-moderne-after.jpg',
+      alt: 'Chaise moderne',
+      title: 'Chaise moderne - Ambiance lifestyle'
+    },
+    {
+      before: '/gallery/before/lit-before.jpg',
+      after: '/gallery/after/lit-after.jpg',
+      alt: 'Lit design',
+      title: 'Lit - Décor magazine premium'
+    },
+    {
+      before: '/gallery/before/caisson-bureau-before.jpg',
+      after: '/gallery/after/caisson-bureau-after.jpg',
+      alt: 'Caisson de bureau',
+      title: 'Caisson bureau - Environnement professionnel'
+    }
+  ];
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-sophisticated-gray-50 via-white to-ocean-blue-50/30 dark:from-sophisticated-gray-950 dark:via-sophisticated-gray-900 dark:to-sophisticated-gray-800 overflow-x-hidden">
-      
+
       {/* Hero Section */}
-      <section className="w-full px-4 py-12 sm:py-16 lg:py-20">
+      <section className="w-full px-4 py-12 sm:py-16 lg:py-20 xl:py-24">
         <div className="container mx-auto max-w-7xl">
-          <div className="text-center mb-12 animate-fade-in">
-          <div className="mb-6">
-            <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-ocean-blue-100 to-warm-gold-100 border border-ocean-blue-300 rounded-full text-sm font-medium text-ocean-blue-800 dark:from-ocean-blue-900/70 dark:to-warm-gold-900/70 dark:border-ocean-blue-600 dark:text-ocean-blue-200 shadow-sm">
-              <Sparkles className="w-4 h-4 mr-2 animate-pulse text-warm-gold-600 dark:text-warm-gold-400" />
-              Créez. Déclinez. Publiez.
+          {/* Content Block */}
+          <div className="text-center mb-12 lg:mb-16 animate-fade-in">
+            {/* Badge */}
+            <div className="mb-6">
+              <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-ocean-blue-100 to-warm-gold-100 border border-ocean-blue-300 rounded-full text-sm font-medium text-ocean-blue-800 dark:from-ocean-blue-900/70 dark:to-warm-gold-900/70 dark:border-ocean-blue-600 dark:text-ocean-blue-200 shadow-sm">
+                <Sparkles className="w-4 h-4 mr-2 animate-pulse text-warm-gold-600 dark:text-warm-gold-400" />
+                Créez. Déclinez. Publiez.
+              </div>
             </div>
-          </div>
-          
-          <h1 className="text-4xl md:text-4xl lg:text-5xl font-bold mb-6 bg-gradient-to-br from-sophisticated-gray-900 via-ocean-blue-800 to-sophisticated-gray-700 bg-clip-text text-transparent dark:from-sophisticated-gray-100 dark:via-ocean-blue-300 dark:to-sophisticated-gray-300 leading-tight">
-            Vos visuels produit
-            <span className="block text-ocean-blue-600 dark:text-ocean-blue-400 font-bold">ultra-réalistes en 10 secondes&nbsp;!</span>
-          </h1>
-          
-          <p className="text-xl font-semibold md:text-2xl text-sophisticated-gray-600 dark:text-sophisticated-gray-400 mb-8 max-w-4xl mx-auto leading-relaxed">
-          Sans studio. Sans shooting. Illimité.
-          </p>
-          
-          {/* <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-sophisticated-gray-600 dark:text-sophisticated-gray-400 mb-10">
-            <div className="flex items-center gap-2 bg-white/80 dark:bg-sophisticated-gray-800/80 px-4 py-3 rounded-lg backdrop-blur border border-sophisticated-gray-200/50 dark:border-sophisticated-gray-700/50 shadow-sm">
-              <Euro className="w-4 h-4 text-success" />
-              <span className="font-medium">0€ de shooting</span>
+
+            {/* H1 with gradient */}
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold mb-6 bg-gradient-to-br from-sophisticated-gray-900 via-ocean-blue-800 to-sophisticated-gray-700 bg-clip-text text-transparent dark:from-sophisticated-gray-100 dark:via-ocean-blue-300 dark:to-sophisticated-gray-300 leading-tight">
+              Vos visuels produit
+              <span className="block text-ocean-blue-600 dark:text-ocean-blue-400 font-bold">ultra-réalistes en 10 secondes</span>
+            </h1>
+
+            {/* Subheading */}
+            <p className="text-lg sm:text-xl lg:text-2xl font-semibold text-sophisticated-gray-600 dark:text-sophisticated-gray-400 mb-8 max-w-4xl mx-auto leading-relaxed">
+              Sans studio. Sans shooting. Illimité.
+            </p>
+
+            {/* CTA Button */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-6">
+              <Button
+                onClick={() => {
+                  if (user) {
+                    router.push('/dashboard');
+                  } else {
+                    router.push('/auth/signup');
+                  }
+                }}
+                size="xl"
+                className="bg-gradient-ocean-deep hover:opacity-90 text-white shadow-premium animate-scale-in font-bold group w-full sm:w-auto max-w-sm transition-all duration-200 hover:scale-105"
+              >
+                {user ? 'Accéder au dashboard' : 'Tester gratuitement maintenant'}
+                <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+              </Button>
             </div>
-            <div className="flex items-center gap-2 bg-white/80 dark:bg-sophisticated-gray-800/80 px-4 py-3 rounded-lg backdrop-blur border border-sophisticated-gray-200/50 dark:border-sophisticated-gray-700/50 shadow-sm">
-              <Target className="w-4 h-4 text-ocean-blue-600" />
-              <span className="font-medium">Visuels illimités</span>
-            </div>
-            <div className="flex items-center gap-2 bg-white/80 dark:bg-sophisticated-gray-800/80 px-4 py-3 rounded-lg backdrop-blur border border-sophisticated-gray-200/50 dark:border-sophisticated-gray-700/50 shadow-sm">
-              <Clock className="w-4 h-4 text-warm-gold-600" />
-              <span className="font-medium">Résultats en moins de 10 secondes</span>
-            </div>
-          </div> */}
-          
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-6">
-            <Button
-              onClick={() => {
-                if (user) {
-                  router.push('/dashboard');
-                } else {
-                  router.push('/auth/signup');
-                }
-              }}
-              size="xl"
-              className="bg-gradient-ocean-deep hover:opacity-90 text-white shadow-premium animate-scale-in font-bold group w-full sm:w-auto max-w-sm transition-all duration-200 hover:scale-105"
-            >
-              {user ? 'Accéder au dashboard' : 'Tester gratuitement maintenant'}
-              <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-            </Button>
+
+            <p className="text-sm text-sophisticated-gray-500 dark:text-sophisticated-gray-400">
+              {user ? 'Créez vos visuels en quelques clics' : 'Inscription gratuite - Aucune carte bancaire requise'}
+            </p>
           </div>
 
-          <p className="text-sm text-sophisticated-gray-500 dark:text-sophisticated-gray-400">
-            {user ? 'Créez vos visuels en quelques clics' : 'Inscription gratuite - Aucune carte bancaire requise'}
-          </p>
-          </div>
+          {/* Interactive Before/After Slider - Temporarily Hidden */}
+          {false && (
+            <BeforeAfterSlider
+              imagePairs={imagePairs}
+              autoAnimationDelay={500}
+              className="animate-fade-in-up"
+            />
+          )}
         </div>
       </section>
 
