@@ -37,7 +37,7 @@ interface UserProfile {
 }
 
 interface Subscription {
-  plan: "starter" | "pro" | "enterprise";
+  plan: "free" | "starter" | "pro" | "enterprise";
   status: "active" | "canceled" | "expired";
   currentPeriodEnd: string;
   creditsTotal: number;
