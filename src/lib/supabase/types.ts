@@ -200,12 +200,121 @@ export interface Database {
           updated_at?: string
         }
       }
+      subscriptions: {
+        Row: {
+          id: string
+          user_id: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          stripe_price_id: string | null
+          plan_id: string
+          status: string
+          billing_interval: string
+          amount: number
+          currency: string
+          current_period_start: string
+          current_period_end: string
+          cancel_at: string | null
+          canceled_at: string | null
+          trial_start: string | null
+          trial_end: string | null
+          generations_limit: number
+          generations_used: number
+          metadata: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          stripe_price_id?: string | null
+          plan_id: string
+          status: string
+          billing_interval: string
+          amount: number
+          currency: string
+          current_period_start: string
+          current_period_end: string
+          cancel_at?: string | null
+          canceled_at?: string | null
+          trial_start?: string | null
+          trial_end?: string | null
+          generations_limit: number
+          generations_used?: number
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          stripe_price_id?: string | null
+          plan_id?: string
+          status?: string
+          billing_interval?: string
+          amount?: number
+          currency?: string
+          current_period_start?: string
+          current_period_end?: string
+          cancel_at?: string | null
+          canceled_at?: string | null
+          trial_start?: string | null
+          trial_end?: string | null
+          generations_limit?: number
+          generations_used?: number
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      invoices: {
+        Row: {
+          id: string
+          user_id: string
+          stripe_invoice_id: string
+          stripe_subscription_id: string | null
+          amount: number
+          currency: string
+          status: string
+          invoice_pdf: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          stripe_invoice_id: string
+          stripe_subscription_id?: string | null
+          amount: number
+          currency: string
+          status: string
+          invoice_pdf?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          stripe_invoice_id?: string
+          stripe_subscription_id?: string | null
+          amount?: number
+          currency?: string
+          status?: string
+          invoice_pdf?: string | null
+          created_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      reset_monthly_usage: {
+        Args: Record<string, never>
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

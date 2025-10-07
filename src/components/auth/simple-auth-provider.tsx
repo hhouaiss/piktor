@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User as SupabaseUser, Session } from '@supabase/supabase-js';
-import { supabaseClient } from '@/lib/supabase/config';
+import { supabaseClient } from '@/lib/supabase/client';
 import type { User } from '@/lib/supabase/types';
 
 interface AuthContextType {
@@ -85,14 +85,17 @@ export function SimpleAuthProvider({ children }: AuthProviderProps) {
   // Handle auth state changes
   const handleAuthChange = async (event: string, session: Session | null) => {
     try {
+      console.log('[SimpleAuth] Auth change event:', event, 'User:', session?.user?.id);
       setSession(session);
       setSupabaseUser(session?.user || null);
       setError(null);
 
       if (session?.user) {
         const userData = await fetchUserData(session.user);
+        console.log('[SimpleAuth] User data set:', userData.id, userData.email);
         setUser(userData);
       } else {
+        console.log('[SimpleAuth] No session, clearing user');
         setUser(null);
       }
     } catch (error) {

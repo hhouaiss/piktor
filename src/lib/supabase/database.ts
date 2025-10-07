@@ -1,5 +1,9 @@
-import { supabase, supabaseAdmin, getSupabaseClient } from './config';
+import { supabaseAdmin } from './config';
+import { supabaseClient } from './client';
 import { getPlaceholderUrl } from '../image-placeholders';
+
+// Use the cookie-based client instead of the old localStorage client
+const supabase = supabaseClient;
 import type {
   User,
   Visual,
@@ -370,6 +374,8 @@ class SupabaseService {
     pagination?: PaginationOptions
   ): Promise<PaginatedResult<Visual>> {
     try {
+      console.log('[Database] getUserVisuals called for user:', userId);
+
       let query = supabase
         .from('visuals')
         .select('*', { count: 'exact' })
@@ -395,6 +401,12 @@ class SupabaseService {
       }
 
       const { data, error, count } = await query;
+
+      console.log('[Database] Query result:', {
+        dataCount: data?.length || 0,
+        error: error?.message,
+        totalCount: count
+      });
 
       if (error) {
         // If the error is about column not found, it means this is an empty database

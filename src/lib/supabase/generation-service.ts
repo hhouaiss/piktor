@@ -1,5 +1,6 @@
 import { supabaseAdminStorageService } from './admin-storage';
-import { supabaseAdmin, supabaseClient } from './config';
+import { supabaseAdmin } from './config';
+import { supabaseClient } from './client';
 import type { UploadResult } from './storage';
 
 export interface GenerationRequest {

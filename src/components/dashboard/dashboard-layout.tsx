@@ -20,7 +20,8 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
-  Sparkles
+  Sparkles,
+  Video
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trackEvent, trackPageView } from "@/lib/analytics";
@@ -67,7 +68,14 @@ const sidebarItems: SidebarItem[] = [
     icon: User,
     description: "Profil et abonnement"
   }
-  // Hidden items: settings, tutorials, support
+  // Hidden items: video-ads (testing), settings, tutorials, support
+  // {
+  //   id: "video-ads",
+  //   label: "Publicités vidéo",
+  //   href: "/dashboard/video-ads",
+  //   icon: Video,
+  //   description: "Créer des publicités vidéo IA"
+  // },
   // {
   //   id: "settings",
   //   label: "Paramètres",

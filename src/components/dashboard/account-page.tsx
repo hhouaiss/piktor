@@ -28,6 +28,7 @@ import { trackEvent } from "@/lib/analytics";
 import { useSimpleAuth } from "@/components/auth/simple-auth-provider";
 import { getActivePlans, calculateYearlySavings, type Plan, type BillingInterval } from "@/lib/pricing/plans";
 import { formatPriceFromEuros, calculateSavingsPercentage, formatDate } from "@/lib/pricing/utils";
+import { useSubscription } from "@/hooks/useSubscription";
 
 interface UserProfile {
   displayName: string;
@@ -81,6 +82,7 @@ const mockBillingHistory: BillingHistory[] = [
 
 export function AccountPage() {
   const { user, loading: authLoading, updateProfile } = useSimpleAuth();
+  const { subscription: userSubscription, loading: subscriptionLoading, refreshSubscription, remainingGenerations } = useSubscription();
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [billingInterval, setBillingInterval] = useState<BillingInterval>('month');
@@ -107,14 +109,22 @@ export function AccountPage() {
     }
   }, [user]);
 
-  // Mock subscription data for now (until billing is implemented)
-  // In MVP stage, users start on free plan
-  const subscription: Subscription = {
-    plan: "free", // MVP: Start everyone on free
+  // Use real subscription data from database
+  const subscription: Subscription = userSubscription ? {
+    plan: userSubscription.planId as "free" | "starter" | "pro" | "enterprise",
+    status: userSubscription.status === 'active' || userSubscription.status === 'trialing' ? "active" :
+            userSubscription.status === 'canceled' ? "canceled" : "expired",
+    currentPeriodEnd: new Date(userSubscription.currentPeriodEnd).toISOString().split('T')[0],
+    creditsTotal: userSubscription.generationsLimit,
+    creditsUsed: userSubscription.generationsUsed,
+    billingCycle: userSubscription.billingInterval === 'month' ? "monthly" : "yearly",
+    nextBillingAmount: userSubscription.amount / 100 // Convert cents to euros
+  } : {
+    plan: "free",
     status: "active",
-    currentPeriodEnd: "2025-11-04",
-    creditsTotal: 25, // Free tier: 25 generations
-    creditsUsed: user?.usage?.creditsUsed || 0,
+    currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    creditsTotal: 25,
+    creditsUsed: 0,
     billingCycle: "monthly",
     nextBillingAmount: 0
   };
@@ -122,14 +132,25 @@ export function AccountPage() {
   const [billingHistory] = useState<BillingHistory[]>(mockBillingHistory);
 
   // Get current plan details
-  const currentPlan = activePlans.find(p => p.id === subscription.plan) || activePlans[0];
+  const currentPlan = activePlans.find(p => p.id === subscription.plan || p.id === userSubscription?.planId) || activePlans[0];
 
   useEffect(() => {
     trackEvent('account_viewed', {
       event_category: 'dashboard',
       event_label: 'account_page_view'
     });
-  }, []);
+
+    // Check if user just completed payment
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('payment') === 'success') {
+        // Refresh subscription data after successful payment
+        refreshSubscription();
+        // Clean up URL
+        window.history.replaceState({}, '', '/dashboard/account');
+      }
+    }
+  }, [refreshSubscription]);
 
   const handleProfileEdit = () => {
     setIsEditingProfile(true);
@@ -176,7 +197,7 @@ export function AccountPage() {
     setIsEditingProfile(false);
   };
 
-  const handlePlanChange = (plan: Plan) => {
+  const handlePlanChange = async (plan: Plan) => {
     trackEvent('plan_change_clicked', {
       event_category: 'subscription',
       event_label: plan.id,
@@ -187,14 +208,81 @@ export function AccountPage() {
       }
     });
 
-    // TODO: Implement Stripe checkout
-    // For MVP: Show coming soon message
-    alert(`Bientôt disponible ! Le plan ${plan.name} sera activé avec Stripe sous peu.`);
-    console.log('Plan upgrade requested:', {
-      planId: plan.id,
-      interval: billingInterval,
-      price: billingInterval === 'month' ? plan.price.monthly : plan.price.yearly
-    });
+    // Initiate Stripe checkout
+    setIsSaving(true);
+
+    try {
+      const response = await fetch('/api/stripe/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // Important: Include cookies for auth
+        body: JSON.stringify({
+          planId: plan.id,
+          billingInterval: billingInterval,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create checkout session');
+      }
+
+      const { url } = await response.json();
+
+      // Track checkout initiation
+      trackEvent('checkout_initiated', {
+        event_category: 'billing',
+        event_label: plan.id,
+        custom_parameters: {
+          plan: plan.id,
+          interval: billingInterval
+        }
+      });
+
+      // Redirect to Stripe Checkout
+      window.location.href = url;
+    } catch (error) {
+      console.error('Error creating checkout session:', error);
+      alert(
+        error instanceof Error
+          ? error.message
+          : 'Une erreur est survenue lors de la création de la session de paiement.'
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleManageSubscription = async () => {
+    setIsSaving(true);
+
+    try {
+      const response = await fetch('/api/stripe/create-portal-session', {
+        method: 'POST',
+        credentials: 'include', // Important: Include cookies for auth
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create portal session');
+      }
+
+      const { url } = await response.json();
+
+      // Redirect to Stripe Customer Portal
+      window.location.href = url;
+    } catch (error) {
+      console.error('Error creating portal session:', error);
+      alert(
+        error instanceof Error
+          ? error.message
+          : 'Une erreur est survenue lors de l\'accès au portail de gestion.'
+      );
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleDownloadInvoice = (invoice: BillingHistory) => {
@@ -464,7 +552,7 @@ export function AccountPage() {
                 </p>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-2 text-sm text-muted-foreground">
+              <div className="flex flex-col sm:flex-row gap-2 text-sm text-muted-foreground mb-4">
                 <span className="flex items-center">
                   <Calendar className="w-4 h-4 mr-1" />
                   Renouvellement le {formatDate(subscription.currentPeriodEnd)}
@@ -476,6 +564,29 @@ export function AccountPage() {
                   </span>
                 )}
               </div>
+
+              {/* Manage Subscription Button for paid users */}
+              {subscription.plan !== 'free' && subscription.nextBillingAmount > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleManageSubscription}
+                  disabled={isSaving}
+                  className="w-full"
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Chargement...
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard className="w-4 h-4 mr-2" />
+                      Gérer mon abonnement
+                    </>
+                  )}
+                </Button>
+              )}
             </div>
 
             {/* MVP Beta Notice */}

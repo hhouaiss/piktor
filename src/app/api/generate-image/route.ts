@@ -3,6 +3,8 @@ import { generateMultipleImagesWithGemini, getGeminiAspectRatio, base64ToDataUrl
 import { supabaseService } from "@/lib/supabase/database";
 import { generationService } from "@/lib/supabase/generation-service";
 import type { GenerationRequest, GeneratedImageData } from "@/lib/supabase/generation-service";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
+import type { Database } from "@/lib/supabase/types";
 
 interface PromptData {
   product: {
@@ -61,9 +63,53 @@ interface PromptData {
 export async function POST(request: NextRequest) {
   try {
     if (!process.env.GEMINI_API_KEY) {
-      return NextResponse.json({ 
-        error: "Gemini API key not configured. Please add GEMINI_API_KEY to your .env.local file" 
+      return NextResponse.json({
+        error: "Gemini API key not configured. Please add GEMINI_API_KEY to your .env.local file"
       }, { status: 500 });
+    }
+
+    // Check authentication and credits
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized. Please sign in.' }, { status: 401 });
+    }
+
+    // Check subscription and credits
+    const { data: subscription, error: subError } = await supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('user_id', user.id)
+      .in('status', ['active', 'trialing', 'past_due'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle() as {
+        data: Database['public']['Tables']['subscriptions']['Row'] | null;
+        error: any
+      };
+
+    if (subError) {
+      console.error('Error fetching subscription:', subError);
+    }
+
+    // Check if user has credits
+    if (subscription) {
+      const remaining = subscription.generations_limit - subscription.generations_used;
+      if (remaining <= 0) {
+        return NextResponse.json({
+          error: 'Insufficient credits',
+          message: 'You have used all your generation credits. Please upgrade your plan.',
+          needsUpgrade: true
+        }, { status: 403 });
+      }
+    } else {
+      // No subscription found - should not happen but handle gracefully
+      return NextResponse.json({
+        error: 'No active subscription',
+        message: 'Please activate a subscription plan to generate images.',
+        needsUpgrade: true
+      }, { status: 403 });
     }
 
     const formData = await request.formData();
@@ -208,6 +254,53 @@ export async function POST(request: NextRequest) {
 
         retries--;
       }
+    }
+
+    // Deduct credit after successful generation
+    if (subscription) {
+      try {
+        console.log('[generate-image] Deducting credit. Current:', subscription.generations_used, 'Limit:', subscription.generations_limit, 'Subscription ID:', subscription.id);
+
+        const updateData = {
+          generations_used: subscription.generations_used + 1
+        };
+
+        // Use admin client to bypass RLS for server-side update
+        console.log('[generate-image] Creating admin client...');
+        const supabaseAdmin = await createAdminClient();
+        console.log('[generate-image] Admin client created, service key present:', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+        const { data: updatedData, error: updateError } = await (supabaseAdmin as any)
+          .from('subscriptions')
+          .update(updateData)
+          .eq('id', subscription.id)
+          .select();
+
+        console.log('[generate-image] Update result:', {
+          hasData: !!updatedData,
+          dataCount: updatedData?.length || 0,
+          hasError: !!updateError,
+          errorCode: updateError?.code,
+          errorMessage: updateError?.message
+        });
+
+        if (updateError) {
+          console.error('[generate-image] Failed to update generation count:', {
+            error: updateError,
+            code: updateError?.code,
+            message: updateError?.message,
+            details: updateError?.details,
+            hint: updateError?.hint,
+            subscriptionId: subscription.id
+          });
+        } else {
+          console.log('[generate-image] Credit deducted successfully. New value:', updatedData);
+        }
+      } catch (creditError) {
+        console.error('[generate-image] Error deducting credit:', creditError);
+      }
+    } else {
+      console.error('[generate-image] No subscription found for credit deduction!');
     }
 
     return NextResponse.json({

@@ -1,4 +1,5 @@
-import { supabaseClient, supabaseAdmin } from './config';
+import { supabaseClient } from './client';
+import { supabaseAdmin } from './config';
 
 export interface UploadProgress {
   progress: number; // 0-100

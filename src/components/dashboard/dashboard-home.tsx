@@ -27,6 +27,7 @@ import { analyticsService } from "@/lib/supabase/analytics-service";
 import type { DashboardStats as AnalyticsStats } from "@/lib/supabase/analytics-service";
 import type { Visual } from "@/lib/supabase/types";
 import { extractProductName, formatLabel } from "@/lib/product-name-extractor";
+import { useSubscription } from "@/hooks/useSubscription";
 
 interface DashboardStats {
   totalVisuals: number;
@@ -50,6 +51,7 @@ interface RecentProject {
 
 export function DashboardHome() {
   const { user: authUser, loading: authLoading, supabaseUser } = useSimpleAuth();
+  const { subscription, loading: subscriptionLoading, remainingGenerations } = useSubscription();
 
   // Real data state
   const [stats, setStats] = useState<DashboardStats>({
@@ -64,7 +66,7 @@ export function DashboardHome() {
   const [recentImages, setRecentImages] = useState<Visual[]>([]);
   const [statsLoading, setStatsLoading] = useState(true);
 
-  const loading = authLoading || statsLoading;
+  const loading = authLoading || statsLoading || subscriptionLoading;
   const error = null;
   const user = authUser;
 
@@ -86,13 +88,18 @@ export function DashboardHome() {
         ]);
 
         // Map analytics stats to dashboard stats
+        // Use real subscription data for credits
+        const creditsUsed = subscription?.generationsUsed || 0;
+        const creditsTotal = subscription?.generationsLimit || 0;
+        const creditsRemaining = Math.max(0, creditsTotal - creditsUsed);
+
         setStats({
           totalVisuals: analyticsStats.totalVisuals,
           thisMonth: analyticsStats.thisMonthVisuals,
           downloads: analyticsStats.totalDownloads,
           views: analyticsStats.totalViews,
-          creditsUsed: authUser.usage?.creditsUsed || 0,
-          creditsRemaining: (authUser.usage?.creditsTotal || 50) - (authUser.usage?.creditsUsed || 0),
+          creditsUsed: creditsUsed,
+          creditsRemaining: creditsRemaining,
           projects: 0 // Can add project count later
         });
 
@@ -115,7 +122,7 @@ export function DashboardHome() {
     }
 
     fetchDashboardData();
-  }, [authUser]);
+  }, [authUser, subscription]);
 
   const handleCreateNewVisual = () => {
     trackEvent('dashboard_create_new_clicked', {

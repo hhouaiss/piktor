@@ -1,4 +1,4 @@
-import { supabaseClient } from '@/lib/supabase/config';
+import { supabaseClient } from '@/lib/supabase/client';
 
 /**
  * Get authentication headers for API requests using Supabase

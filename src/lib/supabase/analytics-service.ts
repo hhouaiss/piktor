@@ -8,7 +8,8 @@
  * - Recent visuals
  */
 
-import { supabaseClient, supabaseAdmin } from './config';
+import { supabaseClient } from './client';
+import { supabaseAdmin } from './config';
 
 export interface DashboardStats {
   totalVisuals: number;

@@ -77,6 +77,8 @@ export function VisualLibrary() {
 
   const loadVisuals = useCallback(async (userId: string, append: boolean = false) => {
     try {
+      console.log('[VisualLibrary] Loading visuals for user:', userId);
+
       if (!append) {
         setLoading(true);
         setError(null);
@@ -100,6 +102,7 @@ export function VisualLibrary() {
       };
 
       const result = await supabaseService.getUserVisuals(userId, filters, sort, pagination);
+      console.log('[VisualLibrary] Loaded visuals:', result.data.length, 'items');
 
 
 
