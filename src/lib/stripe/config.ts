@@ -27,7 +27,11 @@ export function getStripe(): Stripe {
     );
   }
 
-  return new Stripe(secretKey, {
+  // Clean the secret key to remove any invisible characters or whitespace
+  // This is critical for production where environment variables might have trailing/leading whitespace
+  const cleanedSecretKey = secretKey.trim().replace(/[\r\n\t]/g, '');
+
+  return new Stripe(cleanedSecretKey, {
     apiVersion: STRIPE_API_VERSION,
     typescript: true,
   });

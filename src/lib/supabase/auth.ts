@@ -268,9 +268,51 @@ class SupabaseAuthService {
       .eq('id', userId)
       .single();
 
+    // Handle case where user profile doesn't exist yet (PGRST116 = no rows returned)
+    if (error && error.code === 'PGRST116') {
+      console.log('[getUserData] User profile not found, attempting to create it for:', userId);
+
+      // Get user from auth to create profile
+      const { data: authData } = await supabaseClient.auth.getUser();
+      if (authData?.user?.id === userId) {
+        // Create the user profile
+        await this.ensureUserProfile(authData.user);
+
+        // Try again to fetch the profile
+        const { data: retryData, error: retryError } = await supabaseClient
+          .from('users')
+          .select('*')
+          .eq('id', userId)
+          .single();
+
+        if (retryError || !retryData) {
+          console.error('[getUserData] Failed to create user profile:', retryError);
+          throw new Error(`Failed to create user profile for user ID: ${userId}`);
+        }
+
+        const userData = retryData as any;
+        return {
+          id: userData.id,
+          email: userData.email,
+          display_name: userData.display_name,
+          photo_url: userData.photo_url,
+          usage: userData.usage || { creditsUsed: 0, creditsTotal: 50, resetDate: null },
+          preferences: userData.preferences || { language: 'fr', notifications: true, theme: 'auto' },
+          subscription: userData.subscription,
+          email_confirmed: true,
+          created_at: new Date(userData.created_at),
+          updated_at: new Date(userData.updated_at)
+        };
+      }
+
+      // If we couldn't get the auth user or IDs don't match, throw error
+      throw new Error(`User profile not found for user ID: ${userId}`);
+    }
+
+    // Handle other errors
     if (error) {
       console.error('Error fetching user profile:', error);
-      throw new Error(`User profile not found for user ID: ${userId}`);
+      throw new Error(`Error fetching user profile: ${error.message}`);
     }
 
     if (!data) {
