@@ -384,10 +384,60 @@ class SupabaseAuthService {
 
   /**
    * Check if user has sufficient credits
+   * Now checks the subscriptions table instead of user.usage
    */
   async hasCredits(userId: string, creditsNeeded: number = 1): Promise<boolean> {
-    const userData = await this.getUserData(userId);
-    return (userData.usage.creditsTotal - userData.usage.creditsUsed) >= creditsNeeded;
+    try {
+      // Check subscriptions table for active subscription
+      const { data: subscription, error } = await supabaseClient
+        .from('subscriptions')
+        .select('generations_limit, generations_used, status')
+        .eq('user_id', userId)
+        .in('status', ['active', 'trialing', 'past_due'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          // No subscription found - user should have free tier
+          console.log('[hasCredits] No active subscription found for user:', userId);
+          return false;
+        }
+        console.error('[hasCredits] Error fetching subscription:', error);
+        throw error;
+      }
+
+      if (!subscription) {
+        console.log('[hasCredits] No subscription data found for user:', userId);
+        return false;
+      }
+
+      const remainingCredits = subscription.generations_limit - subscription.generations_used;
+      const hasEnoughCredits = remainingCredits >= creditsNeeded;
+
+      console.log('[hasCredits] Credits check for user:', userId, {
+        generationsLimit: subscription.generations_limit,
+        generationsUsed: subscription.generations_used,
+        remainingCredits,
+        creditsNeeded,
+        hasEnoughCredits,
+        status: subscription.status
+      });
+
+      return hasEnoughCredits;
+    } catch (error) {
+      console.error('[hasCredits] Error checking credits:', error);
+      // Fallback to old behavior if subscriptions table doesn't exist
+      // This ensures backward compatibility during migration
+      try {
+        const userData = await this.getUserData(userId);
+        return (userData.usage.creditsTotal - userData.usage.creditsUsed) >= creditsNeeded;
+      } catch (fallbackError) {
+        console.error('[hasCredits] Fallback also failed:', fallbackError);
+        throw fallbackError;
+      }
+    }
   }
 
   /**
