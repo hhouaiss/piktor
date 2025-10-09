@@ -389,7 +389,8 @@ class SupabaseAuthService {
   async hasCredits(userId: string, creditsNeeded: number = 1): Promise<boolean> {
     try {
       // Check subscriptions table for active subscription
-      const { data: subscription, error } = await supabaseClient
+      // Use supabaseAdmin to bypass RLS policies for server-side credit checks
+      const { data: subscription, error } = await supabaseAdmin
         .from('subscriptions')
         .select('generations_limit, generations_used, status')
         .eq('user_id', userId)
