@@ -432,18 +432,25 @@ function VisualCreationContent() {
       // Try dashboard API first for enhanced personalization
       let response;
       try {
-        response = await authenticatedPost('/api/generate-dashboard-images', dashboardPayload, {
+        // Build headers - only include admin override if explicitly enabled
+        const headers: Record<string, string> = {
           'x-usage-count': (usageData?.generationCount || 0).toString(),
-          'x-admin-override': isAdminOverride ? 'true' : 'false',
-        });
-        
+        };
+
+        // Only send admin override header when explicitly enabled (not false)
+        if (isAdminOverride) {
+          headers['x-admin-override'] = 'true';
+        }
+
+        response = await authenticatedPost('/api/generate-dashboard-images', dashboardPayload, headers);
+
         if (!response.ok) {
           console.warn('Dashboard API failed, falling back to direct generation');
           throw new Error('Dashboard API not available');
         }
       } catch {
         console.log('Falling back to direct generation API with enhanced context');
-        
+
         // Fallback to direct generation with enhanced context
         const fallbackPayload = {
           productSpecs,
@@ -455,10 +462,17 @@ function VisualCreationContent() {
           }
         };
 
-        response = await authenticatedPost('/api/generate-images-direct', fallbackPayload, {
+        // Build headers - only include admin override if explicitly enabled
+        const fallbackHeaders: Record<string, string> = {
           'x-usage-count': (usageData?.generationCount || 0).toString(),
-          'x-admin-override': isAdminOverride ? 'true' : 'false',
-        });
+        };
+
+        // Only send admin override header when explicitly enabled (not false)
+        if (isAdminOverride) {
+          fallbackHeaders['x-admin-override'] = 'true';
+        }
+
+        response = await authenticatedPost('/api/generate-images-direct', fallbackPayload, fallbackHeaders);
       }
 
       if (!response.ok) {

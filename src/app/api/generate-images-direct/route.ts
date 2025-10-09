@@ -7,6 +7,7 @@ import {
 } from "@/lib/gemini-api";
 import { generateProductionPrompt } from "@/lib/production-prompt-engine";
 import { detectEnvironment } from "@/lib/usage-limits";
+import { supabaseAuthService } from "@/lib/supabase";
 import { generationService } from "@/lib/supabase/generation-service";
 import type { GenerationRequest, GeneratedImageData } from "@/lib/supabase/generation-service";
 import { verifyAdminOverride } from "@/lib/server-admin-auth";
@@ -45,8 +46,14 @@ async function checkServerSideUsageLimit(request: NextRequest): Promise<{ allowe
   }
 
   // SECURITY: Check for admin override with server-side verification
+  // Admin override should ONLY be processed when explicitly requested (header === 'true')
+  // AND when user is verified as admin on server-side
   const adminHeader = request.headers.get('x-admin-override');
+
+  // Only process admin override if explicitly requested (not 'false' or missing)
   if (adminHeader === 'true') {
+    console.log('[checkServerSideUsageLimit] Admin override requested for user:', userId);
+
     // Verify admin status server-side (NOT just trusting client header)
     const adminVerification = verifyAdminOverride(adminHeader, userId);
 
@@ -57,26 +64,53 @@ async function checkServerSideUsageLimit(request: NextRequest): Promise<{ allowe
       console.warn(`[checkServerSideUsageLimit] ❌ Admin override REJECTED - ${adminVerification.reason}`);
       // Continue to normal usage check (don't allow unauthorized admin override)
     }
+  } else {
+    console.log('[checkServerSideUsageLimit] No admin override requested (header:', adminHeader, ') - proceeding with normal limit checks');
   }
 
-  // For production, we rely on client-side tracking
-  // but add additional server-side rate limiting based on IP/session
-  const clientUsageHeader = request.headers.get('x-usage-count');
-  const maxGenerations = 5;
+  // Check user ID for production environment (already extracted above)
+  try {
+    if (!userId) {
+      console.warn('[checkServerSideUsageLimit] Missing x-user-id header in request for production environment');
+      return { allowed: false, reason: 'Authentication required', environment };
+    }
 
-  if (clientUsageHeader) {
-    const usageCount = parseInt(clientUsageHeader, 10);
-    if (usageCount >= maxGenerations) {
+    console.log('[checkServerSideUsageLimit] Checking credits for user:', userId);
+    // Check if user has sufficient credits
+    const hasCredits = await supabaseAuthService.hasCredits(userId, 1);
+    console.log('[checkServerSideUsageLimit] Credits check result:', hasCredits);
+
+    if (!hasCredits) {
+      console.warn('[checkServerSideUsageLimit] Insufficient credits for user:', userId);
       return {
         allowed: false,
-        reason: `Usage limit exceeded (${usageCount}/${maxGenerations})`,
+        reason: 'Insufficient credits',
         environment,
-        userId: userId || undefined
+        userId: userId
       };
     }
-  }
 
-  return { allowed: true, environment, userId: userId || undefined };
+    console.log('[checkServerSideUsageLimit] Usage limit check passed for user:', userId);
+    return { allowed: true, environment, userId: userId };
+  } catch (error) {
+    console.error('[checkServerSideUsageLimit] Error checking usage limits:', error);
+    // Fallback to original client-side tracking for backward compatibility
+    const clientUsageHeader = request.headers.get('x-usage-count');
+    const maxGenerations = 5;
+
+    if (clientUsageHeader) {
+      const usageCount = parseInt(clientUsageHeader, 10);
+      if (usageCount >= maxGenerations) {
+        return {
+          allowed: false,
+          reason: `Usage limit exceeded (${usageCount}/${maxGenerations})`,
+          environment
+        };
+      }
+    }
+
+    return { allowed: true, environment };
+  }
 }
 
 export async function POST(request: NextRequest) {

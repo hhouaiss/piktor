@@ -57,10 +57,14 @@ async function checkServerSideUsageLimit(request: NextRequest): Promise<{ allowe
   }
   
   // SECURITY: Check for admin override with server-side verification
+  // Admin override should ONLY be processed when explicitly requested (header === 'true')
+  // AND when user is verified as admin on server-side
   const adminHeader = request.headers.get('x-admin-override');
-  console.log('[checkServerSideUsageLimit] Admin override header:', adminHeader);
 
+  // Only process admin override if explicitly requested (not 'false' or missing)
   if (adminHeader === 'true') {
+    console.log('[checkServerSideUsageLimit] Admin override requested for user:', userId);
+
     // Verify admin status server-side (NOT just trusting client header)
     const adminVerification = verifyAdminOverride(adminHeader, userId);
 
@@ -71,6 +75,8 @@ async function checkServerSideUsageLimit(request: NextRequest): Promise<{ allowe
       console.warn(`[checkServerSideUsageLimit] ❌ Admin override REJECTED - ${adminVerification.reason}`);
       // Continue to normal credit check (don't allow unauthorized admin override)
     }
+  } else {
+    console.log('[checkServerSideUsageLimit] No admin override requested (header:', adminHeader, ') - proceeding with normal limit checks');
   }
 
   // Check user ID for production environment (already extracted above)

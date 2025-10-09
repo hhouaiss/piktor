@@ -229,14 +229,22 @@ function HomeContent() {
       };
 
       const authHeaders = await getAuthHeaders();
+
+      // Build headers - only include admin override if explicitly enabled
+      const requestHeaders: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'x-usage-count': (usageData?.generationCount || 0).toString(),
+        ...authHeaders
+      };
+
+      // Only send admin override header when explicitly enabled (not false)
+      if (isAdminOverride) {
+        requestHeaders['x-admin-override'] = 'true';
+      }
+
       const response = await fetch('/api/generate-images-direct', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-usage-count': (usageData?.generationCount || 0).toString(),
-          'x-admin-override': isAdminOverride ? 'true' : 'false',
-          ...authHeaders
-        },
+        headers: requestHeaders,
         body: JSON.stringify(apiPayload),
       });
 
