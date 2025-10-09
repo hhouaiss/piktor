@@ -396,7 +396,7 @@ class SupabaseAuthService {
         .in('status', ['active', 'trialing', 'past_due'])
         .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .single() as { data: { generations_limit: number; generations_used: number; status: string } | null; error: any };
 
       if (error) {
         if (error.code === 'PGRST116') {
