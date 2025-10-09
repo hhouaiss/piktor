@@ -539,9 +539,46 @@ ${productionPromptResult.prompt.split('🔧 PRODUCTION QUALITY ENHANCEMENT:')[1]
       completeness: result.feedback.completeness
     });
 
-    return NextResponse.json({ 
+    // CREDIT DEDUCTION: Update subscription after successful generation
+    if (usageLimitCheck.userId && variations.length > 0) {
+      try {
+        console.log('[Dashboard API] Deducting credit for user:', usageLimitCheck.userId);
+        const { getUserSubscription } = await import('@/lib/supabase/subscriptions');
+        const { createAdminClient } = await import('@/lib/supabase/server');
+
+        const subscription = await getUserSubscription(usageLimitCheck.userId);
+
+        if (subscription) {
+          console.log('[Dashboard API] Current subscription:', {
+            id: subscription.id,
+            planId: subscription.planId,
+            generationsUsed: subscription.usage.generationsUsed,
+            generationsLimit: subscription.usage.generationsLimit
+          });
+
+          const supabaseAdmin = await createAdminClient();
+          const { error: updateError } = await (supabaseAdmin as any)
+            .from('subscriptions')
+            .update({ generations_used: subscription.usage.generationsUsed + 1 })
+            .eq('id', subscription.id);
+
+          if (updateError) {
+            console.error('[Dashboard API] Failed to deduct credit:', updateError);
+          } else {
+            console.log('[Dashboard API] ✅ Credit deducted successfully. New count:', subscription.usage.generationsUsed + 1, '/', subscription.usage.generationsLimit);
+          }
+        } else {
+          console.warn('[Dashboard API] No subscription found for credit deduction');
+        }
+      } catch (creditError) {
+        console.error('[Dashboard API] Error during credit deduction:', creditError);
+        // Don't fail the request if credit deduction fails
+      }
+    }
+
+    return NextResponse.json({
       success: true,
-      result 
+      result
     });
 
   } catch (error) {

@@ -606,7 +606,7 @@ export function VisualLibrary() {
             {projectFilter ? 'Visuels du projet' : 'Bibliothèque de visuels'}
           </h1>
           <p className="text-muted-foreground mt-1">
-            {filteredVisuals.length} visuel(s) • {visuals.reduce((sum, v) => sum + v.downloads, 0)} téléchargements
+            {filteredVisuals.length} visuel(s)
             {projectFilter && (
               <span className="ml-2 px-2 py-1 bg-primary/10 text-primary rounded text-xs">
                 Filtré par projet

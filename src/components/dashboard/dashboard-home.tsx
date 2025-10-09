@@ -461,9 +461,14 @@ export function DashboardHome() {
                   ></div>
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Renouvellement le 15 octobre
-              </p>
+              {subscription?.currentPeriodEnd && (
+                <p className="text-xs text-muted-foreground">
+                  Renouvellement le {new Date(subscription.currentPeriodEnd).toLocaleDateString('fr-FR', {
+                    day: 'numeric',
+                    month: 'long'
+                  })}
+                </p>
+              )}
             </div>
           </Card>
 
@@ -480,7 +485,7 @@ export function DashboardHome() {
                   de visuels professionnels.
                 </p>
                 <Button variant="link" className="p-0 h-auto text-primary mt-2" asChild>
-                  <Link href="/dashboard/tutorials">
+                  <Link href="https://calendar.notion.so/meet/hassanhouaiss/piktor">
                     En savoir plus →
                   </Link>
                 </Button>

@@ -56,29 +56,7 @@ interface BillingHistory {
 }
 
 
-const mockBillingHistory: BillingHistory[] = [
-  {
-    id: "inv_001",
-    date: "2024-09-15",
-    amount: 49,
-    status: "paid",
-    invoice: "piktor_invoice_001.pdf"
-  },
-  {
-    id: "inv_002", 
-    date: "2024-08-15",
-    amount: 49,
-    status: "paid",
-    invoice: "piktor_invoice_002.pdf"
-  },
-  {
-    id: "inv_003",
-    date: "2024-07-15", 
-    amount: 49,
-    status: "paid",
-    invoice: "piktor_invoice_003.pdf"
-  }
-];
+const mockBillingHistory: BillingHistory[] = [];
 
 export function AccountPage() {
   const { user, loading: authLoading, updateProfile } = useSimpleAuth();
@@ -777,45 +755,57 @@ export function AccountPage() {
           Historique de facturation
         </h2>
 
-        <div className="space-y-4">
-          {billingHistory.map((bill) => (
-            <div key={bill.id} className="flex items-center justify-between p-4 border border-border rounded-lg">
-              <div className="flex items-center space-x-4">
-                <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center">
-                  <FileText className="w-5 h-5 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="font-medium text-foreground">Facture #{bill.id}</p>
-                  <p className="text-sm text-muted-foreground">{formatDate(bill.date)}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-4">
-                <span className={getStatusBadge(bill.status)}>
-                  {getStatusText(bill.status)}
-                </span>
-                <span className="font-semibold text-foreground">{bill.amount}€</span>
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => handleDownloadInvoice(bill)}
-                >
-                  <Download className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {billingHistory.length === 0 && (
+        {subscription.plan === 'free' || subscription.nextBillingAmount === 0 ? (
           <div className="text-center py-12">
             <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-foreground mb-2">
-              Aucune facture
+              Aucune facture disponible
             </h3>
             <p className="text-muted-foreground">
               Vos factures apparaîtront ici après votre premier paiement
             </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {billingHistory.length === 0 ? (
+              <div className="text-center py-12">
+                <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-foreground mb-2">
+                  Aucune facture disponible
+                </h3>
+                <p className="text-muted-foreground">
+                  Vos factures seront disponibles ici prochainement
+                </p>
+              </div>
+            ) : (
+              billingHistory.map((bill) => (
+                <div key={bill.id} className="flex items-center justify-between p-4 border border-border rounded-lg">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center">
+                      <FileText className="w-5 h-5 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground">Facture #{bill.id}</p>
+                      <p className="text-sm text-muted-foreground">{formatDate(bill.date)}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-4">
+                    <span className={getStatusBadge(bill.status)}>
+                      {getStatusText(bill.status)}
+                    </span>
+                    <span className="font-semibold text-foreground">{bill.amount}€</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDownloadInvoice(bill)}
+                    >
+                      <Download className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         )}
       </Card>
@@ -827,16 +817,46 @@ export function AccountPage() {
           <div className="flex-1">
             <h3 className="text-lg font-semibold text-foreground mb-2">Zone de danger</h3>
             <p className="text-muted-foreground mb-4">
-              Actions irréversibles concernant votre compte.
+              Action irréversible : cette opération supprimera définitivement votre compte et toutes vos données.
             </p>
-            <div className="space-y-3">
-              <Button variant="outline" className="border-error-200 text-error-700 hover:bg-error-50">
-                Annuler l&apos;abonnement
-              </Button>
-              <Button variant="outline" className="border-error-200 text-error-700 hover:bg-error-50">
-                Supprimer le compte
-              </Button>
-            </div>
+            <Button
+              variant="outline"
+              className="border-error-200 text-error-700 hover:bg-error-50"
+              onClick={async () => {
+                if (window.confirm('Êtes-vous absolument sûr de vouloir supprimer votre compte ? Cette action est irréversible et supprimera toutes vos données, visuels et abonnements.')) {
+                  try {
+                    setIsSaving(true);
+                    const response = await fetch('/api/auth/delete-account', {
+                      method: 'DELETE',
+                      credentials: 'include'
+                    });
+
+                    if (!response.ok) {
+                      const error = await response.json();
+                      throw new Error(error.error || 'Échec de la suppression du compte');
+                    }
+
+                    // Redirect to home page after successful deletion
+                    window.location.href = '/';
+                  } catch (error) {
+                    console.error('Error deleting account:', error);
+                    alert(error instanceof Error ? error.message : 'Une erreur est survenue lors de la suppression du compte.');
+                  } finally {
+                    setIsSaving(false);
+                  }
+                }
+              }}
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Suppression...
+                </>
+              ) : (
+                'Supprimer le compte'
+              )}
+            </Button>
           </div>
         </div>
       </Card>

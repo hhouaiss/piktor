@@ -36,7 +36,7 @@ export interface DbSubscription {
  * Get user's active subscription
  */
 export async function getUserSubscription(userId: string): Promise<Subscription | null> {
-  const { data, error } = await supabase
+  const { data, error } = await (supabaseAdmin as any)
     .from('subscriptions')
     .select('*')
     .eq('user_id', userId)
@@ -83,6 +83,21 @@ export async function createSubscription(params: {
     periodEnd.setMonth(periodEnd.getMonth() + 1);
   } else {
     periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+  }
+
+  // Cancel all previous active subscriptions for this user before creating a new one
+  console.log('[createSubscription] Canceling previous active subscriptions for user:', params.userId);
+  const { error: cancelError } = await (supabaseAdmin as any)
+    .from('subscriptions')
+    .update({ status: 'canceled', canceled_at: now.toISOString() })
+    .eq('user_id', params.userId)
+    .in('status', ['active', 'trialing', 'past_due']);
+
+  if (cancelError) {
+    console.error('[createSubscription] Error canceling previous subscriptions:', cancelError);
+    // Don't throw - continue with creating new subscription
+  } else {
+    console.log('[createSubscription] Previous subscriptions canceled successfully');
   }
 
   const { data, error } = await (supabaseAdmin as any)

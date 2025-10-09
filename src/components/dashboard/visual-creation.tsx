@@ -145,6 +145,8 @@ function VisualCreationContent() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState(0);
+  const [generationMessage, setGenerationMessage] = useState("");
 
   // Usage limiting hooks
   const { canGenerate, remainingGenerations, isLimitReached, environment, isAdminOverride } = useCanGenerate();
@@ -350,7 +352,28 @@ function VisualCreationContent() {
 
     setIsGenerating(true);
     setGenerationError(null);
-    
+    setGenerationProgress(0);
+    setGenerationMessage("Préparation de votre visuel...");
+
+    // Animation progress
+    const progressInterval = setInterval(() => {
+      setGenerationProgress(prev => {
+        if (prev >= 95) return 95; // Stop at 95% until real completion
+        return prev + 1;
+      });
+    }, 100); // Update every 100ms for smooth animation (10 seconds to reach 95%)
+
+    // Update messages based on progress
+    const messageInterval = setInterval(() => {
+      setGenerationProgress(curr => {
+        if (curr < 30) setGenerationMessage("Analyse de vos images...");
+        else if (curr < 60) setGenerationMessage("Création de votre visuel...");
+        else if (curr < 90) setGenerationMessage("Application des paramètres...");
+        else setGenerationMessage("Piktor applique les dernières touches...");
+        return curr;
+      });
+    }, 3000); // Change message every 3 seconds
+
     const generationStartTime = Date.now();
     
     trackImageGeneration.generationStarted({
@@ -519,8 +542,14 @@ function VisualCreationContent() {
         }
       }));
 
+      // Complete the progress animation
+      clearInterval(progressInterval);
+      clearInterval(messageInterval);
+      setGenerationProgress(100);
+      setGenerationMessage("Visuel créé avec succès !");
+
       setGeneratedImages(newGeneratedImages);
-      
+
       // Record the successful generation
       recordGeneration();
 
@@ -532,20 +561,26 @@ function VisualCreationContent() {
         productType: productCategory || undefined,
         productName: productName || undefined
       });
-      
+
     } catch (error) {
       console.error('Generation failed:', error);
-      
+
+      // Clear intervals on error
+      clearInterval(progressInterval);
+      clearInterval(messageInterval);
+
       trackImageGeneration.generationFailed({
         errorType: 'api_error',
         errorMessage: error instanceof Error ? error.message : 'Unknown error',
         productType: productCategory || undefined
       });
-      
+
       setGenerationError(error instanceof Error ? error.message : 'Erreur inconnue');
-      
+
     } finally {
       setIsGenerating(false);
+      setGenerationProgress(0);
+      setGenerationMessage("");
     }
   };
 
@@ -1138,13 +1173,45 @@ function VisualCreationContent() {
         <div className="text-center">
           <Card className="p-12 max-w-md mx-auto">
             <div className="space-y-6">
-              <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto" />
+              {/* Progress Circle */}
+              <div className="relative w-32 h-32 mx-auto">
+                <svg className="w-32 h-32 transform -rotate-90">
+                  <circle
+                    cx="64"
+                    cy="64"
+                    r="56"
+                    stroke="currentColor"
+                    strokeWidth="8"
+                    fill="none"
+                    className="text-muted/20"
+                  />
+                  <circle
+                    cx="64"
+                    cy="64"
+                    r="56"
+                    stroke="currentColor"
+                    strokeWidth="8"
+                    fill="none"
+                    strokeDasharray={`${2 * Math.PI * 56}`}
+                    strokeDashoffset={`${2 * Math.PI * 56 * (1 - generationProgress / 100)}`}
+                    className="text-primary transition-all duration-300"
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-3xl font-bold text-foreground">{generationProgress}%</span>
+                </div>
+              </div>
+
               <div>
                 <h3 className="text-lg font-semibold text-foreground mb-2">
-                  Création en cours...
+                  {generationMessage}
                 </h3>
-                <p className="text-muted-foreground">
-                  L&apos;IA analyse vos photos et génère vos visuels personnalisés
+                <p className="text-sm text-muted-foreground">
+                  {generationProgress < 90
+                    ? `Temps estimé : ${Math.max(1, Math.ceil((100 - generationProgress) / 10))} secondes`
+                    : "Finalisation en cours..."
+                  }
                 </p>
               </div>
             </div>
@@ -1181,21 +1248,47 @@ function VisualCreationContent() {
             <h3 className="text-xl font-semibold text-foreground">
               {generatedImages.length} visuel(s) générés
             </h3>
-            <Button variant="outline" onClick={() => router.push('/dashboard/library')}>
-              <Eye className="w-4 h-4 mr-2" />
-              Voir dans la bibliothèque
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => router.push('/dashboard/library')}>
+                <Eye className="w-4 h-4 mr-2" />
+                Voir dans la bibliothèque
+              </Button>
+              <Button
+                onClick={() => {
+                  // Clear localStorage
+                  localStorage.removeItem('piktor_creation_state');
+
+                  // Reset form for new creation
+                  setCurrentStep(1);
+                  setUploadedImages([]);
+                  setProductName("");
+                  setProductCategory("");
+                  setSettings({
+                    style: "",
+                    environment: "",
+                    lighting: "",
+                    angle: "",
+                    format: "square-format"
+                  });
+                  setGeneratedImages([]);
+                  setGenerationError(null);
+                }}
+              >
+                <Plus className="w-5 h-5 mr-2" />
+                Créer un nouveau visuel
+              </Button>
+            </div>
           </div>
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {generatedImages.map((image, index) => (
               <Card key={image.id} className="overflow-hidden">
-                <div className="relative aspect-square bg-sophisticated-gray-100 overflow-hidden">
+                <div className="relative aspect-square bg-sophisticated-gray-100 overflow-hidden flex items-center justify-center">
                   <Image
                     src={image.url}
                     alt={`Visuel généré ${index + 1}`}
                     fill
-                    className="object-cover object-center cursor-pointer hover:scale-105 transition-transform duration-300"
+                    className="object-contain cursor-pointer hover:scale-105 transition-transform duration-300"
                     onClick={() => viewImage(image)}
                     sizes="(max-width: 768px) 100vw, 50vw"
                   />

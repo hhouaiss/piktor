@@ -28,7 +28,7 @@ export function VideoAdCreation() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
-  const [prompt, setPrompt] = useState("Create a cinematic advertisement showcasing this furniture product in a modern, elegant setting. Show the product from multiple angles with smooth camera movements, professional lighting, and an upscale atmosphere.");
+  const [prompt, setPrompt] = useState("Transform this furniture piece into a professional advertisement. Maintain the exact furniture design, proportions, colors, and materials. Add cinematic camera movements around the furniture, professional studio lighting that highlights textures and craftsmanship, and an elegant modern interior setting. The furniture should remain the hero of the shot with smooth 360-degree rotation or dynamic angles that showcase its best features.");
   const [duration, setDuration] = useState("4");
   const [generatedVideo, setGeneratedVideo] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);

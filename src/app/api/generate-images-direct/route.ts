@@ -313,6 +313,42 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // CREDIT DEDUCTION: Update subscription after successful generation
+    if (usageLimitCheck.userId && variations.length > 0) {
+      try {
+        console.log('[Direct API] Deducting credit for user:', usageLimitCheck.userId);
+        const { getUserSubscription } = await import('@/lib/supabase/subscriptions');
+        const { createAdminClient } = await import('@/lib/supabase/server');
+
+        const subscription = await getUserSubscription(usageLimitCheck.userId);
+
+        if (subscription) {
+          console.log('[Direct API] Current subscription:', {
+            id: subscription.id,
+            generationsUsed: subscription.usage.generationsUsed,
+            generationsLimit: subscription.usage.generationsLimit
+          });
+
+          const supabaseAdmin = await createAdminClient();
+          const { error: updateError } = await (supabaseAdmin as any)
+            .from('subscriptions')
+            .update({ generations_used: subscription.usage.generationsUsed + 1 })
+            .eq('id', subscription.id);
+
+          if (updateError) {
+            console.error('[Direct API] Failed to deduct credit:', updateError);
+          } else {
+            console.log('[Direct API] ✅ Credit deducted successfully. New count:', subscription.usage.generationsUsed + 1, '/', subscription.usage.generationsLimit);
+          }
+        } else {
+          console.warn('[Direct API] No subscription found for credit deduction');
+        }
+      } catch (creditError) {
+        console.error('[Direct API] Error during credit deduction:', creditError);
+        // Don't fail the request if credit deduction fails
+      }
+    }
+
     const result = {
       productConfigId: `direct-generation-${Date.now()}`,
       productName: productSpecs.productName,

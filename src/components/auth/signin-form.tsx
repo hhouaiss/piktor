@@ -147,7 +147,7 @@ export function SignInForm() {
           </Button>
         </form>
 
-        <div className="relative my-6">
+        {/* <div className="relative my-6">
           <div className="absolute inset-0 flex items-center">
             <Separator className="w-full" />
           </div>
@@ -171,7 +171,7 @@ export function SignInForm() {
             <Chrome className="w-4 h-4 mr-2" />
           )}
           Google
-        </Button>
+        </Button> */}
 
         <div className="mt-6 text-center">
           <p className="text-sm text-muted-foreground">

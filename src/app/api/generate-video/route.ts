@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import sharp from "sharp";
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,7 +11,7 @@ export async function POST(request: NextRequest) {
 
     const formData = await request.formData();
     const image = formData.get("image") as File;
-    const prompt = formData.get("prompt") as string || "Create a cinematic advertisement showcasing this furniture product in a modern, elegant setting. Show the product from multiple angles with smooth camera movements, professional lighting, and an upscale atmosphere.";
+    const prompt = formData.get("prompt") as string || "Transform this furniture piece into a professional advertisement. Maintain the exact furniture design, proportions, colors, and materials. Add cinematic camera movements around the furniture, professional studio lighting that highlights textures and craftsmanship, and an elegant modern interior setting. The furniture should remain the hero of the shot with smooth 360-degree rotation or dynamic angles that showcase its best features.";
     const seconds = formData.get("seconds") as string || "4";
 
     if (!image) {
@@ -19,14 +20,35 @@ export async function POST(request: NextRequest) {
 
     console.log(`Processing video generation - Duration: ${seconds}s`);
 
+    // Resize image to match required dimensions for Sora 2
+    // Supported sizes: 720x1280 (portrait), 1280x720 (landscape), 1024x1792, 1792x1024
+    const targetWidth = 1280;
+    const targetHeight = 720;
+
+    console.log(`Resizing image to ${targetWidth}x${targetHeight}...`);
+
+    const imageBuffer = Buffer.from(await image.arrayBuffer());
+    const resizedImageBuffer = await sharp(imageBuffer)
+      .resize(targetWidth, targetHeight, {
+        fit: 'cover', // Crop to fill the dimensions while maintaining aspect ratio
+        position: 'center'
+      })
+      .jpeg({ quality: 95 }) // High quality for best results
+      .toBuffer();
+
+    console.log(`Image resized successfully. Size: ${resizedImageBuffer.length} bytes`);
+
     // Create FormData for multipart/form-data request
     const openaiFormData = new FormData();
     openaiFormData.append("prompt", prompt);
-    // Temporarily removed input_reference to test text-to-video
-    // openaiFormData.append("input_reference", image);
+
+    // Add resized image as reference
+    const imageBlob = new Blob([resizedImageBuffer], { type: 'image/jpeg' });
+    openaiFormData.append("input_reference", imageBlob, 'furniture.jpg');
+
     openaiFormData.append("model", "sora-2");
     openaiFormData.append("seconds", seconds);
-    openaiFormData.append("size", "1280x720"); // Try with size for text-to-video
+    openaiFormData.append("size", `${targetWidth}x${targetHeight}`);
 
     // Retry logic for video creation
     let result;
