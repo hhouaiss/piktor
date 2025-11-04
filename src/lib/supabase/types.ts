@@ -306,6 +306,62 @@ export interface Database {
           created_at?: string
         }
       }
+      image_edits: {
+        Row: {
+          id: string
+          edit_id: string
+          user_id: string
+          original_visual_id: string
+          parent_edit_id: string | null
+          edited_image_url: string
+          thumbnail_url: string | null
+          edit_params: Json
+          prompt: string
+          metadata: Json
+          version_number: number
+          is_latest_version: boolean
+          views: number
+          downloads: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          edit_id: string
+          user_id: string
+          original_visual_id: string
+          parent_edit_id?: string | null
+          edited_image_url: string
+          thumbnail_url?: string | null
+          edit_params: Json
+          prompt: string
+          metadata: Json
+          version_number?: number
+          is_latest_version?: boolean
+          views?: number
+          downloads?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          edit_id?: string
+          user_id?: string
+          original_visual_id?: string
+          parent_edit_id?: string | null
+          edited_image_url?: string
+          thumbnail_url?: string | null
+          edit_params?: Json
+          prompt?: string
+          metadata?: Json
+          version_number?: number
+          is_latest_version?: boolean
+          views?: number
+          downloads?: number
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
@@ -389,6 +445,7 @@ export interface VisualMetadata {
 
 export interface Visual {
   id: string
+  visualId: string // The visual_id from database
   userId: string
   name: string
   description?: string
@@ -596,3 +653,82 @@ export type UpdateVisual = Database['public']['Tables']['visuals']['Update']
 export type UpdateProject = Database['public']['Tables']['projects']['Update']
 export type UpdateUsageRecord = Database['public']['Tables']['usage_records']['Update']
 export type UpdateUserStats = Database['public']['Tables']['user_stats']['Update']
+
+// Image Edit types
+export type DatabaseImageEdit = Database['public']['Tables']['image_edits']['Row']
+export type InsertImageEdit = Database['public']['Tables']['image_edits']['Insert']
+export type UpdateImageEdit = Database['public']['Tables']['image_edits']['Update']
+
+// Edit Parameters interface
+export interface EditParams {
+  aspectRatio: '16:9' | '1:1' | '9:16' | '4:3' | '3:2'
+  viewAngle: 'frontal' | '45-degree' | 'top-down' | 'perspective' | 'custom'
+  lighting: 'soft' | 'dramatic' | 'natural' | 'studio' | 'golden-hour' | 'custom'
+  style: 'photorealistic' | 'minimalist' | 'artistic' | 'vintage' | 'modern' | 'custom'
+  customPrompt?: string
+}
+
+// Edit Metadata interface
+export interface EditMetadata {
+  model: string
+  timestamp: string
+  processingTime: number
+  creditsUsed: number
+  variation: number
+  originalDimensions: { width: number; height: number }
+  editedDimensions: { width: number; height: number }
+}
+
+// Image Edit application interface
+export interface ImageEdit {
+  id: string
+  edit_id: string
+  user_id: string
+  original_visual_id: string
+  parent_edit_id: string | null
+  edited_image_url: string
+  thumbnail_url: string | null
+  edit_params: EditParams
+  prompt: string
+  metadata: EditMetadata
+  version_number: number
+  is_latest_version: boolean
+  views: number
+  downloads: number
+  created_at: string
+  updated_at: string
+}
+
+// Edit result from API
+export interface EditResult {
+  editId: string
+  editedImageUrl: string
+  thumbnailUrl: string | null
+  editParams: EditParams
+  metadata: EditMetadata
+  versionNumber: number
+}
+
+// Edit request for service
+export interface EditRequest {
+  userId: string
+  originalVisualId: string
+  originalImageUrl: string
+  editParams: EditParams
+  variations: number
+  parentEditId?: string
+  productName?: string
+}
+
+// Edit history tree node
+export interface EditTreeNode {
+  id: string
+  edit_id: string
+  parent_edit_id: string | null
+  version_number: number
+  edit_params: EditParams
+  created_at: string
+  is_latest_version: boolean
+  children_count: number
+  children?: EditTreeNode[]
+}

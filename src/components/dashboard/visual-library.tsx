@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ImageModal } from "@/components/ui/image-modal";
 import { FullscreenImageViewer } from "@/components/ui/fullscreen-image-viewer";
+import { ImageEditorModal } from "@/components/visual-library/image-editor-modal";
+import { VariationsViewerModal } from "@/components/visual-library/variations-viewer-modal";
 import {
   Search,
   Download,
@@ -22,7 +24,9 @@ import {
   Images,
   Loader2,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  Edit,
+  Layers
 } from "lucide-react";
 import { trackEvent, trackImageGeneration } from "@/lib/analytics";
 import { useSimpleAuth } from "@/components/auth/simple-auth-provider";
@@ -59,6 +63,12 @@ export function VisualLibrary() {
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const hasLoadedInitially = useRef(false);
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [visualToEdit, setVisualToEdit] = useState<Visual | null>(null);
+  const [isVariationsOpen, setIsVariationsOpen] = useState(false);
+  const [variationsVisual, setVariationsVisual] = useState<Visual | null>(null);
+  const [variations, setVariations] = useState<any[]>([]);
+  const [loadingVariations, setLoadingVariations] = useState(false);
 
   // Get unique formats and tags for filters
   const availableFormats = Array.from(new Set(visuals.flatMap(v => Array.isArray(v.format) ? v.format : [v.format])));
@@ -268,12 +278,35 @@ export function VisualLibrary() {
     }
   };
 
+  const handleViewVariations = async (visual: Visual) => {
+    setVariationsVisual(visual);
+    setLoadingVariations(true);
+    setIsVariationsOpen(true);
+
+    try {
+      const response = await fetch(`/api/get-variations?visualId=${visual.visualId}`);
+      const data = await response.json();
+
+      if (data.success) {
+        setVariations(data.variations || []);
+      } else {
+        setVariations([]);
+        console.error('Failed to fetch variations:', data.error);
+      }
+    } catch (err) {
+      console.error('Error fetching variations:', err);
+      setVariations([]);
+    } finally {
+      setLoadingVariations(false);
+    }
+  };
+
   const handleToggleFavorite = async (visual: Visual) => {
     try {
       const newFavoriteStatus = await supabaseService.toggleVisualFavorite(visual.id);
-      
+
       // Update local state
-      setVisuals(prev => prev.map(v => 
+      setVisuals(prev => prev.map(v =>
         v.id === visual.id ? { ...v, isFavorite: newFavoriteStatus } : v
       ));
 
@@ -451,6 +484,19 @@ export function VisualLibrary() {
               <Button
                 size="sm"
                 variant="outline"
+                onClick={() => {
+                  setVisualToEdit(visual);
+                  setIsEditorOpen(true);
+                }}
+                title="Modifier l'image"
+                className="flex-1"
+              >
+                <Edit className="w-4 h-4 mr-1" />
+                Modifier
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
                 onClick={() => handleDownload(visual)}
                 title="Télécharger"
                 className="flex-1"
@@ -459,6 +505,18 @@ export function VisualLibrary() {
                 Télécharger
               </Button>
             </div>
+
+            {/* Variations button */}
+            <Button
+              size="sm"
+              variant="default"
+              onClick={() => handleViewVariations(visual)}
+              title="Voir les variations"
+              className="w-full gap-1 bg-ocean-blue-600 hover:bg-ocean-blue-700"
+            >
+              <Layers className="w-4 h-4" />
+              Variations
+            </Button>
 
             <div className="flex flex-wrap gap-1">
               {visual.tags.slice(0, 2).map((tag) => (
@@ -718,6 +776,45 @@ export function VisualLibrary() {
           imageUrl={selectedVisual.originalImageUrl}
           imageAlt={selectedVisual.name}
           onDownload={() => handleDownload(selectedVisual)}
+        />
+      )}
+
+      {/* Image Editor Modal */}
+      {visualToEdit && (
+        <ImageEditorModal
+          isOpen={isEditorOpen}
+          onClose={() => {
+            setIsEditorOpen(false);
+            setVisualToEdit(null);
+          }}
+          visual={{
+            id: visualToEdit.id,
+            visualId: visualToEdit.id,
+            originalImageUrl: visualToEdit.originalImageUrl,
+            metadata: visualToEdit.metadata,
+            name: visualToEdit.name,
+          }}
+          onEditComplete={() => {
+            // Refresh visual library after successful edit
+            if (authUser) {
+              loadVisuals(authUser.id);
+            }
+          }}
+        />
+      )}
+
+      {/* Variations Viewer Modal */}
+      {variationsVisual && (
+        <VariationsViewerModal
+          isOpen={isVariationsOpen}
+          onClose={() => {
+            setIsVariationsOpen(false);
+            setVariationsVisual(null);
+            setVariations([]);
+          }}
+          originalImageUrl={variationsVisual.originalImageUrl}
+          originalImageName={extractProductName(variationsVisual.metadata, variationsVisual.id)}
+          variations={variations}
         />
       )}
     </div>

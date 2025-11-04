@@ -58,6 +58,7 @@ function transformVisual(dbVisual: DatabaseVisual): Visual {
 
   return {
     id: dbVisual.id,
+    visualId: dbVisual.visual_id,
     userId: dbVisual.user_id,
     name: metadata.name || `Visual ${dbVisual.visual_id}`,
     description: metadata.description,

@@ -56,6 +56,7 @@ export async function testDatabaseOperations(userId: string) {
     // Test 3: Create a test visual
     const visualId = await supabaseService.createVisual({
       userId,
+      visualId: `test-visual-${Date.now()}`,
       projectId,
       name: 'Test Visual',
       description: 'A test visual for verification',
