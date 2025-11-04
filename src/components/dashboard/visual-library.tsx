@@ -469,17 +469,16 @@ export function VisualLibrary() {
               {formatDate(visual.createdAt)}
             </div>
 
-            {/* Action buttons below date */}
-            <div className="flex items-center gap-2 mb-3">
+            {/* Action buttons below date - Icons only */}
+            <div className="grid grid-cols-3 gap-2 mb-3">
               <Button
                 size="sm"
                 variant="outline"
                 onClick={() => handleFullscreenView(visual)}
                 title="Voir en plein écran"
-                className="flex-1"
+                className="px-2"
               >
-                <Eye className="w-4 h-4 mr-1" />
-                Voir
+                <Eye className="w-4 h-4" />
               </Button>
               <Button
                 size="sm"
@@ -489,20 +488,18 @@ export function VisualLibrary() {
                   setIsEditorOpen(true);
                 }}
                 title="Modifier l'image"
-                className="flex-1"
+                className="px-2"
               >
-                <Edit className="w-4 h-4 mr-1" />
-                Modifier
+                <Edit className="w-4 h-4" />
               </Button>
               <Button
                 size="sm"
                 variant="outline"
                 onClick={() => handleDownload(visual)}
                 title="Télécharger"
-                className="flex-1"
+                className="px-2"
               >
-                <Download className="w-4 h-4 mr-1" />
-                Télécharger
+                <Download className="w-4 h-4" />
               </Button>
             </div>
 

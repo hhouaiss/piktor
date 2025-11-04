@@ -10,9 +10,10 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { EditControls, type EditParams } from "./edit-controls";
-import { EditResults, type EditResult } from "./edit-results";
+import type { EditResult } from "./edit-results";
 import { cn } from "@/lib/utils";
-import { Wand2, AlertCircle, Download } from "lucide-react";
+import { Wand2, AlertCircle, Download, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 
 /**
@@ -103,20 +104,18 @@ export function ImageEditorModal({
     used?: number;
     remaining?: number;
   }>({});
+  const [showResultScreen, setShowResultScreen] = useState(false);
 
   /**
    * Reset state when modal opens/closes
    */
   useEffect(() => {
-    console.log('🔍 [ImageEditorModal] isOpen changed:', isOpen);
     if (!isOpen) {
       // Reset state when modal closes
-      console.log('🔄 [ImageEditorModal] Resetting state (modal closed)');
 
       // Call onEditComplete when modal closes if there were successful edits
       // This allows the parent to refresh the library after user is done viewing
       if (edits.length > 0 && onEditComplete) {
-        console.log('📞 [ImageEditorModal] Calling onEditComplete on modal close');
         onEditComplete();
       }
 
@@ -124,6 +123,7 @@ export function ImageEditorModal({
       setEdits([]);
       setError(null);
       setCreditsInfo({});
+      setShowResultScreen(false);
     }
   }, [isOpen, edits.length, onEditComplete]);
 
@@ -181,13 +181,6 @@ export function ImageEditorModal({
       });
 
       const result: EditApiResponse = await response.json();
-      console.log('🔍 [ImageEditorModal] API Response:', {
-        success: result.success,
-        editsCount: result.edits?.length,
-        edits: result.edits,
-        creditsUsed: result.creditsUsed,
-        creditsRemaining: result.creditsRemaining
-      });
 
       if (!response.ok) {
         if (result.needsUpgrade) {
@@ -197,7 +190,6 @@ export function ImageEditorModal({
       }
 
       if (!result.success || !result.edits) {
-        console.error('❌ [ImageEditorModal] Invalid response:', result);
         throw new Error(result.error || 'Failed to generate edits');
       }
 
@@ -211,11 +203,8 @@ export function ImageEditorModal({
         versionNumber: edit.versionNumber,
       }));
 
-      console.log('✅ [ImageEditorModal] Transformed edits:', transformedEdits);
-
       // Set results
       setEdits(transformedEdits);
-      console.log('✅ [ImageEditorModal] setEdits called with', transformedEdits.length, 'edits');
 
       // Set credits info
       if (result.creditsUsed !== undefined && result.creditsRemaining !== undefined) {
@@ -225,10 +214,8 @@ export function ImageEditorModal({
         });
       }
 
-      // Delay parent notification to avoid state reset
-      // Don't call onEditComplete immediately as it triggers a full library reload
-      // which can cause the modal to lose its state
-      console.log('✅ [ImageEditorModal] Edit complete, not calling onEditComplete to preserve state');
+      // Switch to result screen after successful generation
+      setShowResultScreen(true);
 
     } catch (err) {
       console.error('Failed to generate edits:', err);
@@ -288,25 +275,29 @@ export function ImageEditorModal({
     editParams.lighting
   );
 
+  // Check if we have a generated edit to show
+  const selectedEdit = edits.length > 0 ? edits[0] : null;
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-6xl h-[90vh] p-0 flex flex-col">
-        {/* Header */}
-        <DialogHeader className="px-6 pt-6 pb-4 border-b border-sophisticated-gray-200 dark:border-sophisticated-gray-800 flex-shrink-0">
-          <DialogTitle className="text-2xl font-bold flex items-center gap-2">
-            <Wand2 className="w-6 h-6 text-ocean-blue-600" />
-            Edit Image
-          </DialogTitle>
-          <DialogDescription>
-            Select parameters to transform your image. Each edit costs 1 credit.
-          </DialogDescription>
-        </DialogHeader>
+        {!showResultScreen ? (
+          // SCREEN 1: Edit Form (Full Modal)
+          <>
+            {/* Header */}
+            <DialogHeader className="px-6 pt-6 pb-4 border-b border-sophisticated-gray-200 dark:border-sophisticated-gray-800 flex-shrink-0">
+              <DialogTitle className="text-2xl font-bold flex items-center gap-2">
+                <Wand2 className="w-6 h-6 text-ocean-blue-600" />
+                Edit Image
+              </DialogTitle>
+              <DialogDescription>
+                Select parameters to transform your image. Each edit costs 1 credit.
+              </DialogDescription>
+            </DialogHeader>
 
-        {/* Main Content - Two Panel Layout */}
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* Left Panel - Controls */}
-            <div className="space-y-4">
+            {/* Form Content - Full Width */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="max-w-3xl mx-auto space-y-6">
               {/* Original Image Preview */}
               <div className="space-y-2">
                 <h4 className="text-sm font-semibold text-sophisticated-gray-900 dark:text-sophisticated-gray-100">
@@ -379,43 +370,105 @@ export function ImageEditorModal({
                 )}
               </Button>
 
-              <p className="text-xs text-center text-sophisticated-gray-600 dark:text-sophisticated-gray-400">
-                Cost: 1 credit
-              </p>
+                <p className="text-xs text-center text-sophisticated-gray-600 dark:text-sophisticated-gray-400">
+                  Cost: 1 credit
+                </p>
+              </div>
             </div>
 
-            {/* Right Panel - Results */}
-            <div className="space-y-6">
-              <EditResults
-                originalImage={visual.originalImageUrl}
-                edits={edits}
-                onDownload={handleDownload}
-                isLoading={isGenerating}
-              />
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-sophisticated-gray-200 dark:border-sophisticated-gray-800 flex justify-end gap-3 flex-shrink-0">
+              <Button
+                variant="outline"
+                onClick={onClose}
+                disabled={isGenerating}
+              >
+                Cancel
+              </Button>
             </div>
-          </div>
-        </div>
+          </>
+        ) : (
+          // SCREEN 2: Result View (Full Screen Image)
+          <>
+            {/* Header with Back Arrow */}
+            <DialogHeader className="px-6 pt-6 pb-4 border-b border-sophisticated-gray-200 dark:border-sophisticated-gray-800 flex-shrink-0">
+              <div className="flex items-center gap-4">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowResultScreen(false)}
+                  className="flex-shrink-0"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </Button>
+                <div className="flex-1">
+                  <DialogTitle className="text-2xl font-bold flex items-center gap-2">
+                    <CheckCircle2 className="w-6 h-6 text-green-600" />
+                    Edit Generated Successfully
+                  </DialogTitle>
+                </div>
+              </div>
+            </DialogHeader>
 
-        {/* Footer */}
-        <div className="px-6 py-4 border-t border-sophisticated-gray-200 dark:border-sophisticated-gray-800 flex justify-end gap-3 flex-shrink-0">
-          <Button
-            variant="outline"
-            onClick={onClose}
-            disabled={isGenerating}
-          >
-            {edits.length > 0 ? 'Close' : 'Cancel'}
-          </Button>
-          {edits.length > 0 && (
-            <Button
-              variant="default"
-              onClick={handleDownloadAll}
-              className="gap-2"
-            >
-              <Download className="w-4 h-4" />
-              Download All
-            </Button>
-          )}
-        </div>
+            {/* Full Screen Image */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {selectedEdit && (
+                <div className="h-full flex flex-col gap-6">
+                  {/* Image Container */}
+                  <div className="flex-1 relative rounded-lg overflow-hidden bg-sophisticated-gray-100 dark:bg-sophisticated-gray-900 border border-sophisticated-gray-200 dark:border-sophisticated-gray-800">
+                    <Image
+                      src={selectedEdit.editedImageUrl}
+                      alt="Edited image"
+                      fill
+                      sizes="100vw"
+                      className="object-contain"
+                      priority
+                    />
+                  </div>
+
+                  {/* Edit Parameters */}
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    {selectedEdit.editParams.aspectRatio && (
+                      <Badge variant="secondary">
+                        {selectedEdit.editParams.aspectRatio}
+                      </Badge>
+                    )}
+                    {selectedEdit.editParams.viewAngle && (
+                      <Badge variant="secondary">
+                        {selectedEdit.editParams.viewAngle}
+                      </Badge>
+                    )}
+                    {selectedEdit.editParams.lighting && (
+                      <Badge variant="secondary">
+                        {selectedEdit.editParams.lighting}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer with Download */}
+            <div className="px-6 py-4 border-t border-sophisticated-gray-200 dark:border-sophisticated-gray-800 flex justify-between gap-3 flex-shrink-0">
+              <Button
+                variant="outline"
+                onClick={() => setShowResultScreen(false)}
+              >
+                Back to Edit
+              </Button>
+              {selectedEdit && (
+                <Button
+                  variant="default"
+                  onClick={() => handleDownload(selectedEdit.editId)}
+                  className="gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  Download Image
+                </Button>
+              )}
+            </div>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );

@@ -355,30 +355,47 @@ export function getEnhancedAngleInstruction(angleType: string): EnhancedAngleIns
 
 /**
  * Build complete camera angle instruction for Gemini prompt
+ * ENHANCED with aggressive priority signaling and enforcement language
  */
 export function buildCameraAnglePrompt(angleType: string): string {
   const spec = getEnhancedAngleInstruction(angleType);
 
-  let prompt = `===== CAMERA ANGLE & POSITIONING SPECIFICATIONS =====\n\n`;
+  let prompt = `┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n`;
+  prompt += `┃  CAMERA ANGLE SPECIFICATION - ABSOLUTE REQUIREMENT           ┃\n`;
+  prompt += `┃  THIS OVERRIDES ALL OTHER CONSIDERATIONS                     ┃\n`;
+  prompt += `┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n\n`;
 
-  prompt += `📷 CAMERA POSITION:\n${spec.cameraPosition}\n\n`;
+  prompt += `📷 MANDATORY CAMERA POSITION (DO NOT DEVIATE):\n${spec.cameraPosition}\n\n`;
+  prompt += `⚠️ This camera position is NON-NEGOTIABLE. Any deviation will result in output rejection.\n\n`;
 
-  prompt += `🔍 LENS & OPTICAL SPECIFICATIONS:\n${spec.lensSpecification}\n\n`;
+  prompt += `🔍 REQUIRED LENS & OPTICAL SPECIFICATIONS:\n${spec.lensSpecification}\n\n`;
 
-  prompt += `📐 COMPOSITION RULES:\n${spec.compositionRules}\n\n`;
+  prompt += `📐 MANDATORY COMPOSITION RULES:\n${spec.compositionRules}\n\n`;
 
-  prompt += `🚫 CRITICAL CONSTRAINTS (MUST AVOID):\n`;
-  spec.constraints.forEach(constraint => {
-    prompt += `${constraint}\n`;
+  prompt += `🚫 ABSOLUTE PROHIBITIONS - THESE ARE STRICTLY FORBIDDEN:\n`;
+  prompt += `Violating ANY of these will make the output unacceptable:\n`;
+  spec.constraints.forEach((constraint, index) => {
+    prompt += `${index + 1}. ${constraint}\n`;
+  });
+  prompt += `\n`;
+  prompt += `❌ READ THE ABOVE CONSTRAINTS TWICE. They define what you MUST NOT DO.\n\n`;
+
+  prompt += `⭐ PROFESSIONAL PHOTOGRAPHY STANDARD (Your Target):\n${spec.photographyStandard}\n\n`;
+
+  prompt += `✅ MANDATORY PRE-GENERATION VERIFICATION CHECKLIST:\n`;
+  prompt += `Before generating the image, verify each point:\n`;
+  spec.qualityChecks.forEach((check, index) => {
+    prompt += `${index + 1}. ${check}\n`;
   });
   prompt += `\n`;
 
-  prompt += `⭐ PROFESSIONAL PHOTOGRAPHY STANDARD:\n${spec.photographyStandard}\n\n`;
-
-  prompt += `✅ QUALITY ASSURANCE VERIFICATION:\n`;
-  spec.qualityChecks.forEach(check => {
-    prompt += `• ${check}\n`;
-  });
+  prompt += `┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n`;
+  prompt += `┃  FINAL ENFORCEMENT REMINDER                                  ┃\n`;
+  prompt += `┃  The camera angle specified above is the PRIMARY objective.  ┃\n`;
+  prompt += `┃  All other requirements (lighting, style, etc.) are          ┃\n`;
+  prompt += `┃  SECONDARY and can be adjusted if needed to maintain the     ┃\n`;
+  prompt += `┃  correct camera angle. CAMERA ANGLE COMES FIRST.             ┃\n`;
+  prompt += `┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n`;
 
   return prompt;
 }

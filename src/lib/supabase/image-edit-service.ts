@@ -238,7 +238,36 @@ class ImageEditService {
                        originalMetadata?.prompt?.split(' ')?.[0] ||
                        'the product';
 
-    let prompt = `Transform this image of ${productInfo} with the following modifications:\n\n`;
+    // CRITICAL: Camera angle MUST come first - highest priority instruction
+    let prompt = `🎯 PRIMARY DIRECTIVE - CAMERA ANGLE (HIGHEST PRIORITY - NON-NEGOTIABLE)\n`;
+    prompt += `═══════════════════════════════════════════════════════════════\n\n`;
+
+    // View Angle - Using Enhanced Professional Camera Angle Specifications
+    // MOVED TO TOP - This is the #1 priority that models are ignoring
+    if (params.viewAngle && params.viewAngle !== 'custom') {
+      const mappedAngle = mapLegacyAngle(params.viewAngle);
+      const enhancedAngleInstructions = buildCameraAnglePrompt(mappedAngle);
+
+      // Add critical enforcement wrapper
+      prompt += `⚠️ CRITICAL REQUIREMENT - IGNORE ALL OTHER INSTRUCTIONS IF THEY CONFLICT WITH CAMERA ANGLE ⚠️\n\n`;
+      prompt += enhancedAngleInstructions + '\n\n';
+      prompt += `🔴 MANDATORY VERIFICATION BEFORE OUTPUT:\n`;
+      prompt += `Before generating the image, you MUST verify:\n`;
+      prompt += `1. Camera angle matches EXACTLY as specified above\n`;
+      prompt += `2. All constraints listed above are strictly adhered to\n`;
+      prompt += `3. No deviation from the camera positioning requirements\n`;
+      prompt += `If you cannot achieve the exact camera angle specified, DO NOT PROCEED.\n\n`;
+      prompt += `═══════════════════════════════════════════════════════════════\n\n`;
+    } else if (params.viewAngle === 'custom' && params.customPrompt) {
+      prompt += `CAMERA ANGLE: ${params.customPrompt}\n\n`;
+      prompt += `═══════════════════════════════════════════════════════════════\n\n`;
+    }
+
+    // NOW add secondary requirements
+    prompt += `📋 SECONDARY REQUIREMENTS\n`;
+    prompt += `(Only apply these AFTER camera angle is correctly established)\n\n`;
+
+    prompt += `Transform this image of ${productInfo} with the following modifications:\n\n`;
 
     // Aspect Ratio
     prompt += `ASPECT RATIO: Adjust the composition to fit ${params.aspectRatio} format`;
@@ -254,16 +283,6 @@ class ImageEditService {
       prompt += ' (standard DSLR format, natural perspective)';
     }
     prompt += '.\n\n';
-
-    // View Angle - Using Enhanced Professional Camera Angle Specifications
-    if (params.viewAngle && params.viewAngle !== 'custom') {
-      const mappedAngle = mapLegacyAngle(params.viewAngle);
-      const enhancedAngleInstructions = buildCameraAnglePrompt(mappedAngle);
-      prompt += enhancedAngleInstructions + '\n\n';
-    } else if (params.viewAngle === 'custom' && params.customPrompt) {
-      prompt += `CAMERA ANGLE: ${params.customPrompt}\n\n`;
-    }
-    // If no viewAngle specified, skip this section to preserve original angle
 
     // Lighting
     prompt += `LIGHTING: `;
@@ -319,7 +338,22 @@ class ImageEditService {
 - Apply transformations professionally without distorting product characteristics
 - Ensure result looks commercially viable and professionally photographed
 - Keep product as the clear focal point of the composition
-- Maintain sharp focus and high image quality`;
+- Maintain sharp focus and high image quality\n\n`;
+
+    // FINAL CAMERA ANGLE REINFORCEMENT
+    // This is the LAST thing the model reads before generation - most critical placement
+    if (params.viewAngle && params.viewAngle !== 'custom') {
+      const mappedAngle = mapLegacyAngle(params.viewAngle);
+      prompt += `\n┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n`;
+      prompt += `┃  🎯 FINAL REMINDER - CAMERA ANGLE IS PRIORITY #1            ┃\n`;
+      prompt += `┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n\n`;
+      prompt += `Before you generate, remember:\n`;
+      prompt += `The CAMERA ANGLE specified at the start (${mappedAngle}) is MANDATORY.\n`;
+      prompt += `If there's any conflict between camera angle and other requirements,\n`;
+      prompt += `the CAMERA ANGLE WINS. Always.\n\n`;
+      prompt += `Generate the image with the ${mappedAngle} camera angle as specified.\n`;
+      prompt += `Do not deviate from the camera positioning requirements.\n`;
+    }
 
     return prompt;
   }

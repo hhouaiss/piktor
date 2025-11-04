@@ -3,7 +3,6 @@
 import { useState, useCallback, useEffect } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { BeforeAfterSlider } from "@/components/ui/image-comparison-slider";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Download, Eye, Loader2, CheckCircle2 } from "lucide-react";
@@ -72,27 +71,14 @@ export function EditResults({
   isLoading = false,
   className
 }: EditResultsProps) {
-  console.log('🔍 [EditResults] Component render:', {
-    editsCount: edits.length,
-    isLoading,
-    originalImage
-  });
-
   const [selectedEditId, setSelectedEditId] = useState<string | null>(
     edits.length > 0 ? edits[0].editId : null
   );
 
   // Auto-select the first edit when new edits arrive
   useEffect(() => {
-    console.log('🔍 [EditResults] useEffect - edits changed:', {
-      editsCount: edits.length,
-      selectedEditId,
-      edits: edits.map(e => ({ editId: e.editId, url: e.editedImageUrl }))
-    });
-
     if (edits.length > 0 && !edits.find(edit => edit.editId === selectedEditId)) {
       // If current selection doesn't exist in edits (new edits loaded), select the first one
-      console.log('✅ [EditResults] Auto-selecting first edit:', edits[0].editId);
       setSelectedEditId(edits[0].editId);
     }
   }, [edits, selectedEditId]);
@@ -234,7 +220,7 @@ export function EditResults({
 
   return (
     <div className={cn("space-y-6", className)}>
-      {/* Header */}
+      {/* Header with Back Arrow */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <CheckCircle2 className="w-5 h-5 text-green-600" />
@@ -244,30 +230,34 @@ export function EditResults({
         </div>
       </div>
 
-      {/* Before/After Comparison */}
+      {/* Full Edited Image Display */}
       {selectedEdit && (
         <div className="space-y-4">
-          <BeforeAfterSlider
-            beforeImage={originalImage}
-            afterImage={selectedEdit.editedImageUrl}
-            beforeLabel="Original"
-            afterLabel="Edited"
-            alt="Image comparison"
-          />
+          {/* Main Edited Image */}
+          <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-sophisticated-gray-100 dark:bg-sophisticated-gray-900 border border-sophisticated-gray-200 dark:border-sophisticated-gray-800">
+            <Image
+              src={selectedEdit.editedImageUrl}
+              alt="Edited image"
+              fill
+              sizes="(max-width: 768px) 100vw, 50vw"
+              className="object-contain"
+              priority
+            />
+          </div>
 
-          {/* Selected Edit Info */}
-          <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-lg bg-sophisticated-gray-50 dark:bg-sophisticated-gray-900 border border-sophisticated-gray-200 dark:border-sophisticated-gray-800">
+          {/* Edit Parameters and Download */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-lg bg-sophisticated-gray-50 dark:bg-sophisticated-gray-900 border border-sophisticated-gray-200 dark:border-sophisticated-gray-800">
             <div className="flex flex-wrap gap-2">
               {renderParameterBadges(selectedEdit.editParams)}
             </div>
             <Button
               onClick={() => handleDownload(selectedEdit.editId)}
-              size="sm"
+              size="default"
               variant="default"
-              className="gap-2"
+              className="gap-2 w-full sm:w-auto"
             >
               <Download className="w-4 h-4" />
-              Download
+              Download Edited Image
             </Button>
           </div>
         </div>
