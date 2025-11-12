@@ -166,7 +166,9 @@ export function ImageEditorModal({
     try {
       const response = await fetch('/api/edit-image-advanced', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           visualId: visual.id, // Use UUID id, not visualId string
           editParams: {

@@ -22,6 +22,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { imageEditService } from '@/lib/supabase/image-edit-service';
 import type { EditParams } from '@/lib/supabase/image-edit-service';
 import type { Database, DatabaseVisual } from '@/lib/supabase/types';
+import { isAdminUser } from '@/lib/server-admin-auth';
 
 interface EditImageRequest {
   visualId: string;           // Original visual ID
@@ -73,54 +74,73 @@ export async function POST(request: NextRequest) {
       editParams,
     });
 
-    // Check subscription and credits
-    const { data: subscription, error: subError } = await supabase
-      .from('subscriptions')
-      .select('*')
-      .eq('user_id', user.id)
-      .in('status', ['active', 'trialing', 'past_due'])
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle() as {
-        data: Database['public']['Tables']['subscriptions']['Row'] | null;
-        error: any
-      };
+    // Check if user is admin (automatic unlimited variations)
+    const isAdmin = isAdminUser(user.id);
 
-    if (subError) {
-      console.error('[edit-image-advanced] Error fetching subscription:', subError);
-      return NextResponse.json(
-        { error: 'Failed to verify subscription' },
-        { status: 500 }
-      );
+    if (isAdmin) {
+      console.log('[edit-image-advanced] ✅ Admin user detected - unlimited variations enabled');
     }
 
-    if (!subscription) {
-      return NextResponse.json({
-        error: 'No active subscription',
-        message: 'Please activate a subscription plan to edit images.',
-        needsUpgrade: true
-      }, { status: 403 });
-    }
+    // Initialize variables for subscription and credits
+    let subscription: Database['public']['Tables']['subscriptions']['Row'] | null = null;
+    let creditsNeeded = 0;
+    let creditsRemaining = 0;
 
-    // Check if user has sufficient credits
-    const creditsNeeded = variationCount; // 1 credit per variation
-    const creditsRemaining = subscription.generations_limit - subscription.generations_used;
+    // Only check subscription and credits if NOT admin user
+    if (!isAdmin) {
+      // Check subscription and credits
+      const { data: subData, error: subError } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('user_id', user.id)
+        .in('status', ['active', 'trialing', 'past_due'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle() as {
+          data: Database['public']['Tables']['subscriptions']['Row'] | null;
+          error: any
+        };
 
-    console.log('[edit-image-advanced] Credits check:', {
-      needed: creditsNeeded,
-      remaining: creditsRemaining,
-      limit: subscription.generations_limit,
-      used: subscription.generations_used,
-    });
+      subscription = subData;
 
-    if (creditsRemaining < creditsNeeded) {
-      return NextResponse.json({
-        error: 'Insufficient credits',
-        message: `You need ${creditsNeeded} credits but only have ${creditsRemaining} remaining. Please upgrade your plan.`,
-        needsUpgrade: true,
-        creditsNeeded,
-        creditsRemaining,
-      }, { status: 403 });
+      if (subError) {
+        console.error('[edit-image-advanced] Error fetching subscription:', subError);
+        return NextResponse.json(
+          { error: 'Failed to verify subscription' },
+          { status: 500 }
+        );
+      }
+
+      if (!subscription) {
+        return NextResponse.json({
+          error: 'No active subscription',
+          message: 'Please activate a subscription plan to edit images.',
+          needsUpgrade: true
+        }, { status: 403 });
+      }
+
+      // Check if user has sufficient credits
+      creditsNeeded = variationCount; // 1 credit per variation
+      creditsRemaining = subscription.generations_limit - subscription.generations_used;
+
+      console.log('[edit-image-advanced] Credits check:', {
+        needed: creditsNeeded,
+        remaining: creditsRemaining,
+        limit: subscription.generations_limit,
+        used: subscription.generations_used,
+      });
+
+      if (creditsRemaining < creditsNeeded) {
+        return NextResponse.json({
+          error: 'Insufficient credits',
+          message: `You need ${creditsNeeded} credits but only have ${creditsRemaining} remaining. Please upgrade your plan.`,
+          needsUpgrade: true,
+          creditsNeeded,
+          creditsRemaining,
+        }, { status: 403 });
+      }
+    } else {
+      console.log('[edit-image-advanced] Admin user - skipping credit checks');
     }
 
     // Get original visual to fetch image URL
@@ -173,35 +193,39 @@ export async function POST(request: NextRequest) {
       requested: variationCount,
     });
 
-    // Deduct credits after successful generation
+    // Deduct credits after successful generation (only if NOT admin user)
     const creditsToDeduct = editResults.length; // 1 credit per successful edit
+    let newCreditsRemaining = creditsRemaining;
 
-    try {
-      console.log('[edit-image-advanced] Deducting credits:', creditsToDeduct);
+    if (!isAdmin && subscription) {
+      try {
+        console.log('[edit-image-advanced] Deducting credits:', creditsToDeduct);
 
-      const supabaseAdmin = await createAdminClient();
-      const { data: updatedSub, error: updateError } = await (supabaseAdmin as any)
-        .from('subscriptions')
-        .update({
-          generations_used: subscription.generations_used + creditsToDeduct
-        })
-        .eq('id', subscription.id)
-        .select()
-        .single();
+        const supabaseAdmin = await createAdminClient();
+        const { data: updatedSub, error: updateError } = await (supabaseAdmin as any)
+          .from('subscriptions')
+          .update({
+            generations_used: subscription.generations_used + creditsToDeduct
+          })
+          .eq('id', subscription.id)
+          .select()
+          .single();
 
-      if (updateError) {
-        console.error('[edit-image-advanced] Failed to deduct credits:', updateError);
-        // Don't fail the request, but log the error
-      } else {
-        console.log('[edit-image-advanced] Credits deducted successfully. New usage:', updatedSub.generations_used);
+        if (updateError) {
+          console.error('[edit-image-advanced] Failed to deduct credits:', updateError);
+          // Don't fail the request, but log the error
+        } else {
+          console.log('[edit-image-advanced] Credits deducted successfully. New usage:', updatedSub.generations_used);
+          newCreditsRemaining = creditsRemaining - creditsToDeduct;
+        }
+      } catch (creditError) {
+        console.error('[edit-image-advanced] Error during credit deduction:', creditError);
+        // Don't fail the request
       }
-    } catch (creditError) {
-      console.error('[edit-image-advanced] Error during credit deduction:', creditError);
-      // Don't fail the request
+    } else if (isAdmin) {
+      console.log('[edit-image-advanced] Admin user - skipping credit deduction');
+      newCreditsRemaining = 999999; // Show unlimited for admin
     }
-
-    // Calculate new credits remaining
-    const newCreditsRemaining = creditsRemaining - creditsToDeduct;
 
     // Track edit event
     try {
@@ -212,11 +236,12 @@ export async function POST(request: NextRequest) {
           user_id: user.id,
           type: 'edit',
           visual_id: visualId,
-          credits_used: creditsToDeduct,
+          credits_used: isAdmin ? 0 : creditsToDeduct,
           metadata: {
             editParams,
             variations: variationCount,
             successfulEdits: editResults.length,
+            isAdminUser: isAdmin,
           },
         });
     } catch (trackError) {
