@@ -68,10 +68,46 @@ export async function POST(request: NextRequest) {
       console.warn('[edit-image-advanced] Variations clamped to:', variationCount);
     }
 
+    // Validate product images if provided
+    if (editParams.productImages) {
+      if (editParams.productImages.length > 5) {
+        return NextResponse.json(
+          { error: 'Too many product images. Maximum 5 products can be added at once.' },
+          { status: 400 }
+        );
+      }
+
+      // Validate each product image
+      for (let i = 0; i < editParams.productImages.length; i++) {
+        const product = editParams.productImages[i];
+        if (!product.data || !product.mimeType) {
+          return NextResponse.json(
+            { error: `Product image ${i + 1} is missing required data or mimeType` },
+            { status: 400 }
+          );
+        }
+
+        // Check if mimeType is valid
+        const validMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+        if (!validMimeTypes.includes(product.mimeType.toLowerCase())) {
+          return NextResponse.json(
+            { error: `Product image ${i + 1} has invalid format. Supported: JPEG, PNG, WebP` },
+            { status: 400 }
+          );
+        }
+      }
+
+      console.log(`[edit-image-advanced] Product images validated: ${editParams.productImages.length} product(s)`);
+    }
+
     console.log('[edit-image-advanced] Edit request validated:', {
       visualId,
       variations: variationCount,
-      editParams,
+      editParams: {
+        ...editParams,
+        productImages: editParams.productImages?.length ? `${editParams.productImages.length} product(s)` : 'none',
+        customInstructions: editParams.customInstructions ? 'provided' : 'none'
+      },
     });
 
     // Check if user is admin (automatic unlimited variations)

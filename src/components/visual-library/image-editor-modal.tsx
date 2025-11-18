@@ -176,6 +176,8 @@ export function ImageEditorModal({
             viewAngle: editParams.viewAngle,
             lighting: editParams.lighting,
             style: 'photorealistic', // Always use photorealistic style
+            customInstructions: editParams.customInstructions,
+            productImages: editParams.productImages,
           },
           variations: 1, // Always generate 1 variation
           saveHistory: true,

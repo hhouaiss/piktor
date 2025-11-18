@@ -33,6 +33,20 @@ export interface EditParams {
   lighting: 'soft' | 'dramatic' | 'natural' | 'studio' | 'golden-hour' | 'custom';
   style: 'photorealistic' | 'minimalist' | 'artistic' | 'vintage' | 'modern' | 'custom';
   customPrompt?: string;
+  /**
+   * Additional custom instructions from user
+   * These will be integrated into the prompt as tertiary instructions
+   */
+  customInstructions?: string;
+  /**
+   * Reference images for products to add to the scene
+   * Array of base64 encoded images with optional descriptions
+   */
+  productImages?: Array<{
+    data: string; // base64 encoded image
+    mimeType: string;
+    description?: string; // Optional description of what to do with this product
+  }>;
 }
 
 export interface EditMetadata {
@@ -119,14 +133,30 @@ class ImageEditService {
         // Fetch original image as base64
         const imageBase64 = await this.fetchImageAsBase64(request.originalImageUrl);
 
-        // Call Gemini API with reference image
+        // Prepare reference images array
+        // Always start with the original image as the primary reference
+        const referenceImages: Array<{ data: string; mimeType: string }> = [{
+          data: imageBase64,
+          mimeType: 'image/jpeg'
+        }];
+
+        // Add any additional product images if provided
+        if (request.editParams.productImages && request.editParams.productImages.length > 0) {
+          console.log(`[ImageEditService] Adding ${request.editParams.productImages.length} product reference image(s)`);
+          request.editParams.productImages.forEach((product, idx) => {
+            referenceImages.push({
+              data: product.data,
+              mimeType: product.mimeType
+            });
+            console.log(`[ImageEditService] Product ${idx + 1} added to references`);
+          });
+        }
+
+        // Call Gemini API with all reference images
         const geminiResponse = await generateImageWithGemini({
           prompt: variationPrompt,
           aspectRatio: this.mapAspectRatio(request.editParams.aspectRatio),
-          referenceImages: [{
-            data: imageBase64,
-            mimeType: 'image/jpeg'
-          }]
+          referenceImages
         });
 
         if (!geminiResponse.success || !geminiResponse.data?.imageData) {
@@ -332,13 +362,152 @@ class ImageEditService {
     }
     prompt += '.\n\n';
 
-    prompt += `CRITICAL REQUIREMENTS:
-- Preserve the product's core identity, materials, colors, and design features
-- Maintain brand integrity and product authenticity
-- Apply transformations professionally without distorting product characteristics
-- Ensure result looks commercially viable and professionally photographed
-- Keep product as the clear focal point of the composition
-- Maintain sharp focus and high image quality\n\n`;
+    // PRODUCT ADDITION - Tertiary instructions with seamless integration focus
+    if (params.productImages && params.productImages.length > 0) {
+      prompt += `\n┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n`;
+      prompt += `┃  ➕ PRODUCT ADDITION - SEAMLESS INTEGRATION REQUIRED         ┃\n`;
+      prompt += `┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n\n`;
+
+      prompt += `🎨 OBJECTIVE: Add ${params.productImages.length} new product(s) to the existing scene\n\n`;
+
+      prompt += `⚠️ ⚠️ ⚠️ CRITICAL PRESERVATION RULE - READ THIS FIRST ⚠️ ⚠️ ⚠️\n`;
+      prompt += `┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n`;
+      prompt += `┃  ⛔ ABSOLUTELY PRESERVE ALL EXISTING ELEMENTS                ┃\n`;
+      prompt += `┃                                                              ┃\n`;
+      prompt += `┃  ALL products, objects, furniture, and elements that are     ┃\n`;
+      prompt += `┃  ALREADY in the original image MUST remain EXACTLY as they   ┃\n`;
+      prompt += `┃  are. DO NOT remove, hide, replace, or modify ANY existing   ┃\n`;
+      prompt += `┃  element. This is NON-NEGOTIABLE.                            ┃\n`;
+      prompt += `┃                                                              ┃\n`;
+      prompt += `┃  YOU ARE ONLY ADDING NEW PRODUCTS.                           ┃\n`;
+      prompt += `┃  YOU ARE NOT REMOVING OR CHANGING ANYTHING.                  ┃\n`;
+      prompt += `┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n\n`;
+
+      prompt += `📐 INTEGRATION REQUIREMENTS (MANDATORY):\n`;
+      prompt += `1. PRESERVATION: Keep 100% of existing elements visible and unchanged\n`;
+      prompt += `2. SEAMLESS BLENDING: The new product(s) must appear as if they were originally part of the scene\n`;
+      prompt += `3. LIGHTING CONSISTENCY: Match the lighting, shadows, and highlights of existing elements EXACTLY\n`;
+      prompt += `4. PERSPECTIVE ACCURACY: Maintain the same camera angle and perspective for all products\n`;
+      prompt += `5. SCALE PROPORTION: Size the new product(s) appropriately relative to existing elements\n`;
+      prompt += `6. SHADOW PLACEMENT: Generate natural shadows/reflections that match the scene's light direction\n`;
+      prompt += `7. COLOR HARMONY: Ensure color temperature and saturation match the existing scene\n`;
+      prompt += `8. DEPTH & FOCUS: Match the depth of field and focus characteristics of the original image\n`;
+      prompt += `9. COMPOSITION BALANCE: Arrange NEW products in EMPTY spaces without covering existing items\n\n`;
+
+      prompt += `🚫 ABSOLUTE PROHIBITIONS (THESE WILL CAUSE FAILURE):\n`;
+      prompt += `❌ NEVER remove, hide, or delete ANY existing product from the original scene\n`;
+      prompt += `❌ NEVER replace existing products with new ones\n`;
+      prompt += `❌ NEVER modify, recolor, or alter existing products\n`;
+      prompt += `❌ NEVER obscure existing products by placing new ones in front\n`;
+      prompt += `❌ NEVER change the background to accommodate new products\n`;
+      prompt += `❌ NEVER rearrange or reposition existing elements\n`;
+      prompt += `❌ NEVER make added products look pasted or composited\n`;
+      prompt += `❌ NEVER use different lighting on new vs existing products\n`;
+      prompt += `❌ NEVER place products floating or without proper grounding\n`;
+      prompt += `❌ NEVER distort the scale or proportions unnaturally\n`;
+      prompt += `❌ NEVER overcrowd the composition - use available empty space only\n\n`;
+
+      prompt += `📍 PLACEMENT STRATEGY (HOW TO ADD WITHOUT REMOVING):\n`;
+      prompt += `1. IDENTIFY EMPTY SPACES in the original image (floor areas, table surfaces, shelves, etc.)\n`;
+      prompt += `2. PLACE NEW PRODUCTS in these empty spaces ONLY\n`;
+      prompt += `3. If no suitable empty space exists, place products in the BACKGROUND or PERIPHERY\n`;
+      prompt += `4. NEVER cover or hide existing products to make room for new ones\n`;
+      prompt += `5. Think of this as ADDING to the scene, not REPLACING parts of it\n`;
+      prompt += `6. If space is limited, reduce the SIZE of new products rather than removing existing ones\n\n`;
+
+      prompt += `📦 PRODUCTS TO ADD:\n`;
+      params.productImages.forEach((product, index) => {
+        prompt += `Product ${index + 1}:\n`;
+        if (product.description) {
+          prompt += `  - Placement: ${product.description}\n`;
+        } else {
+          prompt += `  - Placement: Position naturally within the scene, respecting composition rules\n`;
+        }
+        prompt += `  - Requirements: Full lighting/perspective/shadow integration as specified above\n\n`;
+      });
+
+      prompt += `✅ MANDATORY PRE-GENERATION VERIFICATION CHECKLIST:\n`;
+      prompt += `Before generating the image, you MUST verify:\n\n`;
+      prompt += `PRESERVATION CHECKS (MOST CRITICAL):\n`;
+      prompt += `□ I have identified ALL existing products/objects in the original image\n`;
+      prompt += `□ I will keep 100% of these existing elements visible and unchanged\n`;
+      prompt += `□ I am placing new products in EMPTY spaces only\n`;
+      prompt += `□ No existing products will be removed, hidden, or replaced\n`;
+      prompt += `□ No existing products will be obscured by new ones\n\n`;
+      prompt += `INTEGRATION CHECKS:\n`;
+      prompt += `□ All new products appear naturally integrated, not composited\n`;
+      prompt += `□ Lighting direction and quality match across all elements\n`;
+      prompt += `□ Shadows and reflections are consistent and realistic\n`;
+      prompt += `□ Scale and proportions are believable and harmonious\n`;
+      prompt += `□ Composition remains balanced and professional\n`;
+      prompt += `□ No visual artifacts or compositing tells\n\n`;
+
+      prompt += `⚠️ CRITICAL REMINDER BEFORE GENERATION:\n`;
+      prompt += `This is an ADDITIVE operation. You are ADDING ${params.productImages.length} new product(s).\n`;
+      prompt += `You are NOT removing, hiding, or replacing ANY existing elements.\n`;
+      prompt += `The original image must remain fully intact with new products added to empty spaces.\n`;
+      prompt += `If you cannot find suitable empty space, place products smaller or in the background.\n\n`;
+
+      prompt += `┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n`;
+      prompt += `┃  🔴 FINAL ENFORCEMENT: PRESERVE ALL EXISTING ELEMENTS        ┃\n`;
+      prompt += `┃  If ANY existing product is removed or hidden, the output    ┃\n`;
+      prompt += `┃  will be REJECTED. This is the #1 requirement.               ┃\n`;
+      prompt += `┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n\n`;
+    }
+
+    // CUSTOM INSTRUCTIONS - User-provided additional guidance
+    if (params.customInstructions && params.customInstructions.trim()) {
+      prompt += `\n┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n`;
+      prompt += `┃  💬 ADDITIONAL USER INSTRUCTIONS                             ┃\n`;
+      prompt += `┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n\n`;
+      prompt += `The user has provided these additional instructions:\n\n`;
+      prompt += `"${params.customInstructions.trim()}"\n\n`;
+      prompt += `IMPORTANT: Apply these instructions while ABSOLUTELY maintaining:\n`;
+      prompt += `- The primary camera angle requirements (highest priority)\n`;
+      prompt += `- The secondary parameters (aspect ratio, lighting, style)\n`;
+      if (params.productImages && params.productImages.length > 0) {
+        prompt += `- ⛔ CRITICAL: Preservation of ALL existing elements (NEVER remove original products)\n`;
+      }
+      prompt += `- Product addition integration quality (if applicable)\n`;
+      prompt += `- Overall commercial quality and brand integrity\n\n`;
+      if (params.productImages && params.productImages.length > 0) {
+        prompt += `⚠️ NOTE: If the user's custom instructions conflict with element preservation,\n`;
+        prompt += `PRESERVATION ALWAYS WINS. Do not remove existing elements under any circumstances.\n\n`;
+      }
+    }
+
+    prompt += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    prompt += `CRITICAL REQUIREMENTS (ALWAYS APPLY):\n`;
+    prompt += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    if (params.productImages && params.productImages.length > 0) {
+      prompt += `- ⛔ PRESERVE 100% of existing elements - NO removals, NO hiding, NO replacements\n`;
+      prompt += `- 🎯 Add new products to EMPTY spaces only - this is ADDITIVE, not REPLACEMENT\n`;
+    }
+    prompt += `- Preserve the product's core identity, materials, colors, and design features\n`;
+    prompt += `- Maintain brand integrity and product authenticity\n`;
+    prompt += `- Apply transformations professionally without distorting product characteristics\n`;
+    prompt += `- Ensure result looks commercially viable and professionally photographed\n`;
+    prompt += `- Keep product as the clear focal point of the composition\n`;
+    prompt += `- Maintain sharp focus and high image quality\n`;
+    if (params.productImages && params.productImages.length > 0) {
+      prompt += `- Integrate new products seamlessly as if originally photographed together\n`;
+    }
+    prompt += `\n`;
+
+    // FINAL PRESERVATION REMINDER (if adding products)
+    if (params.productImages && params.productImages.length > 0) {
+      prompt += `\n┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n`;
+      prompt += `┃  ⛔ ULTIMATE REMINDER - ELEMENT PRESERVATION                 ┃\n`;
+      prompt += `┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n\n`;
+      prompt += `RIGHT BEFORE YOU GENERATE:\n`;
+      prompt += `1. Look at the original image reference\n`;
+      prompt += `2. Count every product/object that exists in it\n`;
+      prompt += `3. Your output MUST contain ALL of those same products/objects\n`;
+      prompt += `4. PLUS the ${params.productImages.length} new product(s) you're adding\n`;
+      prompt += `5. If anything is missing from the original, the output is WRONG\n\n`;
+      prompt += `This is an ADDITION task: Original elements + New products = Final output\n`;
+      prompt += `This is NOT a replacement task: Never substitute or remove existing items\n\n`;
+    }
 
     // FINAL CAMERA ANGLE REINFORCEMENT
     // This is the LAST thing the model reads before generation - most critical placement
