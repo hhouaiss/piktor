@@ -13,9 +13,10 @@
 export interface DashboardGenerationSettings {
   style: string;        // moderne, rustique, industriel, scandinave, boheme
   environment: string;  // salon, bureau, cuisine, chambre, studio
-  lighting: string;     // naturelle, chaleureuse, professionnelle  
+  lighting: string;     // naturelle, chaleureuse, professionnelle
   angle: string;        // face, trois-quarts, profile, plongee
   formats: string[];    // instagram-post, instagram-story, facebook, ecommerce, print, web-banner
+  imageSize: '1K' | '2K' | '4K'; // Resolution selection for Gemini 3 Pro Image Preview
   customPrompt?: string; // User's additional instructions
 }
 

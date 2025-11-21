@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { Camera, Lightbulb, Grid, Upload, X, ImagePlus } from "lucide-react";
+import { Camera, Lightbulb, Grid, Upload, X, ImagePlus, Zap, Gauge, Image as ImageIcon } from "lucide-react";
 import Image from "next/image";
 
 /**
@@ -17,6 +17,7 @@ export interface EditParams {
   viewAngle?: 'frontal' | '45-degree' | 'top-down' | 'perspective' | 'custom';
   lighting?: 'soft' | 'dramatic' | 'natural' | 'studio' | 'golden-hour' | 'custom';
   style?: 'photorealistic' | 'minimalist' | 'artistic' | 'vintage' | 'modern' | 'custom';
+  imageSize?: '1K' | '2K' | '4K'; // Resolution selection for Gemini 3 Pro Image Preview
   variations: number;
   customInstructions?: string;
   productImages?: Array<{
@@ -100,6 +101,7 @@ export function EditControls({
     viewAngle: initialParams.viewAngle,
     lighting: initialParams.lighting,
     style: initialParams.style,
+    imageSize: initialParams.imageSize || '2K', // Default to 2K for balanced quality
     variations: initialParams.variations || 1,
     customInstructions: initialParams.customInstructions || '',
     productImages: initialParams.productImages || [],
@@ -126,6 +128,7 @@ export function EditControls({
       viewAngle: undefined,
       lighting: undefined,
       style: undefined,
+      imageSize: '2K', // Reset to default 2K
       variations: 1,
       customInstructions: '',
       productImages: [],
@@ -313,6 +316,83 @@ export function EditControls({
         </p>
       </div>
 
+      {/* Resolution Selector */}
+      <div className="space-y-2">
+        <Label className="flex items-center gap-2 text-sm font-medium">
+          <ImageIcon className="w-4 h-4 text-ocean-blue-600" />
+          Output Resolution
+        </Label>
+        <div className="grid grid-cols-3 gap-2">
+          {/* 1K - Fast */}
+          <button
+            type="button"
+            onClick={() => updateParam('imageSize', '1K')}
+            disabled={disabled}
+            className={cn(
+              "p-3 rounded-lg border-2 transition-all text-left",
+              params.imageSize === '1K'
+                ? "border-ocean-blue-600 bg-ocean-blue-50 dark:bg-ocean-blue-950/30"
+                : "border-sophisticated-gray-200 dark:border-sophisticated-gray-700 hover:border-ocean-blue-400",
+              disabled && "opacity-50 cursor-not-allowed"
+            )}
+          >
+            <div className="flex items-center gap-1.5 mb-1">
+              <Zap className="w-4 h-4 text-orange-500" />
+              <span className="text-sm font-semibold">1K</span>
+            </div>
+            <p className="text-xs text-sophisticated-gray-600 dark:text-sophisticated-gray-400">
+              Fast (~10s)
+            </p>
+          </button>
+
+          {/* 2K - Balanced (Default) */}
+          <button
+            type="button"
+            onClick={() => updateParam('imageSize', '2K')}
+            disabled={disabled}
+            className={cn(
+              "p-3 rounded-lg border-2 transition-all text-left",
+              params.imageSize === '2K'
+                ? "border-ocean-blue-600 bg-ocean-blue-50 dark:bg-ocean-blue-950/30"
+                : "border-sophisticated-gray-200 dark:border-sophisticated-gray-700 hover:border-ocean-blue-400",
+              disabled && "opacity-50 cursor-not-allowed"
+            )}
+          >
+            <div className="flex items-center gap-1.5 mb-1">
+              <Gauge className="w-4 h-4 text-blue-500" />
+              <span className="text-sm font-semibold">2K</span>
+            </div>
+            <p className="text-xs text-sophisticated-gray-600 dark:text-sophisticated-gray-400">
+              Balanced
+            </p>
+          </button>
+
+          {/* 4K - Premium */}
+          <button
+            type="button"
+            onClick={() => updateParam('imageSize', '4K')}
+            disabled={disabled}
+            className={cn(
+              "p-3 rounded-lg border-2 transition-all text-left",
+              params.imageSize === '4K'
+                ? "border-ocean-blue-600 bg-ocean-blue-50 dark:bg-ocean-blue-950/30"
+                : "border-sophisticated-gray-200 dark:border-sophisticated-gray-700 hover:border-ocean-blue-400",
+              disabled && "opacity-50 cursor-not-allowed"
+            )}
+          >
+            <div className="flex items-center gap-1.5 mb-1">
+              <ImageIcon className="w-4 h-4 text-purple-500" />
+              <span className="text-sm font-semibold">4K</span>
+            </div>
+            <p className="text-xs text-sophisticated-gray-600 dark:text-sophisticated-gray-400">
+              Premium
+            </p>
+          </button>
+        </div>
+        <p className="text-xs text-sophisticated-gray-600 dark:text-sophisticated-gray-400">
+          Higher resolutions take longer but produce better quality
+        </p>
+      </div>
 
       {/* Product Addition Section */}
       <div className="space-y-3 pt-4 border-t border-sophisticated-gray-200 dark:border-sophisticated-gray-700">

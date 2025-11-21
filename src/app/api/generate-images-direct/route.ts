@@ -16,6 +16,7 @@ interface GenerationParams {
   contextPreset: ContextPreset;
   variations: number;
   quality: 'high' | 'medium' | 'low';
+  imageSize?: '1K' | '2K' | '4K'; // Resolution selection for Gemini 3 Pro Image Preview
 }
 
 // Server-side usage limit checking
@@ -176,9 +177,13 @@ export async function POST(request: NextRequest) {
       defaultUISettings
     );
 
-    console.log(`Generating 1 ${params.contextPreset} image using Google Nano Banana (Production Optimized)`);
+    // Determine image size
+    const imageSize = params.imageSize || (params.quality === 'high' ? '4K' : params.quality === 'low' ? '1K' : '2K');
+
+    console.log(`Generating 1 ${params.contextPreset} image using Gemini 3 Pro Image Preview (Production Optimized)`);
     console.log(`Product: ${productSpecs.productName}`);
     console.log(`Reference Images: ${referenceImages.length} base64 images provided`);
+    console.log(`Image Resolution: ${imageSize}`);
     console.log(`Prompt Length: ${promptResult.metadata.promptLength} characters`);
     console.log(`Production Ready: ${promptResult.metadata.productionReady}`);
     console.log(`Optimizations Applied: ${promptResult.metadata.optimizationsApplied.join(', ')}`);
@@ -213,11 +218,16 @@ export async function POST(request: NextRequest) {
         console.log(`Using ${validImages.length} valid base64 reference images for multimodal generation`);
         
         // Generate with reference images
+        // Map quality to imageSize if not explicitly provided
+        const imageSize = params.imageSize || (params.quality === 'high' ? '4K' : params.quality === 'low' ? '1K' : '2K');
+
         variations = await generateMultipleImagesWithReferences(
           promptResult.prompt,
           validImages,
           1,
-          params.contextPreset
+          params.contextPreset,
+          undefined, // aspectRatios (use default from contextPreset)
+          [imageSize] // Pass imageSize array for resolution control
         );
         
         referenceImagesUsed = true;
@@ -232,17 +242,22 @@ export async function POST(request: NextRequest) {
       
       // Fallback to text-only generation
       const aspectRatio = getGeminiAspectRatio(params.contextPreset);
+      const imageSize = params.imageSize || (params.quality === 'high' ? '4K' : params.quality === 'low' ? '1K' : '2K');
+
       const geminiRequest = {
         prompt: `${promptResult.prompt}
 
 🚨 FALLBACK MODE: Reference images could not be processed. Generating from description only with enhanced constraints for quality assurance.`,
         aspectRatio: aspectRatio,
+        imageSize: imageSize,
       };
 
       variations = await generateMultipleImagesWithGemini(
         geminiRequest,
         1,
-        params.contextPreset
+        params.contextPreset,
+        undefined, // aspectRatios
+        [imageSize] // imageSizes
       );
       
       referenceImagesUsed = false;
@@ -406,7 +421,8 @@ export async function POST(request: NextRequest) {
         profileSource: 'production-prompt-engine-v2',
         prompt: promptResult.prompt,
         promptLength: promptResult.metadata.promptLength,
-        model: 'google-nano-banana-optimized',
+        model: 'gemini-3-pro-image-preview',
+        imageResolution: imageSize,
         engineVersion: promptResult.metadata.engineVersion,
         generationMethod: referenceImagesUsed ? 'multimodal-image-to-image' : 'production-text-to-image',
         productIntelligence: promptResult.metadata.productIntelligence,
@@ -458,7 +474,7 @@ export async function POST(request: NextRequest) {
       error: userError,
       approach: "production-optimized-prompt-engine-generation",
       engineVersion: "2.0.0-production",
-      model: "google-nano-banana"
+      model: "gemini-3-pro-image-preview"
     }, { status: statusCode });
   }
 }

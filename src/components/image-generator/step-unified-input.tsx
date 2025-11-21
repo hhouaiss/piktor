@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, CheckCircle, Upload, X, Image as ImageIcon, Instagram, Facebook, Camera, Home, Package, Smartphone } from "lucide-react";
+import { Loader2, CheckCircle, Upload, X, Image as ImageIcon, Instagram, Facebook, Camera, Home, Package, Smartphone, Zap, Gauge } from "lucide-react";
 import { ProductInput, ProductSpecs, UploadedImage, createProductInput, ContextSelection, ContextType, SocialMediaFormat, CONTEXT_TYPE_CONFIG, createContextSelection } from "./types";
 import { cn } from "@/lib/utils";
 
@@ -19,15 +19,23 @@ interface StepUnifiedInputProps {
   onContextSelectionChange: (selection: ContextSelection) => void;
   onComplete: () => void;
   isActive: boolean;
+  quality?: 'high' | 'medium' | 'low';
+  imageSize?: '1K' | '2K' | '4K';
+  onQualityChange?: (quality: 'high' | 'medium' | 'low') => void;
+  onImageSizeChange?: (imageSize: '1K' | '2K' | '4K') => void;
 }
 
-export function StepUnifiedInput({ 
-  productInput, 
+export function StepUnifiedInput({
+  productInput,
   contextSelection,
-  onProductInputChange, 
+  onProductInputChange,
   onContextSelectionChange,
-  onComplete, 
-  isActive 
+  onComplete,
+  isActive,
+  quality = 'high',
+  imageSize = '2K',
+  onQualityChange,
+  onImageSizeChange
 }: StepUnifiedInputProps) {
   const [specs, setSpecs] = useState<ProductSpecs>({
     productName: productInput?.specs.productName || '',
@@ -528,6 +536,149 @@ export function StepUnifiedInput({
               </div>
             </div>
           )}
+        </div>
+
+        {/* Resolution & Quality Settings */}
+        <div>
+          <Label className="text-base font-semibold mb-3 block">Image Resolution & Quality</Label>
+          <p className="text-sm text-muted-foreground mb-4">
+            Choose the resolution for your generated images. Higher resolutions provide better quality but take longer to generate.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* 1K - Fast Preview */}
+            <Card
+              variant={imageSize === '1K' ? "premium" : "outlined"}
+              className={cn(
+                "cursor-pointer transition-all duration-200 hover:scale-105",
+                imageSize === '1K' && "ring-2 ring-ocean-blue-500 shadow-lg"
+              )}
+              onClick={() => onImageSizeChange?.('1K')}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <div className={cn(
+                    "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0",
+                    imageSize === '1K'
+                      ? "bg-gradient-ocean-gold text-white"
+                      : "bg-sophisticated-gray-100 text-sophisticated-gray-600 dark:bg-sophisticated-gray-800"
+                  )}>
+                    <Zap className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold mb-1">1K - Fast</h4>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      ~1024px • Quick generation
+                    </p>
+                    <div className="space-y-1 text-xs text-muted-foreground">
+                      <div>✓ Fastest generation (~5-10s)</div>
+                      <div>✓ Lower cost</div>
+                      <div>✓ Good for previews</div>
+                    </div>
+                  </div>
+                  {imageSize === '1K' && (
+                    <CheckCircle className="w-5 h-5 text-ocean-blue-600 flex-shrink-0" />
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 2K - Balanced (Default) */}
+            <Card
+              variant={imageSize === '2K' ? "premium" : "outlined"}
+              className={cn(
+                "cursor-pointer transition-all duration-200 hover:scale-105",
+                imageSize === '2K' && "ring-2 ring-ocean-blue-500 shadow-lg"
+              )}
+              onClick={() => onImageSizeChange?.('2K')}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <div className={cn(
+                    "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0",
+                    imageSize === '2K'
+                      ? "bg-gradient-ocean-gold text-white"
+                      : "bg-sophisticated-gray-100 text-sophisticated-gray-600 dark:bg-sophisticated-gray-800"
+                  )}>
+                    <Gauge className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h4 className="font-semibold">2K - Balanced</h4>
+                      <Badge variant="secondary" className="text-xs">
+                        Recommended
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      ~2048px • Best balance
+                    </p>
+                    <div className="space-y-1 text-xs text-muted-foreground">
+                      <div>✓ Great quality (~15-20s)</div>
+                      <div>✓ Perfect for web/e-commerce</div>
+                      <div>✓ Optimal cost/quality ratio</div>
+                    </div>
+                  </div>
+                  {imageSize === '2K' && (
+                    <CheckCircle className="w-5 h-5 text-ocean-blue-600 flex-shrink-0" />
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 4K - Premium */}
+            <Card
+              variant={imageSize === '4K' ? "premium" : "outlined"}
+              className={cn(
+                "cursor-pointer transition-all duration-200 hover:scale-105",
+                imageSize === '4K' && "ring-2 ring-ocean-blue-500 shadow-lg"
+              )}
+              onClick={() => onImageSizeChange?.('4K')}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <div className={cn(
+                    "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0",
+                    imageSize === '4K'
+                      ? "bg-gradient-ocean-gold text-white"
+                      : "bg-sophisticated-gray-100 text-sophisticated-gray-600 dark:bg-sophisticated-gray-800"
+                  )}>
+                    <ImageIcon className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h4 className="font-semibold">4K - Premium</h4>
+                      <Badge variant="outline" className="text-xs">
+                        Best Quality
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      ~4096px • Highest quality
+                    </p>
+                    <div className="space-y-1 text-xs text-muted-foreground">
+                      <div>✓ Studio quality (~25-35s)</div>
+                      <div>✓ Print-ready resolution</div>
+                      <div>✓ Premium product shots</div>
+                    </div>
+                  </div>
+                  {imageSize === '4K' && (
+                    <CheckCircle className="w-5 h-5 text-ocean-blue-600 flex-shrink-0" />
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-900">
+            <p className="text-sm text-blue-900 dark:text-blue-100">
+              <strong>Current Selection:</strong> {imageSize} Resolution {imageSize === '2K' && '(Recommended)'}
+              <br />
+              <span className="text-xs text-blue-700 dark:text-blue-300">
+                {imageSize === '1K' && 'Fast generation, ideal for quick previews and thumbnails'}
+                {imageSize === '2K' && 'Perfect balance of quality and speed for most use cases'}
+                {imageSize === '4K' && 'Maximum quality for professional print and premium marketing materials'}
+              </span>
+            </p>
+          </div>
         </div>
 
         {/* Continue Button */}

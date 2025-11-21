@@ -61,6 +61,7 @@ export interface UiSettings {
   lighting: 'soft_daylight' | 'studio_softbox' | 'warm_ambient';
   strictMode: boolean;
   quality: 'high' | 'medium' | 'low';
+  imageSize?: '1K' | '2K' | '4K'; // Resolution selection for Gemini 3 Pro Image Preview
   variations: 1 | 2 | 3 | 4;
 }
 
@@ -178,6 +179,7 @@ export const DEFAULT_UI_SETTINGS: UiSettings = {
   lighting: 'soft_daylight',
   strictMode: true,
   quality: 'high',
+  imageSize: '2K', // Default to 2K for balanced quality/speed
   variations: 2,
 };
 

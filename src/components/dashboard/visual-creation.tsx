@@ -10,9 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { FlexibleStepper } from "@/components/ui/flexible-stepper";
-import { 
-  Upload, 
-  Sparkles, 
+import {
+  Upload,
+  Sparkles,
   Download,
   Eye,
   ArrowLeft,
@@ -29,7 +29,10 @@ import {
   X,
   Loader2,
   Plus,
-  AlertCircle
+  AlertCircle,
+  Zap,
+  Gauge,
+  Image as ImageIcon
 } from "lucide-react";
 import { trackEvent, trackImageGeneration } from "@/lib/analytics";
 import { authenticatedPost } from "@/lib/api-client";
@@ -53,6 +56,7 @@ interface GenerationSettings {
   lighting: string;
   angle: string;
   format: string; // Changed to single format selection
+  imageSize: '1K' | '2K' | '4K'; // Resolution selection for Gemini 3 Pro Image Preview
   customPrompt?: string;
 }
 
@@ -136,7 +140,8 @@ function VisualCreationContent() {
     environment: "",
     lighting: "",
     angle: "",
-    format: "square-format" // Default format (single selection)
+    format: "square-format", // Default format (single selection)
+    imageSize: "2K" // Default to 2K for balanced quality
   });
   const [generatedImages, setGeneratedImages] = useState<DashboardGeneratedImage[]>([]);
   const [downloadingImages, setDownloadingImages] = useState<Set<string>>(new Set());
@@ -458,7 +463,8 @@ function VisualCreationContent() {
           generationParams: {
             contextPreset: determineContextFromSettings(settings),
             variations: 1, // Single format = single variation
-            quality: 'high'
+            quality: 'high',
+            imageSize: settings.imageSize // Pass selected resolution
           }
         };
 
@@ -530,12 +536,12 @@ function VisualCreationContent() {
         prompt: variation.prompt,
         generationSource: {
           method: generationMethod,
-          model: variation.metadata?.model as string || 'google-nano-banana',
+          model: variation.metadata?.model as string || 'gemini-3-pro-image-preview',
           confidence: 1.0,
           referenceImageUsed: true
         },
         metadata: {
-          model: variation.metadata?.model as string || 'google-nano-banana',
+          model: variation.metadata?.model as string || 'gemini-3-pro-image-preview',
           timestamp: new Date().toISOString(),
           size: '1536x1024',
           quality: 'high',
@@ -1055,6 +1061,114 @@ function VisualCreationContent() {
         </p>
       </div>
 
+      {/* Resolution Selection */}
+      <div className="space-y-4">
+        <Label className="text-base font-semibold flex items-center">
+          <ImageIcon className="w-5 h-5 mr-2" />
+          Résolution d&apos;image
+        </Label>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {/* 1K - Fast */}
+          <Card
+            className={`p-4 cursor-pointer transition-colors ${
+              settings.imageSize === '1K'
+                ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
+                : 'hover:bg-muted/50'
+            }`}
+            onClick={() => setSettings(prev => ({ ...prev, imageSize: '1K' }))}
+          >
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Zap className="w-5 h-5 text-orange-500" />
+                  <p className="font-semibold text-sm">1K - Rapide</p>
+                </div>
+                {settings.imageSize === '1K' && (
+                  <Check className="w-5 h-5 text-primary" />
+                )}
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">~1024px</p>
+                <ul className="text-xs text-muted-foreground space-y-1">
+                  <li>✓ Génération rapide (~5-10s)</li>
+                  <li>✓ Coût optimisé</li>
+                  <li>✓ Parfait pour prévisualisations</li>
+                </ul>
+              </div>
+            </div>
+          </Card>
+
+          {/* 2K - Balanced (Recommended) */}
+          <Card
+            className={`p-4 cursor-pointer transition-colors ${
+              settings.imageSize === '2K'
+                ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
+                : 'hover:bg-muted/50'
+            }`}
+            onClick={() => setSettings(prev => ({ ...prev, imageSize: '2K' }))}
+          >
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Gauge className="w-5 h-5 text-blue-500" />
+                  <div>
+                    <p className="font-semibold text-sm">2K - Équilibré</p>
+                    <span className="text-xs text-primary font-medium">Recommandé</span>
+                  </div>
+                </div>
+                {settings.imageSize === '2K' && (
+                  <Check className="w-5 h-5 text-primary" />
+                )}
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">~2048px</p>
+                <ul className="text-xs text-muted-foreground space-y-1">
+                  <li>✓ Excellente qualité (~15-20s)</li>
+                  <li>✓ Idéal pour web/e-commerce</li>
+                  <li>✓ Meilleur rapport qualité/coût</li>
+                </ul>
+              </div>
+            </div>
+          </Card>
+
+          {/* 4K - Premium */}
+          <Card
+            className={`p-4 cursor-pointer transition-colors ${
+              settings.imageSize === '4K'
+                ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
+                : 'hover:bg-muted/50'
+            }`}
+            onClick={() => setSettings(prev => ({ ...prev, imageSize: '4K' }))}
+          >
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <ImageIcon className="w-5 h-5 text-purple-500" />
+                  <div>
+                    <p className="font-semibold text-sm">4K - Premium</p>
+                    <span className="text-xs text-purple-600 font-medium">Meilleure qualité</span>
+                  </div>
+                </div>
+                {settings.imageSize === '4K' && (
+                  <Check className="w-5 h-5 text-primary" />
+                )}
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">~4096px</p>
+                <ul className="text-xs text-muted-foreground space-y-1">
+                  <li>✓ Qualité studio (~25-35s)</li>
+                  <li>✓ Prêt pour impression</li>
+                  <li>✓ Visuels premium</li>
+                </ul>
+              </div>
+            </div>
+          </Card>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Sélectionnez la résolution adaptée à votre usage (web, impression, catalogue)
+        </p>
+      </div>
+
       {/* Custom Prompt */}
       <div className="space-y-3">
         <Label htmlFor="customPrompt">
@@ -1131,6 +1245,7 @@ function VisualCreationContent() {
                     <p className="text-xs md:text-sm text-muted-foreground break-words">
                       {formatOptions.find(f => f.value === settings.format)?.description}
                     </p>
+                    <p className="break-words"><strong>Résolution:</strong> {settings.imageSize} ({settings.imageSize === '1K' ? 'Rapide ~1024px' : settings.imageSize === '2K' ? 'Équilibré ~2048px' : 'Premium ~4096px'})</p>
                   </div>
 
                   {/* Custom Instructions */}
@@ -1282,7 +1397,8 @@ function VisualCreationContent() {
                     environment: "",
                     lighting: "",
                     angle: "",
-                    format: "square-format"
+                    format: "square-format",
+                    imageSize: "2K"
                   });
                   setGeneratedImages([]);
                   setGenerationError(null);
@@ -1380,7 +1496,8 @@ function VisualCreationContent() {
                   environment: "",
                   lighting: "",
                   angle: "",
-                  format: "square-format"
+                  format: "square-format",
+                  imageSize: "2K"
                 });
                 setGeneratedImages([]);
                 setGenerationError(null);

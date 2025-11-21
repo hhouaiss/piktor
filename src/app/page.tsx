@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Upload, X, CheckCircle, ArrowRight, Sparkles, Zap, Package, Eye, Download, AlertCircle } from "lucide-react";
+import { Loader2, Upload, X, CheckCircle, ArrowRight, Sparkles, Zap, Package, Eye, Download, AlertCircle, Gauge, ImageIcon } from "lucide-react";
 import { ProductSpecs, UploadedImage, GeneratedImage } from "@/components/image-generator/types";
 import { validateImageUrl, generateSafeFilename, getDownloadErrorMessage, downloadWithRetry } from "@/lib/download-utils";
 import { cn } from "@/lib/utils";
@@ -38,6 +38,7 @@ interface LandingPageGeneratorState {
   specs: ProductSpecs;
   viewingImage: GeneratedImage | null;
   downloadingImages: Set<string>;
+  imageSize: '1K' | '2K' | '4K'; // Resolution selection
 }
 
 // Internal component that uses the usage limit hooks
@@ -60,7 +61,8 @@ function HomeContent() {
       additionalSpecs: '',
     },
     viewingImage: null,
-    downloadingImages: new Set()
+    downloadingImages: new Set(),
+    imageSize: '2K' // Default to 2K for balanced quality
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -224,7 +226,8 @@ function HomeContent() {
         generationParams: {
           contextPreset: 'lifestyle',
           variations: 2,
-          quality: 'high'
+          quality: 'high',
+          imageSize: generatorState.imageSize // Pass selected resolution
         }
       };
 
@@ -999,6 +1002,102 @@ function HomeContent() {
                         specs: { ...generatorState.specs, productType: e.target.value }
                       })}
                     />
+                  </div>
+                </div>
+
+                {/* Resolution Selector */}
+                <div className="space-y-3">
+                  <Label className="text-base font-semibold">Qualité de l'image</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {/* 1K */}
+                    <button
+                      onClick={() => updateGeneratorState({ imageSize: '1K' })}
+                      className={cn(
+                        "p-4 rounded-lg border-2 transition-all text-left hover:scale-105",
+                        generatorState.imageSize === '1K'
+                          ? "border-ocean-blue-500 bg-gradient-to-br from-ocean-blue-50 to-warm-gold-50 dark:bg-gradient-to-br dark:from-ocean-blue-900/30 dark:to-warm-gold-900/30 shadow-md"
+                          : "border-sophisticated-gray-300 dark:border-sophisticated-gray-600 hover:border-ocean-blue-400"
+                      )}
+                    >
+                      <div className="flex items-start gap-3">
+                        <Zap className={cn(
+                          "w-5 h-5 mt-0.5 flex-shrink-0",
+                          generatorState.imageSize === '1K' ? "text-ocean-blue-600" : "text-sophisticated-gray-500"
+                        )} />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-sm mb-1">1K - Rapide</div>
+                          <div className="text-xs text-sophisticated-gray-600 dark:text-sophisticated-gray-400 space-y-0.5">
+                            <div>✓ Génération rapide</div>
+                            <div>✓ Idéal pour les tests</div>
+                          </div>
+                        </div>
+                        {generatorState.imageSize === '1K' && (
+                          <CheckCircle className="w-5 h-5 text-ocean-blue-600 flex-shrink-0" />
+                        )}
+                      </div>
+                    </button>
+
+                    {/* 2K */}
+                    <button
+                      onClick={() => updateGeneratorState({ imageSize: '2K' })}
+                      className={cn(
+                        "p-4 rounded-lg border-2 transition-all text-left hover:scale-105",
+                        generatorState.imageSize === '2K'
+                          ? "border-ocean-blue-500 bg-gradient-to-br from-ocean-blue-50 to-warm-gold-50 dark:bg-gradient-to-br dark:from-ocean-blue-900/30 dark:to-warm-gold-900/30 shadow-md"
+                          : "border-sophisticated-gray-300 dark:border-sophisticated-gray-600 hover:border-ocean-blue-400"
+                      )}
+                    >
+                      <div className="flex items-start gap-3">
+                        <Gauge className={cn(
+                          "w-5 h-5 mt-0.5 flex-shrink-0",
+                          generatorState.imageSize === '2K' ? "text-ocean-blue-600" : "text-sophisticated-gray-500"
+                        )} />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-semibold text-sm">2K - Équilibré</span>
+                            <Badge variant="secondary" className="text-xs px-1.5 py-0">Recommandé</Badge>
+                          </div>
+                          <div className="text-xs text-sophisticated-gray-600 dark:text-sophisticated-gray-400 space-y-0.5">
+                            <div>✓ Qualité optimale</div>
+                            <div>✓ Parfait pour le web</div>
+                          </div>
+                        </div>
+                        {generatorState.imageSize === '2K' && (
+                          <CheckCircle className="w-5 h-5 text-ocean-blue-600 flex-shrink-0" />
+                        )}
+                      </div>
+                    </button>
+
+                    {/* 4K */}
+                    <button
+                      onClick={() => updateGeneratorState({ imageSize: '4K' })}
+                      className={cn(
+                        "p-4 rounded-lg border-2 transition-all text-left hover:scale-105",
+                        generatorState.imageSize === '4K'
+                          ? "border-ocean-blue-500 bg-gradient-to-br from-ocean-blue-50 to-warm-gold-50 dark:bg-gradient-to-br dark:from-ocean-blue-900/30 dark:to-warm-gold-900/30 shadow-md"
+                          : "border-sophisticated-gray-300 dark:border-sophisticated-gray-600 hover:border-ocean-blue-400"
+                      )}
+                    >
+                      <div className="flex items-start gap-3">
+                        <ImageIcon className={cn(
+                          "w-5 h-5 mt-0.5 flex-shrink-0",
+                          generatorState.imageSize === '4K' ? "text-ocean-blue-600" : "text-sophisticated-gray-500"
+                        )} />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-semibold text-sm">4K - Premium</span>
+                            <Badge variant="outline" className="text-xs px-1.5 py-0">Meilleure qualité</Badge>
+                          </div>
+                          <div className="text-xs text-sophisticated-gray-600 dark:text-sophisticated-gray-400 space-y-0.5">
+                            <div>✓ Qualité studio</div>
+                            <div>✓ Prêt pour l'impression</div>
+                          </div>
+                        </div>
+                        {generatorState.imageSize === '4K' && (
+                          <CheckCircle className="w-5 h-5 text-ocean-blue-600 flex-shrink-0" />
+                        )}
+                      </div>
+                    </button>
                   </div>
                 </div>
 

@@ -104,15 +104,44 @@ export default function GeneratePage() {
     // DEBUG: Log context selection state
     // console.log('[Frontend] Context selection:', state.contextSelection);
     // console.log('[Frontend] Product configuration contextPreset:', state.productConfiguration?.uiSettings.contextPreset);
-    
+
     // Directly start generation and move to step 2
     updateState({ currentStep: 2, isGenerating: true });
-    
+
     // Scroll to top smoothly when moving to step 2
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    
+
     generateImages();
   };
+
+  // Resolution/Quality change handlers
+  const handleQualityChange = useCallback((quality: 'high' | 'medium' | 'low') => {
+    if (state.productConfiguration) {
+      const updatedConfiguration = {
+        ...state.productConfiguration,
+        uiSettings: {
+          ...state.productConfiguration.uiSettings,
+          quality
+        },
+        updatedAt: new Date().toISOString(),
+      };
+      updateState({ productConfiguration: updatedConfiguration });
+    }
+  }, [state.productConfiguration]);
+
+  const handleImageSizeChange = useCallback((imageSize: '1K' | '2K' | '4K') => {
+    if (state.productConfiguration) {
+      const updatedConfiguration = {
+        ...state.productConfiguration,
+        uiSettings: {
+          ...state.productConfiguration.uiSettings,
+          imageSize
+        },
+        updatedAt: new Date().toISOString(),
+      };
+      updateState({ productConfiguration: updatedConfiguration });
+    }
+  }, [state.productConfiguration]);
 
   // Removed handleConfigurationChange - no longer needed in simplified workflow
 
@@ -213,7 +242,8 @@ export default function GeneratePage() {
         generationParams: {
           contextPreset: state.productConfiguration.uiSettings.contextPreset,
           variations: state.productConfiguration.uiSettings.variations,
-          quality: state.productConfiguration.uiSettings.quality
+          quality: state.productConfiguration.uiSettings.quality,
+          imageSize: state.productConfiguration.uiSettings.imageSize // Pass selected resolution
         }
       };
 
@@ -590,6 +620,10 @@ export default function GeneratePage() {
               onContextSelectionChange={handleContextSelectionChange}
               onComplete={handleProductInputComplete}
               isActive={state.currentStep === 1}
+              quality={state.productConfiguration?.uiSettings.quality || 'high'}
+              imageSize={state.productConfiguration?.uiSettings.imageSize || '2K'}
+              onQualityChange={handleQualityChange}
+              onImageSizeChange={handleImageSizeChange}
             />
           )}
 

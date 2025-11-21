@@ -176,6 +176,7 @@ export function ImageEditorModal({
             viewAngle: editParams.viewAngle,
             lighting: editParams.lighting,
             style: 'photorealistic', // Always use photorealistic style
+            imageSize: editParams.imageSize || '2K', // Pass resolution selection
             customInstructions: editParams.customInstructions,
             productImages: editParams.productImages,
           },

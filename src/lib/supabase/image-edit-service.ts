@@ -32,6 +32,7 @@ export interface EditParams {
   viewAngle: 'frontal' | '45-degree' | 'top-down' | 'perspective' | 'custom';
   lighting: 'soft' | 'dramatic' | 'natural' | 'studio' | 'golden-hour' | 'custom';
   style: 'photorealistic' | 'minimalist' | 'artistic' | 'vintage' | 'modern' | 'custom';
+  imageSize?: '1K' | '2K' | '4K'; // Resolution selection for Gemini 3 Pro Image Preview
   customPrompt?: string;
   /**
    * Additional custom instructions from user
@@ -156,6 +157,7 @@ class ImageEditService {
         const geminiResponse = await generateImageWithGemini({
           prompt: variationPrompt,
           aspectRatio: this.mapAspectRatio(request.editParams.aspectRatio),
+          imageSize: request.editParams.imageSize || '2K', // Pass resolution selection, default to 2K
           referenceImages
         });
 
@@ -192,7 +194,7 @@ class ImageEditService {
 
         // Create edit record in database
         const editMetadata: EditMetadata = {
-          model: 'gemini-2.5-flash-image',
+          model: 'gemini-3-pro-image-preview',
           timestamp: new Date().toISOString(),
           processingTime: Date.now() - startTime,
           creditsUsed: 1, // 1 credit per edit

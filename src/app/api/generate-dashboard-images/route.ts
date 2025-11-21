@@ -267,13 +267,19 @@ ${productionPromptResult.prompt.split('🔧 PRODUCTION QUALITY ENHANCEMENT:')[1]
 
         console.log('[Dashboard API] Generating with aspect ratios:', aspectRatios, 'for formats:', settings.formats);
 
+        // Get image size from settings (default to 2K if not provided)
+        const imageSize = (settings as any).imageSize || '2K';
+        const imageSizes = Array(settings.formats.length).fill(imageSize);
+        console.log('[Dashboard API] Using image resolution:', imageSize, 'for all formats');
+
         // Use hybrid prompt with reference images for best results
         variations = await generateMultipleImagesWithReferences(
           hybridPrompt,
           validImages,
           settings.formats.length, // Generate one image per format
           productionSpecs.generationParams.contextPreset as ContextPreset,
-          aspectRatios // Pass aspect ratios per format
+          aspectRatios, // Pass aspect ratios per format
+          imageSizes // Pass image sizes per format
         );
 
         generationMethod = 'multimodal-dashboard-hybrid';
@@ -305,11 +311,18 @@ ${productionPromptResult.prompt.split('🔧 PRODUCTION QUALITY ENHANCEMENT:')[1]
       });
 
       const aspectRatio = aspectRatios[0] || getGeminiAspectRatio(productionSpecs.generationParams.contextPreset as ContextPreset);
+
+      // Get image size from settings (default to 2K if not provided)
+      const imageSize = (settings as any).imageSize || '2K';
+      const imageSizes = Array(settings.formats.length).fill(imageSize);
+      console.log('[Dashboard API] Text-only fallback using image resolution:', imageSize);
+
       const geminiRequest = {
         prompt: `${dashboardPrompt}
 
 🚨 TEXT-ONLY GENERATION MODE: Reference images could not be processed. Generating from personalized dashboard description with enhanced quality constraints.`,
         aspectRatio: aspectRatio,
+        imageSize: imageSize,
       };
 
       console.log('[Dashboard API] Text-only fallback with aspect ratios:', aspectRatios, 'for formats:', settings.formats);
@@ -318,7 +331,8 @@ ${productionPromptResult.prompt.split('🔧 PRODUCTION QUALITY ENHANCEMENT:')[1]
         geminiRequest,
         settings.formats.length,
         productionSpecs.generationParams.contextPreset as ContextPreset,
-        aspectRatios // Pass aspect ratios per format
+        aspectRatios, // Pass aspect ratios per format
+        imageSizes // Pass image sizes per format
       );
 
       generationMethod = 'text-only-dashboard-enhanced';
