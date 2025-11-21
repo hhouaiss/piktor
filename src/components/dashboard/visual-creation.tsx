@@ -48,6 +48,14 @@ interface UploadedImage {
   file: File;
   url: string;
   name: string;
+  isPrimary?: boolean; // First image is the main reference, others add context
+}
+
+interface ProductDimensions {
+  width?: number;  // in cm
+  depth?: number;  // in cm
+  height?: number; // in cm
+  unit: 'cm' | 'in'; // measurement unit
 }
 
 interface GenerationSettings {
@@ -57,6 +65,7 @@ interface GenerationSettings {
   angle: string;
   format: string; // Changed to single format selection
   imageSize: '1K' | '2K' | '4K'; // Resolution selection for Gemini 3 Pro Image Preview
+  dimensions?: ProductDimensions; // Product dimensions for realistic proportions
   customPrompt?: string;
 }
 
@@ -416,11 +425,12 @@ function VisualCreationContent() {
         productProfile: {
           productName: productName || 'Meuble',
           productCategory: productCategory || 'autre',
-          uploadedImages: uploadedImages.map(img => ({
+          uploadedImages: uploadedImages.map((img, index) => ({
             id: img.id,
             file: img.file,
             url: img.url,
-            name: img.name
+            name: img.name,
+            isPrimary: index === 0 // First image is always the primary reference
           }))
         },
         settings: {
@@ -429,6 +439,8 @@ function VisualCreationContent() {
           lighting: settings.lighting || 'naturelle',
           angle: settings.angle || 'trois-quarts',
           formats: [settings.format], // Single format wrapped in array for API compatibility
+          imageSize: settings.imageSize || '2K', // Resolution selection
+          dimensions: settings.dimensions, // Product dimensions for realistic proportions
           customPrompt: settings.customPrompt
         },
         referenceImages: base64Images
@@ -808,22 +820,39 @@ function VisualCreationContent() {
         />
       </Card>
 
-      {/* Uploaded Images */}
+      {/* Uploaded Images with Primary/Context Labels */}
       {uploadedImages.length > 0 && (
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-foreground">
-            Images téléchargées ({uploadedImages.length})
-          </h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-foreground">
+              Images téléchargées ({uploadedImages.length}/25)
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              La première image est la référence principale
+            </p>
+          </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {uploadedImages.map((image) => (
+            {uploadedImages.map((image, index) => (
               <div key={image.id} className="relative group">
-                <div className="aspect-square bg-sophisticated-gray-100 rounded-lg overflow-hidden">
+                <div className={cn(
+                  "aspect-square bg-sophisticated-gray-100 rounded-lg overflow-hidden border-2",
+                  index === 0 ? "border-primary ring-2 ring-primary/20" : "border-transparent"
+                )}>
                   <Image
                     src={image.url}
                     alt={image.name}
                     fill
                     className="object-cover"
                   />
+                </div>
+                {/* Primary/Context Badge */}
+                <div className={cn(
+                  "absolute top-2 left-2 px-2 py-0.5 rounded text-xs font-medium",
+                  index === 0
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-sophisticated-gray-800/70 text-white"
+                )}>
+                  {index === 0 ? "Référence" : `Contexte ${index}`}
                 </div>
                 <button
                   onClick={(e) => {
@@ -839,6 +868,93 @@ function VisualCreationContent() {
                 </p>
               </div>
             ))}
+          </div>
+          <p className="text-xs text-muted-foreground bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
+            <strong>Astuce :</strong> Ajoutez jusqu&apos;à 25 images pour plus de cohérence. La première image est utilisée comme référence principale, les autres aident l&apos;IA à mieux comprendre les détails et spécificités de votre produit (angles, textures, finitions).
+          </p>
+        </div>
+      )}
+
+      {/* Product Dimensions (Optional) */}
+      {uploadedImages.length > 0 && (
+        <div className="space-y-4 p-4 bg-sophisticated-gray-50 dark:bg-sophisticated-gray-900/50 rounded-lg">
+          <div className="flex items-center justify-between">
+            <Label className="text-base font-semibold">
+              Dimensions du produit (optionnel)
+            </Label>
+            <Select
+              value={settings.dimensions?.unit || 'cm'}
+              onValueChange={(value: 'cm' | 'in') =>
+                setSettings(prev => ({
+                  ...prev,
+                  dimensions: { ...prev.dimensions, unit: value } as ProductDimensions
+                }))
+              }
+            >
+              <SelectTrigger className="w-20">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="cm">cm</SelectItem>
+                <SelectItem value="in">pouces</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Précisez les dimensions pour une représentation ultra-réaliste des proportions
+          </p>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="space-y-1">
+              <Label htmlFor="width" className="text-xs text-muted-foreground">Largeur</Label>
+              <Input
+                id="width"
+                type="number"
+                placeholder="Ex: 200"
+                value={settings.dimensions?.width || ''}
+                onChange={(e) => setSettings(prev => ({
+                  ...prev,
+                  dimensions: {
+                    ...prev.dimensions,
+                    width: e.target.value ? parseFloat(e.target.value) : undefined,
+                    unit: prev.dimensions?.unit || 'cm'
+                  } as ProductDimensions
+                }))}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="depth" className="text-xs text-muted-foreground">Profondeur</Label>
+              <Input
+                id="depth"
+                type="number"
+                placeholder="Ex: 90"
+                value={settings.dimensions?.depth || ''}
+                onChange={(e) => setSettings(prev => ({
+                  ...prev,
+                  dimensions: {
+                    ...prev.dimensions,
+                    depth: e.target.value ? parseFloat(e.target.value) : undefined,
+                    unit: prev.dimensions?.unit || 'cm'
+                  } as ProductDimensions
+                }))}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="height" className="text-xs text-muted-foreground">Hauteur</Label>
+              <Input
+                id="height"
+                type="number"
+                placeholder="Ex: 80"
+                value={settings.dimensions?.height || ''}
+                onChange={(e) => setSettings(prev => ({
+                  ...prev,
+                  dimensions: {
+                    ...prev.dimensions,
+                    height: e.target.value ? parseFloat(e.target.value) : undefined,
+                    unit: prev.dimensions?.unit || 'cm'
+                  } as ProductDimensions
+                }))}
+              />
+            </div>
           </div>
         </div>
       )}

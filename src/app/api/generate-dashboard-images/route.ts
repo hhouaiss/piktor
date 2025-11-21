@@ -184,7 +184,10 @@ export async function POST(request: NextRequest) {
       environment: settings.environment,
       lighting: settings.lighting,
       angle: settings.angle,
-      formats: settings.formats
+      formats: settings.formats,
+      imageSize: (settings as any).imageSize || '2K',
+      hasDimensions: !!(settings as any).dimensions,
+      dimensions: (settings as any).dimensions || null
     });
 
     // Validate dashboard settings and provide feedback

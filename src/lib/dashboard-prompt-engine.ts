@@ -9,6 +9,14 @@
  * furniture photography generation.
  */
 
+// Product dimensions for realistic proportions
+export interface ProductDimensions {
+  width?: number;  // Width in specified unit
+  depth?: number;  // Depth in specified unit
+  height?: number; // Height in specified unit
+  unit: 'cm' | 'in'; // Measurement unit
+}
+
 // Dashboard Settings Interface (matching visual-creation.tsx)
 export interface DashboardGenerationSettings {
   style: string;        // moderne, rustique, industriel, scandinave, boheme
@@ -17,6 +25,7 @@ export interface DashboardGenerationSettings {
   angle: string;        // face, trois-quarts, profile, plongee
   formats: string[];    // instagram-post, instagram-story, facebook, ecommerce, print, web-banner
   imageSize: '1K' | '2K' | '4K'; // Resolution selection for Gemini 3 Pro Image Preview
+  dimensions?: ProductDimensions; // Optional product dimensions for realistic proportions
   customPrompt?: string; // User's additional instructions
 }
 
@@ -29,6 +38,7 @@ export interface DashboardProductProfile {
     file: File;
     url: string;
     name: string;
+    isPrimary?: boolean; // First image is the main reference, others add context
   }>;
 }
 
@@ -207,6 +217,11 @@ export function buildDashboardPrompt(
   const lightingConfig = LIGHTING_TRANSLATIONS[settings.lighting as keyof typeof LIGHTING_TRANSLATIONS];
   const angleConfig = ANGLE_TRANSLATIONS[settings.angle as keyof typeof ANGLE_TRANSLATIONS];
 
+  // Count primary and context images
+  const primaryImages = productProfile.uploadedImages.filter(img => img.isPrimary !== false);
+  const primaryCount = primaryImages.length > 0 ? 1 : 0; // First image is always primary
+  const contextCount = Math.max(0, productProfile.uploadedImages.length - 1);
+
   // Build comprehensive prompt
   let prompt = `🏢 PROFESSIONAL FURNITURE PHOTOGRAPHY COMMISSION
 
@@ -215,6 +230,16 @@ export function buildDashboardPrompt(
 - Category: ${getCategoryDescription(productProfile.productCategory)}
 - Reference Images: ${productProfile.uploadedImages.length} high-quality source images provided
 - Client Requirements: Generate ${settings.formats.length} format variations
+
+📸 MULTI-IMAGE REFERENCE SYSTEM:
+${productProfile.uploadedImages.length > 1 ? `- PRIMARY REFERENCE IMAGE (Image #1): This is the MAIN product image that defines the exact product appearance, design, colors, and overall form. The generated image MUST faithfully recreate this exact product.
+- CONTEXT IMAGES (Images #2-${productProfile.uploadedImages.length}): These ${contextCount} additional images provide supplementary context about product details, textures, alternative angles, and specific features. Use them to understand fine details, material textures, and design nuances, but the PRIMARY image defines the core product identity.
+
+MULTI-IMAGE PROCESSING RULES:
+1. ALWAYS use the first image as the authoritative reference for product shape, proportions, and main appearance
+2. Extract texture details, material quality, and fine craftsmanship from context images
+3. If context images show different angles, use them to understand 3D form for accurate rendering from any requested angle
+4. Context images may show color variations or accessories - maintain PRIMARY image color/design unless specifically requested otherwise` : `- Single reference image provided - use as the complete product reference`}
 
 🎨 ARTISTIC DIRECTION - ${styleConfig.aesthetic.toUpperCase()}:
 ${styleConfig.description}
@@ -272,6 +297,31 @@ Generate optimized compositions for ${settings.formats.length} formats:`;
         prompt += `\n- ${format}: ${spec.aspectRatio} (${spec.optimization})`;
       }
     });
+  }
+
+  // Add product dimensions if provided (for realistic proportions)
+  if (settings.dimensions) {
+    const dims = settings.dimensions;
+    const hasDimensions = dims.width || dims.depth || dims.height;
+
+    if (hasDimensions) {
+      const unit = dims.unit || 'cm';
+      const dimensionParts = [];
+      if (dims.width) dimensionParts.push(`Width: ${dims.width}${unit}`);
+      if (dims.depth) dimensionParts.push(`Depth: ${dims.depth}${unit}`);
+      if (dims.height) dimensionParts.push(`Height: ${dims.height}${unit}`);
+
+      prompt += `\n\n📏 PRODUCT DIMENSIONS (CRITICAL FOR REALISTIC PROPORTIONS):
+${dimensionParts.join(' | ')}
+
+DIMENSIONAL ACCURACY REQUIREMENTS:
+- The product MUST be rendered with EXACT real-world proportions based on these dimensions
+- All furniture elements (legs, armrests, cushions, etc.) must be proportionally accurate
+- The product should appear at realistic scale within the environment
+- Compare against standard furniture scales: typical sofa seat height ~45cm, dining table ~75cm, coffee table ~45cm
+- Ensure the product does not appear unnaturally large or small relative to the environment
+- Use the dimensions to calculate accurate aspect ratios and depth perception in the final image`;
+    }
   }
 
   // Add user's custom instructions if provided
