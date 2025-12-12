@@ -10,9 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { FlexibleStepper } from "@/components/ui/flexible-stepper";
-import { 
-  Upload, 
-  Sparkles, 
+import {
+  Upload,
+  Sparkles,
   Download,
   Eye,
   ArrowLeft,
@@ -29,7 +29,9 @@ import {
   X,
   Loader2,
   Plus,
-  AlertCircle
+  AlertCircle,
+  Lock,
+  Crown
 } from "lucide-react";
 import { trackEvent, trackImageGeneration } from "@/lib/analytics";
 import { authenticatedPost } from "@/lib/api-client";
@@ -39,6 +41,12 @@ import { cn } from "@/lib/utils";
 import { UsageLimitProvider, useUsageLimit, useCanGenerate, useGenerationRecorder } from "@/contexts/UsageLimitContext";
 import { UsageLimitReached } from "@/components/UsageLimitReached";
 import { GenerationEvaluation } from "@/components/GenerationEvaluation";
+import { useSubscription } from "@/hooks/useSubscription";
+import { canAccessAllFormats, canAccessCustomInstructions, isFormatAvailable, getLockedFormats } from "@/lib/feature-gating";
+import { useToast } from "@/hooks/use-toast";
+import { Toaster } from "@/components/ui/toaster";
+import { useUpgradePrompt } from "@/hooks/use-upgrade-prompt";
+import { UpgradePromptModal } from "@/components/dashboard/upgrade-prompt-modal";
 
 interface UploadedImage {
   id: string;
@@ -126,7 +134,11 @@ const steps = [
 function VisualCreationContent() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+  const { subscription } = useSubscription();
+  const { toast } = useToast();
+  const userPlan = subscription?.planId || 'free';
+  const { promptState, showUpgradePrompt, hideUpgradePrompt } = useUpgradePrompt();
+
   const [currentStep, setCurrentStep] = useState(1);
   const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
   const [productName, setProductName] = useState("");
@@ -346,7 +358,14 @@ function VisualCreationContent() {
 
     // Check usage limits before generation
     if (!canGenerate) {
-      setGenerationError('Limite de générations atteinte. Contactez-nous pour plus de générations.');
+      setGenerationError('Limite de générations atteinte.');
+      // Show upgrade prompt
+      const totalCredits = subscription?.generationsLimit || 5;
+      const usedCredits = subscription?.generationsUsed || 0;
+      showUpgradePrompt('generation_limit', userPlan, {
+        remainingCredits: Math.max(0, totalCredits - usedCredits),
+        totalCredits: totalCredits
+      });
       return;
     }
 
@@ -477,6 +496,17 @@ function VisualCreationContent() {
 
       if (!response.ok) {
         const errorData = await response.json();
+
+        // Handle 429 (rate limit exceeded) with upgrade prompt
+        if (response.status === 429) {
+          const totalCredits = subscription?.generationsLimit || 5;
+          showUpgradePrompt('generation_limit', userPlan, {
+            remainingCredits: 0,
+            totalCredits: totalCredits
+          });
+          throw new Error('Limite de générations atteinte');
+        }
+
         throw new Error(errorData.error || 'Échec de la génération d\'images');
       }
 
@@ -1008,66 +1038,160 @@ function VisualCreationContent() {
 
       {/* Format Selection */}
       <div className="space-y-4">
-        <Label className="text-base font-semibold">
-          Format de sortie *
-        </Label>
+        <div className="flex items-center justify-between">
+          <Label className="text-base font-semibold">
+            Format de sortie *
+          </Label>
+          {userPlan === 'free' && (
+            <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+              <Lock className="w-3.5 h-3.5" />
+              <span>2 formats verrouillés</span>
+            </div>
+          )}
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {formatOptions.map((format) => (
-            <Card
-              key={format.value}
-              className={`p-4 cursor-pointer transition-colors ${
-                settings.format === format.value
-                  ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
-                  : 'hover:bg-muted/50'
-              }`}
-              onClick={() => {
-                setSettings(prev => ({
-                  ...prev,
-                  format: format.value
-                }));
-              }}
-            >
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                      settings.format === format.value
-                        ? 'border-primary'
-                        : 'border-muted-foreground/30'
-                    }`}>
-                      {settings.format === format.value && (
-                        <div className="w-2 h-2 rounded-full bg-primary" />
-                      )}
+          {formatOptions.map((format) => {
+            const isLocked = !isFormatAvailable(format.value, userPlan);
+            const isSelected = settings.format === format.value;
+
+            return (
+              <Card
+                key={format.value}
+                className={cn(
+                  "p-4 transition-colors relative",
+                  isLocked
+                    ? "cursor-not-allowed bg-muted/50 opacity-70"
+                    : "cursor-pointer hover:bg-muted/50",
+                  isSelected && !isLocked
+                    ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
+                    : ''
+                )}
+                onClick={() => {
+                  if (isLocked) {
+                    // Show upgrade prompt modal instead of toast
+                    showUpgradePrompt('format_locked', userPlan);
+                  } else {
+                    setSettings(prev => ({
+                      ...prev,
+                      format: format.value
+                    }));
+                  }
+                }}
+              >
+                {isLocked && (
+                  <div className="absolute top-2 right-2">
+                    <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className={cn(
+                        "w-4 h-4 rounded-full border-2 flex items-center justify-center",
+                        isSelected && !isLocked
+                          ? 'border-primary'
+                          : 'border-muted-foreground/30'
+                      )}>
+                        {isSelected && !isLocked && (
+                          <div className="w-2 h-2 rounded-full bg-primary" />
+                        )}
+                      </div>
+                      <p className={cn(
+                        "font-medium text-sm",
+                        isLocked && "text-muted-foreground"
+                      )}>
+                        {format.label}
+                      </p>
                     </div>
-                    <p className="font-medium text-sm">{format.label}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-muted-foreground">{format.size}</p>
+                    <p className="text-xs text-muted-foreground">{format.description}</p>
                   </div>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-xs font-semibold text-muted-foreground">{format.size}</p>
-                  <p className="text-xs text-muted-foreground">{format.description}</p>
-                </div>
-              </div>
-            </Card>
-          ))}
+              </Card>
+            );
+          })}
         </div>
         <p className="text-xs text-muted-foreground">
           Choisissez le format adapté à votre plateforme de diffusion
+          {userPlan === 'free' && (
+            <span className="ml-1 text-amber-600 dark:text-amber-400">
+              • Passez au plan Creator pour tous les formats
+            </span>
+          )}
         </p>
       </div>
 
       {/* Custom Prompt */}
       <div className="space-y-3">
-        <Label htmlFor="customPrompt">
-          Instructions spéciales (optionnel)
-        </Label>
-        <Textarea
-          id="customPrompt"
-          placeholder="Ex: Ajouter des plantes vertes, lumière tamisée..."
-          value={settings.customPrompt || ""}
-          onChange={(e) => setSettings(prev => ({ ...prev, customPrompt: e.target.value }))}
-        />
+        <div className="flex items-center justify-between">
+          <Label htmlFor="customPrompt">
+            Instructions spéciales (optionnel)
+          </Label>
+          {userPlan === 'free' && (
+            <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+              <Lock className="w-3.5 h-3.5" />
+              <span>Fonctionnalité verrouillée</span>
+            </div>
+          )}
+        </div>
+        <div
+          className={cn(
+            "relative",
+            userPlan === 'free' && "cursor-pointer"
+          )}
+          onClick={() => {
+            if (userPlan === 'free') {
+              const instructionsAccess = canAccessCustomInstructions(userPlan);
+              toast({
+                title: "Fonctionnalité premium",
+                description: instructionsAccess.upgradeMessage,
+                action: (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => router.push('/dashboard/account')}
+                    className="flex items-center gap-1.5"
+                  >
+                    <Crown className="w-3.5 h-3.5" />
+                    Passer à {instructionsAccess.requiredPlanName}
+                  </Button>
+                ),
+                duration: 5000,
+              });
+            }
+          }}
+        >
+          <Textarea
+            id="customPrompt"
+            placeholder={
+              userPlan === 'free'
+                ? "Disponible dans les plans Creator & Studio. Passez à un plan supérieur pour personnaliser votre scène."
+                : "Ex: Ajouter des plantes vertes, lumière tamisée..."
+            }
+            value={settings.customPrompt || ""}
+            onChange={(e) => setSettings(prev => ({ ...prev, customPrompt: e.target.value }))}
+            disabled={userPlan === 'free'}
+            className={cn(
+              userPlan === 'free' && "bg-muted/70 cursor-not-allowed text-muted-foreground"
+            )}
+          />
+          {userPlan === 'free' && (
+            <div className="absolute top-3 right-3 pointer-events-none">
+              <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+            </div>
+          )}
+        </div>
         <p className="text-xs text-muted-foreground">
-          Décrivez des éléments spécifiques à ajouter dans la scène
+          {userPlan === 'free' ? (
+            <span className="text-amber-600 dark:text-amber-400 flex items-center gap-1">
+              <Crown className="w-3 h-3" />
+              Passez au plan Creator ou Studio pour personnaliser vos scènes avec des instructions textuelles
+            </span>
+          ) : (
+            "Décrivez des éléments spécifiques à ajouter dans la scène"
+          )}
         </p>
       </div>
     </div>
@@ -1396,18 +1520,28 @@ function VisualCreationContent() {
   );
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <Button 
-          variant="ghost" 
-          onClick={() => router.push('/dashboard')}
-          className="flex items-center"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Retour au tableau de bord
-        </Button>
-      </div>
+    <>
+      <Toaster />
+      <UpgradePromptModal
+        isOpen={promptState.isOpen}
+        onClose={hideUpgradePrompt}
+        currentPlan={promptState.currentPlan}
+        trigger={promptState.trigger}
+        remainingCredits={promptState.remainingCredits}
+        totalCredits={promptState.totalCredits}
+      />
+      <div className="max-w-6xl mx-auto space-y-8">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <Button
+            variant="ghost"
+            onClick={() => router.push('/dashboard')}
+            className="flex items-center"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Retour au tableau de bord
+          </Button>
+        </div>
 
       {/* Stepper */}
       <FlexibleStepper
@@ -1550,7 +1684,8 @@ function VisualCreationContent() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }
 

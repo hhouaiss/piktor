@@ -44,102 +44,97 @@ export interface Plan {
 }
 
 /**
- * MVP STAGE PRICING (Phase 1: Months 1-6)
- * Focus on user acquisition and product validation
+ * NEW PRICING STRUCTURE
+ * Updated with new plans: Découverte, Creator, Studio, Enterprise
  */
 export const MVP_PLANS: Record<PlanTier, Plan> = {
   free: {
     id: 'free',
-    name: 'Gratuit (Beta)',
-    description: 'Testez Piktor gratuitement pendant la phase beta',
+    name: 'Découverte',
+    description: 'Pour les curieux qui veulent tester la technologie',
     price: {
       monthly: 0,
       yearly: 0,
     },
     features: [
-      { text: '25 générations par mois', included: true },
-      { text: 'Tous les formats de sortie', included: true },
-      { text: '5 environnements prédéfinis', included: true },
-      { text: 'Support email', included: true },
-      { text: 'Accès API', included: false },
-      { text: 'Personnalisation avancée', included: false },
+      { text: '5 Crédits (Offerts à l\'inscription)', included: true },
+      { text: 'Format Carré (1:1) uniquement', included: true },
+      { text: 'Accès aux 5 Environnements (Salon, Bureau...)', included: true },
+      { text: 'Pas d\'instructions textuelles', included: false },
+      { text: 'Filigrane Piktor sur les images', included: true },
     ],
     limits: {
-      generations: 25,
-      formats: ['square', 'story', 'horizontal'],
+      generations: 5,
+      formats: ['square'], // Only square format
       environments: 5,
       apiAccess: false,
       support: 'email',
       customBranding: false,
       advancedCustomization: false,
     },
-    badge: 'BETA',
-    ctaText: 'Commencer gratuitement',
+    ctaText: 'Tester gratuitement',
   },
 
   early_adopter: {
     id: 'early_adopter',
-    name: 'Early Adopter',
-    description: 'Tarif fondateur - Prix bloqué à vie',
+    name: 'Creator',
+    description: 'Pour les artisans, makers et petits e-commerçants',
     price: {
-      monthly: 29,
-      yearly: 290, // ~17% discount
+      monthly: 39,
+      yearly: 390, // ~17% discount
     },
     stripePriceIds: {
       // To be filled: monthly: 'price_xxx',
       // To be filled: yearly: 'price_xxx',
     },
     features: [
-      { text: '100 générations par mois', included: true },
-      { text: 'Tous les formats de sortie', included: true },
-      { text: 'Tous les environnements', included: true },
-      { text: 'Instructions personnalisées', included: true },
-      { text: 'Badge "Founder" à vie', included: true },
-      { text: 'Support prioritaire', included: true },
-      { text: 'Accès API (bientôt)', included: true },
-      { text: 'Personnalisation avancée (bientôt)', included: false },
+      { text: '300 Crédits / mois', included: true },
+      { text: 'Tous les formats (Story 9:16 & Paysage 3:2)', included: true },
+      { text: 'Mode "Instructions Spéciales" (Prompt libre)', included: true },
+      { text: 'Licence Commerciale (Usage web & réseaux)', included: true },
+      { text: 'Sans filigrane', included: true },
     ],
     limits: {
-      generations: 100,
+      generations: 300,
       formats: ['square', 'story', 'horizontal'],
       environments: -1, // unlimited
-      apiAccess: false, // Coming soon
-      support: 'priority',
+      apiAccess: false,
+      support: 'email',
       customBranding: false,
-      advancedCustomization: false,
+      advancedCustomization: true, // Has custom instructions mode
     },
-    badge: 'EARLY ACCESS',
-    highlighted: true,
-    ctaText: 'Obtenir le tarif fondateur',
-    savings: '50% de réduction - Tarif à vie',
+    ctaText: 'Démarrer',
   },
 
   // Future plans (to be activated after MVP validation)
   starter: {
     id: 'starter',
-    name: 'Starter',
-    description: 'Pour les petites boutiques en ligne',
+    name: 'Studio',
+    description: 'Pour les marques DNVB et PME qui exigent une qualité catalogue',
     price: {
-      monthly: 49,
-      yearly: 470, // 20% discount
+      monthly: 149,
+      yearly: 1490, // ~17% discount
     },
     features: [
-      { text: '50 générations par mois', included: true },
-      { text: 'Tous les formats de sortie', included: true },
-      { text: 'Environnements standard', included: true },
-      { text: 'Support email', included: true },
-      { text: 'Accès API', included: false },
+      { text: '1 500 Crédits / mois', included: true },
+      { text: 'Export Haute Définition (Priorité Qualité)', included: true },
+      { text: 'Mode Confidentialité (Images privées)', included: true },
+      { text: 'Traitement Prioritaire (Files d\'attente réduites)', included: true },
+      { text: 'Support Chat Direct', included: true },
+      { text: 'Accès aux nouveaux styles en Beta', included: true },
     ],
     limits: {
-      generations: 50,
+      generations: 1500,
       formats: ['square', 'story', 'horizontal'],
-      environments: 5,
+      environments: -1,
       apiAccess: false,
-      support: 'email',
+      support: 'priority',
       customBranding: false,
-      advancedCustomization: false,
+      advancedCustomization: true,
     },
-    ctaText: 'Commencer',
+    badge: 'Recommandé pour les Pros',
+    highlighted: true,
+    ctaText: 'Choisir Studio',
   },
 
   professional: {
@@ -168,7 +163,6 @@ export const MVP_PLANS: Record<PlanTier, Plan> = {
       customBranding: false,
       advancedCustomization: true,
     },
-    highlighted: true,
     ctaText: 'Essayer Professional',
     savings: 'Plan le plus populaire',
   },
@@ -207,21 +201,18 @@ export const MVP_PLANS: Record<PlanTier, Plan> = {
   enterprise: {
     id: 'enterprise',
     name: 'Enterprise',
-    description: 'Solution sur mesure pour grandes organisations',
+    description: 'Pour les industriels et grands catalogues nécessitant du sur-mesure',
     price: {
-      monthly: 999, // Starting price
-      yearly: 9990,
+      monthly: 499, // Starting price
+      yearly: 4990,
     },
     features: [
-      { text: 'Générations illimitées', included: true },
-      { text: 'Tous les formats de sortie', included: true },
-      { text: 'Environnements 100% personnalisés', included: true },
-      { text: 'Formation de modèle IA personnalisé', included: true },
-      { text: 'Support dédié & SLA 99.9%', included: true },
-      { text: 'Accès API Enterprise', included: true },
-      { text: 'Intégrations personnalisées', included: true },
-      { text: 'Déploiement on-premise (option)', included: true },
-      { text: 'Infrastructure dédiée', included: true },
+      { text: 'Crédits Illimités (Fair use)', included: true },
+      { text: 'API Access (Connectez votre PIM/ERP)', included: true },
+      { text: 'Matériauthèque Custom (Uploadez vos propres textures)', included: true },
+      { text: 'Modèle IA Dédié (Entraîné sur vos produits spécifiques)', included: true },
+      { text: 'Onboarding & Setup réalisé par notre équipe', included: true },
+      { text: 'Paiement sur facture annuelle', included: true },
     ],
     limits: {
       generations: -1, // unlimited (fair use)
@@ -232,26 +223,22 @@ export const MVP_PLANS: Record<PlanTier, Plan> = {
       customBranding: true,
       advancedCustomization: true,
     },
-    ctaText: 'Nous contacter',
-    badge: 'SUR MESURE',
+    ctaText: 'Contacter l\'équipe',
+    badge: 'Sur Devis',
   },
 };
 
 /**
- * Get active plans based on MVP stage
- * During MVP, only show Free and Early Adopter
+ * Get active plans
+ * Show: Découverte (free), Creator (early_adopter), Studio (starter), Enterprise
  */
-export function getActivePlans(isMVPStage = true): Plan[] {
-  if (isMVPStage) {
-    return [MVP_PLANS.free, MVP_PLANS.early_adopter];
-  }
-
-  // Post-MVP: Show all plans except early_adopter
+export function getActivePlans(): Plan[] {
+  // Show the new pricing structure: Découverte, Creator, Studio, Enterprise
   return [
-    MVP_PLANS.starter,
-    MVP_PLANS.professional,
-    MVP_PLANS.business,
-    MVP_PLANS.enterprise,
+    MVP_PLANS.free,         // Découverte
+    MVP_PLANS.early_adopter, // Creator
+    MVP_PLANS.starter,      // Studio
+    MVP_PLANS.enterprise,   // Enterprise
   ];
 }
 

@@ -392,21 +392,23 @@ class SupabaseAuthService {
       // Use supabaseAdmin to bypass RLS policies for server-side credit checks
       const { data: subscription, error } = await supabaseAdmin
         .from('subscriptions')
-        .select('generations_limit, generations_used, status')
+        .select('generations_limit, generations_used, status, plan_id')
         .eq('user_id', userId)
         .in('status', ['active', 'trialing', 'past_due'])
         .order('created_at', { ascending: false })
         .limit(1)
-        .single() as { data: { generations_limit: number; generations_used: number; status: string } | null; error: any };
+        .single() as { data: { generations_limit: number; generations_used: number; status: string; plan_id: string } | null; error: any };
 
       if (error) {
         if (error.code === 'PGRST116') {
           // No subscription found - user should have free tier
-          console.log('[hasCredits] No active subscription found for user:', userId);
+          // CRITICAL: Return false, don't throw - this is a valid case (new user without subscription)
+          console.log('[hasCredits] No active subscription found for user:', userId, '- treating as no credits');
           return false;
         }
         console.error('[hasCredits] Error fetching subscription:', error);
-        throw error;
+        // CRITICAL FIX: Return false instead of throwing - deny access on error
+        return false;
       }
 
       if (!subscription) {
@@ -414,10 +416,17 @@ class SupabaseAuthService {
         return false;
       }
 
+      // Check for unlimited plans (enterprise)
+      if (subscription.plan_id === 'enterprise' && subscription.generations_limit === -1) {
+        console.log('[hasCredits] Unlimited plan detected for user:', userId);
+        return true;
+      }
+
       const remainingCredits = subscription.generations_limit - subscription.generations_used;
       const hasEnoughCredits = remainingCredits >= creditsNeeded;
 
       console.log('[hasCredits] Credits check for user:', userId, {
+        planId: subscription.plan_id,
         generationsLimit: subscription.generations_limit,
         generationsUsed: subscription.generations_used,
         remainingCredits,
@@ -428,16 +437,10 @@ class SupabaseAuthService {
 
       return hasEnoughCredits;
     } catch (error) {
-      console.error('[hasCredits] Error checking credits:', error);
-      // Fallback to old behavior if subscriptions table doesn't exist
-      // This ensures backward compatibility during migration
-      try {
-        const userData = await this.getUserData(userId);
-        return (userData.usage.creditsTotal - userData.usage.creditsUsed) >= creditsNeeded;
-      } catch (fallbackError) {
-        console.error('[hasCredits] Fallback also failed:', fallbackError);
-        throw fallbackError;
-      }
+      console.error('[hasCredits] CRITICAL ERROR checking credits:', error);
+      // CRITICAL SECURITY FIX: Return false on ANY error - fail closed, not open
+      // Never allow generation if we can't verify credits
+      return false;
     }
   }
 

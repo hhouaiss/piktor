@@ -78,27 +78,31 @@ export function getStripeWebhookSecret(): string {
  */
 export const STRIPE_PRICE_IDS = {
   free: {
-    monthly: null, // Free plan has no Stripe price
+    monthly: null, // Découverte plan has no Stripe price (free tier)
     yearly: null,
   },
   early_adopter: {
-    monthly: process.env.STRIPE_PRICE_EARLY_ADOPTER_MONTHLY || 'price_1SFEp52S50jljHVCPkFEUTU4',
-    yearly: process.env.STRIPE_PRICE_EARLY_ADOPTER_YEARLY || 'price_1SFEp82S50jljHVCVqy9soHV',
+    // Creator plan (39€/month, 390€/year)
+    monthly: process.env.STRIPE_PRICE_CREATOR_MONTHLY || process.env.STRIPE_PRICE_EARLY_ADOPTER_MONTHLY || 'price_1SFEp52S50jljHVCPkFEUTU4',
+    yearly: process.env.STRIPE_PRICE_CREATOR_YEARLY || process.env.STRIPE_PRICE_EARLY_ADOPTER_YEARLY || 'price_1SFEp82S50jljHVCVqy9soHV',
   },
   starter: {
-    monthly: process.env.STRIPE_PRICE_STARTER_MONTHLY || 'price_XXXXX',
-    yearly: process.env.STRIPE_PRICE_STARTER_YEARLY || 'price_XXXXX',
+    // Studio plan (149€/month, 1490€/year)
+    monthly: process.env.STRIPE_PRICE_STUDIO_MONTHLY || process.env.STRIPE_PRICE_STARTER_MONTHLY || 'price_XXXXX',
+    yearly: process.env.STRIPE_PRICE_STUDIO_YEARLY || process.env.STRIPE_PRICE_STARTER_YEARLY || 'price_XXXXX',
   },
   professional: {
+    // Legacy Professional plan (not actively promoted)
     monthly: process.env.STRIPE_PRICE_PROFESSIONAL_MONTHLY || 'price_XXXXX',
     yearly: process.env.STRIPE_PRICE_PROFESSIONAL_YEARLY || 'price_XXXXX',
   },
   business: {
+    // Legacy Business plan (not actively promoted)
     monthly: process.env.STRIPE_PRICE_BUSINESS_MONTHLY || 'price_XXXXX',
     yearly: process.env.STRIPE_PRICE_BUSINESS_YEARLY || 'price_XXXXX',
   },
   enterprise: {
-    // Enterprise is custom, handled separately
+    // Enterprise is custom (499€+/month), handled via contact form
     monthly: null,
     yearly: null,
   },

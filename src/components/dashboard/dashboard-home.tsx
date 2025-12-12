@@ -18,7 +18,8 @@ import {
   Zap,
   Crown,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  AlertTriangle
 } from "lucide-react";
 import { trackEvent } from "@/lib/analytics";
 import { useSimpleAuth } from "@/components/auth/simple-auth-provider";
@@ -452,23 +453,45 @@ export function DashboardHome() {
               <div>
                 <div className="flex justify-between text-sm mb-2">
                   <span className="text-muted-foreground">Crédits utilisés</span>
-                  <span className="font-medium">{displayStats.creditsUsed}/{displayStats.creditsUsed + displayStats.creditsRemaining}</span>
+                  <span className={`font-medium ${displayStats.creditsRemaining === 0 ? 'text-red-600 dark:text-red-400' : displayStats.creditsUsed / (displayStats.creditsUsed + displayStats.creditsRemaining) >= 0.8 ? 'text-amber-600 dark:text-amber-400' : ''}`}>
+                    {displayStats.creditsUsed}/{displayStats.creditsUsed + displayStats.creditsRemaining}
+                  </span>
                 </div>
                 <div className="w-full bg-sophisticated-gray-200 rounded-full h-2">
                   <div
-                    className="bg-primary h-2 rounded-full transition-all duration-500"
+                    className={`h-2 rounded-full transition-all duration-500 ${
+                      displayStats.creditsRemaining === 0
+                        ? 'bg-gradient-to-r from-red-500 to-red-600'
+                        : displayStats.creditsUsed / (displayStats.creditsUsed + displayStats.creditsRemaining) >= 0.8
+                        ? 'bg-gradient-to-r from-amber-500 to-orange-500'
+                        : 'bg-primary'
+                    }`}
                     style={{ width: `${(displayStats.creditsUsed / (displayStats.creditsUsed + displayStats.creditsRemaining)) * 100}%` }}
                   ></div>
                 </div>
               </div>
-              {subscription?.currentPeriodEnd && (
+              {displayStats.creditsRemaining === 0 ? (
+                <div className="flex items-center gap-1.5 p-2 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-md">
+                  <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0" />
+                  <p className="text-xs text-red-700 dark:text-red-300 font-medium">
+                    Limite atteinte ! Passez à un plan supérieur
+                  </p>
+                </div>
+              ) : displayStats.creditsUsed / (displayStats.creditsUsed + displayStats.creditsRemaining) >= 0.8 ? (
+                <div className="flex items-center gap-1.5 p-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                  <p className="text-xs text-amber-700 dark:text-amber-300 font-medium">
+                    {displayStats.creditsRemaining} génération{displayStats.creditsRemaining > 1 ? 's' : ''} restante{displayStats.creditsRemaining > 1 ? 's' : ''}
+                  </p>
+                </div>
+              ) : subscription?.currentPeriodEnd ? (
                 <p className="text-xs text-muted-foreground">
                   Renouvellement le {new Date(subscription.currentPeriodEnd).toLocaleDateString('fr-FR', {
                     day: 'numeric',
                     month: 'long'
                   })}
                 </p>
-              )}
+              ) : null}
             </div>
           </Card>
 

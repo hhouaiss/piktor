@@ -35,15 +35,10 @@ async function checkServerSideUsageLimit(request: NextRequest): Promise<{ allowe
     userIdPrefix: userId ? userId.substring(0, 8) + '...' : 'none'
   });
 
-  // Preview branch: unlimited generations
-  if (environment === 'preview') {
-    return { allowed: true, environment, userId: userId || undefined };
-  }
-
-  // Development: unlimited generations
-  if (environment === 'development') {
-    return { allowed: true, environment, userId: userId || undefined };
-  }
+  // SECURITY FIX: Remove development/preview bypasses - ALWAYS enforce credit checks
+  // Even in development, we need to test the credit system properly
+  // If you need unlimited access for testing, use admin override instead
+  console.log('[checkServerSideUsageLimit] Environment detected:', environment, '- credit checks will be enforced');
 
   // SECURITY: Check for admin override with server-side verification
   // Admin override should ONLY be processed when explicitly requested (header === 'true')
@@ -93,23 +88,15 @@ async function checkServerSideUsageLimit(request: NextRequest): Promise<{ allowe
     console.log('[checkServerSideUsageLimit] Usage limit check passed for user:', userId);
     return { allowed: true, environment, userId: userId };
   } catch (error) {
-    console.error('[checkServerSideUsageLimit] Error checking usage limits:', error);
-    // Fallback to original client-side tracking for backward compatibility
-    const clientUsageHeader = request.headers.get('x-usage-count');
-    const maxGenerations = 5;
-
-    if (clientUsageHeader) {
-      const usageCount = parseInt(clientUsageHeader, 10);
-      if (usageCount >= maxGenerations) {
-        return {
-          allowed: false,
-          reason: `Usage limit exceeded (${usageCount}/${maxGenerations})`,
-          environment
-        };
-      }
-    }
-
-    return { allowed: true, environment };
+    console.error('[checkServerSideUsageLimit] CRITICAL ERROR checking usage limits:', error);
+    // SECURITY FIX: Fail closed - deny access on any error
+    // Never allow generation if we can't verify the user has credits
+    return {
+      allowed: false,
+      reason: 'Unable to verify credits. Please try again or contact support.',
+      environment,
+      userId: userId || undefined
+    };
   }
 }
 

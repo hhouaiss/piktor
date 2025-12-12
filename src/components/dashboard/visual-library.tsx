@@ -36,6 +36,11 @@ import { getPlaceholderUrl } from "@/lib/image-placeholders";
 import { extractProductName, formatLabel } from "@/lib/product-name-extractor";
 import { analyticsService } from "@/lib/supabase/analytics-service";
 import Link from "next/link";
+import { useSubscription } from "@/hooks/useSubscription";
+import { canAccessImageEditing, canAccessVariations } from "@/lib/feature-gating";
+import { useUpgradePrompt } from "@/hooks/use-upgrade-prompt";
+import { UpgradePromptModal } from "@/components/dashboard/upgrade-prompt-modal";
+import { Lock } from "lucide-react";
 
 
 
@@ -47,6 +52,9 @@ export function VisualLibrary() {
   const searchParams = useSearchParams();
   const projectFilter = searchParams?.get('project');
   const { user: authUser } = useSimpleAuth(); // Get user from auth context
+  const { subscription } = useSubscription();
+  const userPlan = subscription?.planId || 'free';
+  const { promptState, showUpgradePrompt, hideUpgradePrompt } = useUpgradePrompt();
 
   const [visuals, setVisuals] = useState<Visual[]>([]);
   const [filteredVisuals, setFilteredVisuals] = useState<Visual[]>([]);
@@ -484,13 +492,19 @@ export function VisualLibrary() {
                 size="sm"
                 variant="outline"
                 onClick={() => {
+                  const editAccess = canAccessImageEditing(userPlan);
+                  if (!editAccess.hasAccess) {
+                    showUpgradePrompt('feature_locked', userPlan);
+                    return;
+                  }
                   setVisualToEdit(visual);
                   setIsEditorOpen(true);
                 }}
-                title="Modifier l'image"
-                className="px-2"
+                title={canAccessImageEditing(userPlan).hasAccess ? "Modifier l'image" : "Fonctionnalité Premium"}
+                className={`px-2 ${!canAccessImageEditing(userPlan).hasAccess ? 'opacity-60' : ''}`}
               >
                 <Edit className="w-4 h-4" />
+                {!canAccessImageEditing(userPlan).hasAccess && <Lock className="w-3 h-3 ml-1" />}
               </Button>
               <Button
                 size="sm"
@@ -507,12 +521,21 @@ export function VisualLibrary() {
             <Button
               size="sm"
               variant="default"
-              onClick={() => handleViewVariations(visual)}
-              title="Voir les variations"
-              className="w-full gap-1 bg-ocean-blue-600 hover:bg-ocean-blue-700"
+              onClick={() => {
+                const variationsAccess = canAccessVariations(userPlan);
+                if (!variationsAccess.hasAccess) {
+                  showUpgradePrompt('feature_locked', userPlan);
+                  return;
+                }
+                handleViewVariations(visual);
+              }}
+              title={canAccessVariations(userPlan).hasAccess ? "Voir les variations" : "Fonctionnalité Premium"}
+              className={`w-full gap-1 ${canAccessVariations(userPlan).hasAccess ? 'bg-ocean-blue-600 hover:bg-ocean-blue-700' : 'bg-gray-400 hover:bg-gray-500 opacity-60'}`}
+              disabled={!canAccessVariations(userPlan).hasAccess}
             >
               <Layers className="w-4 h-4" />
               Variations
+              {!canAccessVariations(userPlan).hasAccess && <Lock className="w-3 h-3 ml-1" />}
             </Button>
 
             <div className="flex flex-wrap gap-1">
@@ -814,6 +837,16 @@ export function VisualLibrary() {
           variations={variations}
         />
       )}
+
+      {/* Upgrade Prompt Modal */}
+      <UpgradePromptModal
+        isOpen={promptState.isOpen}
+        onClose={hideUpgradePrompt}
+        currentPlan={promptState.currentPlan}
+        trigger={promptState.trigger}
+        remainingCredits={promptState.remainingCredits}
+        totalCredits={promptState.totalCredits}
+      />
     </div>
   );
 }

@@ -262,13 +262,13 @@ export async function canUserGenerate(userId: string): Promise<{
   const subscription = await getUserSubscription(userId);
 
   if (!subscription) {
-    // No subscription - create free tier subscription
+    // No subscription - create free tier subscription (Découverte plan)
     const freeSub = await createSubscription({
       userId,
       planId: 'free',
       billingInterval: 'month',
       amount: 0,
-      generationsLimit: 25,
+      generationsLimit: 5, // Updated to match new Découverte plan
     });
 
     return {
@@ -370,12 +370,12 @@ export async function initializeFreeSubscription(userId: string): Promise<Subscr
     return existing;
   }
 
-  // Create free tier subscription
+  // Create free tier subscription (Découverte plan with 5 credits)
   return createSubscription({
     userId,
     planId: 'free',
     billingInterval: 'month',
     amount: 0,
-    generationsLimit: 25,
+    generationsLimit: 5, // Updated to match new Découverte plan
   });
 }

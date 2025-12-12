@@ -71,8 +71,8 @@ export function AccountPage() {
     phone: ''
   });
 
-  // Get active plans for MVP stage
-  const activePlans = getActivePlans(true); // true = MVP stage
+  // Get active plans
+  const activePlans = getActivePlans();
 
   // Initialize profile data from Supabase user
   useEffect(() => {
@@ -101,7 +101,7 @@ export function AccountPage() {
     plan: "free",
     status: "active",
     currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    creditsTotal: 25,
+    creditsTotal: 5, // Updated to match new Découverte plan (5 credits)
     creditsUsed: 0,
     billingCycle: "monthly",
     nextBillingAmount: 0
@@ -468,12 +468,6 @@ export function AccountPage() {
           <h2 className="text-xl font-semibold text-foreground">
             Abonnement actuel
           </h2>
-          {subscription.plan === 'free' && (
-            <Badge className="bg-blue-100 text-blue-800 border-blue-200">
-              <Sparkles className="w-3 h-3 mr-1" />
-              Phase Beta
-            </Badge>
-          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -500,7 +494,7 @@ export function AccountPage() {
                 <div>
                   <p className="text-sm text-muted-foreground">Générations mensuelles</p>
                   <p className="text-2xl font-bold text-foreground">
-                    {currentPlan.limits.generations === -1 ? 'Illimité' : currentPlan.limits.generations}
+                    {subscription.creditsTotal > 500000 ? 'Illimité' : subscription.creditsTotal}
                   </p>
                 </div>
                 <div>
@@ -515,19 +509,41 @@ export function AccountPage() {
               <div className="mb-4">
                 <div className="flex justify-between text-sm mb-2">
                   <span className="text-muted-foreground">Générations utilisées ce mois</span>
-                  <span className="font-medium">
+                  <span className={`font-medium ${subscription.creditsUsed >= subscription.creditsTotal ? 'text-red-600 dark:text-red-400' : subscription.creditsUsed / subscription.creditsTotal >= 0.8 ? 'text-amber-600 dark:text-amber-400' : ''}`}>
                     {subscription.creditsUsed} / {subscription.creditsTotal}
                   </span>
                 </div>
                 <div className="w-full bg-sophisticated-gray-200 rounded-full h-2.5">
                   <div
-                    className="bg-gradient-ocean-deep h-2.5 rounded-full transition-all duration-500"
+                    className={`h-2.5 rounded-full transition-all duration-500 ${
+                      subscription.creditsUsed >= subscription.creditsTotal
+                        ? 'bg-gradient-to-r from-red-500 to-red-600'
+                        : subscription.creditsUsed / subscription.creditsTotal >= 0.8
+                        ? 'bg-gradient-to-r from-amber-500 to-orange-500'
+                        : 'bg-gradient-ocean-deep'
+                    }`}
                     style={{ width: `${Math.min(100, (subscription.creditsUsed / subscription.creditsTotal) * 100)}%` }}
                   ></div>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {subscription.creditsTotal - subscription.creditsUsed} générations restantes
-                </p>
+                {subscription.creditsUsed >= subscription.creditsTotal ? (
+                  <div className="flex items-center gap-1.5 mt-2 p-2 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-md">
+                    <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0" />
+                    <p className="text-xs text-red-700 dark:text-red-300 font-medium">
+                      Limite atteinte ! Passez à un plan supérieur pour continuer à générer
+                    </p>
+                  </div>
+                ) : subscription.creditsUsed / subscription.creditsTotal >= 0.8 ? (
+                  <div className="flex items-center gap-1.5 mt-2 p-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                    <p className="text-xs text-amber-700 dark:text-amber-300 font-medium">
+                      {subscription.creditsTotal - subscription.creditsUsed} génération{subscription.creditsTotal - subscription.creditsUsed > 1 ? 's' : ''} restante{subscription.creditsTotal - subscription.creditsUsed > 1 ? 's' : ''} seulement
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {subscription.creditsTotal - subscription.creditsUsed} générations restantes
+                  </p>
+                )}
               </div>
 
               <div className="flex flex-col sm:flex-row gap-2 text-sm text-muted-foreground mb-4">
@@ -567,23 +583,6 @@ export function AccountPage() {
               )}
             </div>
 
-            {/* MVP Beta Notice */}
-            {subscription.plan === 'free' && (
-              <div className="mt-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">
-                      Vous êtes un beta tester !
-                    </h4>
-                    <p className="text-sm text-blue-700 dark:text-blue-300">
-                      Merci de tester Piktor pendant la phase beta. Vos retours sont précieux !
-                      Passez au plan Early Adopter pour obtenir le tarif fondateur à vie (50% de réduction).
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Plan Features */}
@@ -606,10 +605,10 @@ export function AccountPage() {
           </div>
         </div>
 
-        {/* Upgrade Section - MVP Stage */}
+        {/* Upgrade Section */}
         <div className="mt-8 pt-6 border-t border-border">
           <div className="flex items-center justify-between mb-4">
-            <h4 className="font-medium text-foreground">Passer à un plan supérieur</h4>
+            <h4 className="font-medium text-foreground">Nos offres</h4>
 
             {/* Billing Toggle */}
             <div className="flex items-center gap-2 bg-muted p-1 rounded-lg">
@@ -637,31 +636,55 @@ export function AccountPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {activePlans.map((plan) => {
               const isCurrentPlan = plan.id === subscription.plan;
               const price = billingInterval === 'month' ? plan.price.monthly : plan.price.yearly;
               const effectiveMonthlyPrice = billingInterval === 'year' ? Math.round(plan.price.yearly / 12) : plan.price.monthly;
               const savingsPercent = billingInterval === 'year' ? calculateSavingsPercentage(plan.price.monthly, plan.price.yearly) : 0;
 
+              // Helper function to render feature text with bold numbers/keywords
+              const renderFeatureText = (text: string) => {
+                // Bold key numbers and terms
+                const patterns = [
+                  { regex: /(\d+\s*(?:Crédits?|Credits?))/gi, replacement: '<strong>$1</strong>' },
+                  { regex: /(Ultra-HD 4K|4K|Haute Définition)/gi, replacement: '<strong>$1</strong>' },
+                  { regex: /(API Access|API)/gi, replacement: '<strong>$1</strong>' },
+                  { regex: /(Mode Privé|Mode Confidentialité|Mode "Instructions Spéciales")/gi, replacement: '<strong>$1</strong>' },
+                  { regex: /(Brand DNA)/gi, replacement: '<strong>$1</strong>' },
+                  { regex: /(Illimités?)/gi, replacement: '<strong>$1</strong>' },
+                  { regex: /(Tous les formats|Format Carré)/gi, replacement: '<strong>$1</strong>' },
+                  { regex: /(Traitement Prioritaire|Support Chat Direct)/gi, replacement: '<strong>$1</strong>' },
+                  { regex: /(Licence Commerciale)/gi, replacement: '<strong>$1</strong>' },
+                  { regex: /(Sans filigrane|Filigrane)/gi, replacement: '<strong>$1</strong>' },
+                ];
+
+                let formattedText = text;
+                patterns.forEach(({ regex, replacement }) => {
+                  formattedText = formattedText.replace(regex, replacement);
+                });
+
+                return formattedText;
+              };
+
               return (
                 <Card
                   key={plan.id}
-                  className={`relative overflow-hidden ${
+                  className={`relative overflow-hidden flex flex-col ${
                     plan.highlighted
-                      ? 'border-primary shadow-lg scale-105'
+                      ? 'border-primary shadow-xl bg-blue-50/50 dark:bg-blue-900/10 scale-[1.02]'
                       : isCurrentPlan
                       ? 'border-primary/50 bg-primary/5'
-                      : ''
+                      : 'bg-white dark:bg-sophisticated-gray-900'
                   }`}
                 >
                   {plan.badge && (
-                    <div className="absolute top-0 right-0 bg-gradient-ocean-deep text-white text-xs font-bold px-3 py-1 rounded-bl-lg">
+                    <div className="absolute top-0 right-0 bg-gradient-ocean-deep text-white text-xs font-bold px-3 py-1 rounded-bl-lg z-10">
                       {plan.badge}
                     </div>
                   )}
 
-                  <div className="p-6">
+                  <div className="p-6 flex flex-col flex-grow">
                     <div className="mb-4">
                       <h5 className="text-lg font-bold text-foreground mb-1">{plan.name}</h5>
                       <p className="text-sm text-muted-foreground">{plan.description}</p>
@@ -669,9 +692,18 @@ export function AccountPage() {
 
                     <div className="mb-4">
                       <div className="flex items-baseline gap-1">
-                        <span className="text-3xl font-bold text-foreground">
-                          {formatPriceFromEuros(price)}
-                        </span>
+                        {plan.id === 'enterprise' ? (
+                          <>
+                            <span className="text-sm text-muted-foreground mr-1">Dès</span>
+                            <span className="text-3xl font-bold text-foreground">
+                              {formatPriceFromEuros(price)}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-3xl font-bold text-foreground">
+                            {formatPriceFromEuros(price)}
+                          </span>
+                        )}
                         {billingInterval === 'year' && (
                           <span className="text-muted-foreground text-sm">/an</span>
                         )}
@@ -691,61 +723,60 @@ export function AccountPage() {
                       )}
                     </div>
 
-                    <div className="mb-6 space-y-2">
-                      {plan.features.slice(0, 4).map((feature, idx) => (
-                        <div key={idx} className="flex items-center text-sm">
-                          <Check className="w-4 h-4 text-success-600 mr-2 flex-shrink-0" />
-                          <span className="text-muted-foreground">{feature.text}</span>
+                    <div className="mb-6 space-y-2.5 flex-grow">
+                      {plan.features.map((feature, idx) => (
+                        <div key={idx} className="flex items-start text-sm">
+                          {feature.included ? (
+                            <Check className="w-4 h-4 text-success-600 mr-2 flex-shrink-0 mt-0.5" />
+                          ) : (
+                            <X className="w-4 h-4 text-muted-foreground mr-2 flex-shrink-0 mt-0.5" />
+                          )}
+                          <span
+                            className={`leading-relaxed ${feature.included ? 'text-muted-foreground' : 'text-muted-foreground line-through'}`}
+                            dangerouslySetInnerHTML={{ __html: renderFeatureText(feature.text) }}
+                          />
                         </div>
                       ))}
                     </div>
 
-                    {isCurrentPlan ? (
-                      <Button variant="outline" disabled className="w-full">
-                        <Check className="w-4 h-4 mr-2" />
-                        Plan actuel
-                      </Button>
-                    ) : (
-                      <Button
-                        onClick={() => handlePlanChange(plan)}
-                        className={`w-full ${
-                          plan.highlighted
-                            ? 'bg-gradient-ocean-deep hover:opacity-90'
-                            : ''
-                        }`}
-                        variant={plan.highlighted ? 'default' : 'outline'}
-                      >
-                        {plan.ctaText}
-                        <ArrowRight className="w-4 h-4 ml-2" />
-                      </Button>
-                    )}
+                    <div className="mt-auto">
+                      {isCurrentPlan ? (
+                        <Button variant="outline" disabled className="w-full">
+                          <Check className="w-4 h-4 mr-2" />
+                          Plan actuel
+                        </Button>
+                      ) : plan.id === 'enterprise' ? (
+                        <Button
+                          variant="outline"
+                          className="w-full border-2 hover:bg-muted"
+                          asChild
+                        >
+                          <a href="https://calendar.notion.so/meet/hassanhouaiss/piktor" target="_blank" rel="noopener noreferrer">
+                            {plan.ctaText}
+                            <ArrowRight className="w-4 h-4 ml-2" />
+                          </a>
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={() => handlePlanChange(plan)}
+                          className={`w-full ${
+                            plan.highlighted
+                              ? 'bg-gradient-ocean-deep hover:opacity-90 shadow-md'
+                              : ''
+                          }`}
+                          variant={plan.highlighted ? 'default' : 'outline'}
+                        >
+                          {plan.ctaText}
+                          <ArrowRight className="w-4 h-4 ml-2" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </Card>
               );
             })}
           </div>
 
-          {/* Enterprise CTA */}
-          <div className="mt-6 bg-gradient-to-r from-sophisticated-gray-50 to-ocean-blue-50/30 dark:from-sophisticated-gray-800 dark:to-ocean-blue-900/20 rounded-lg p-6 border border-border">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="flex items-start gap-3">
-                <TrendingUp className="w-6 h-6 text-ocean-blue-600 flex-shrink-0" />
-                <div>
-                  <h5 className="font-semibold text-foreground mb-1">
-                    Besoin d&apos;un plan sur mesure ?
-                  </h5>
-                  <p className="text-sm text-muted-foreground">
-                    Générations illimitées, environnements personnalisés, support dédié et plus encore.
-                  </p>
-                </div>
-              </div>
-              <Button variant="outline" asChild className="whitespace-nowrap">
-                <a href="https://calendar.notion.so/meet/hassanhouaiss/piktor" target="_blank" rel="noopener noreferrer">
-                  Nous contacter
-                </a>
-              </Button>
-            </div>
-          </div>
         </div>
       </Card>
 

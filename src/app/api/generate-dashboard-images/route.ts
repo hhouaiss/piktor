@@ -18,6 +18,7 @@ import { supabaseAuthService, supabaseService } from "@/lib/supabase";
 import { generationService } from "@/lib/supabase/generation-service";
 import type { GenerationRequest, GeneratedImageData } from "@/lib/supabase/generation-service";
 import { verifyAdminOverride } from "@/lib/server-admin-auth";
+import { addWatermarkToBase64, shouldApplyWatermark } from "@/lib/watermark";
 
 // Dashboard-specific generation request interface
 interface DashboardGenerationRequest {
@@ -46,15 +47,10 @@ async function checkServerSideUsageLimit(request: NextRequest): Promise<{ allowe
     userIdPrefix: userId ? userId.substring(0, 8) + '...' : 'none'
   });
 
-  // Preview branch: unlimited generations (but include userId for Supabase)
-  if (environment === 'preview') {
-    return { allowed: true, environment, userId: userId || undefined };
-  }
-
-  // Development: unlimited generations (but include userId for Supabase)
-  if (environment === 'development') {
-    return { allowed: true, environment, userId: userId || undefined };
-  }
+  // SECURITY FIX: Remove development/preview bypasses - ALWAYS enforce credit checks
+  // Even in development, we need to test the credit system properly
+  // If you need unlimited access for testing, use admin override instead
+  console.log('[checkServerSideUsageLimit] Environment detected:', environment, '- credit checks will be enforced');
   
   // SECURITY: Check for admin override with server-side verification
   // Admin override should ONLY be processed when explicitly requested (header === 'true')
@@ -104,23 +100,15 @@ async function checkServerSideUsageLimit(request: NextRequest): Promise<{ allowe
     console.log('[checkServerSideUsageLimit] Usage limit check passed for user:', userId);
     return { allowed: true, environment, userId: userId };
   } catch (error) {
-    console.error('[checkServerSideUsageLimit] Error checking usage limits:', error);
-    // Fallback to original client-side tracking for backward compatibility
-    const clientUsageHeader = request.headers.get('x-usage-count');
-    const maxGenerations = 5;
-    
-    if (clientUsageHeader) {
-      const usageCount = parseInt(clientUsageHeader, 10);
-      if (usageCount >= maxGenerations) {
-        return { 
-          allowed: false, 
-          reason: `Usage limit exceeded (${usageCount}/${maxGenerations})`, 
-          environment 
-        };
-      }
-    }
-    
-    return { allowed: true, environment };
+    console.error('[checkServerSideUsageLimit] CRITICAL ERROR checking usage limits:', error);
+    // SECURITY FIX: Fail closed - deny access on any error
+    // Never allow generation if we can't verify the user has credits
+    return {
+      allowed: false,
+      reason: 'Unable to verify credits. Please try again or contact support.',
+      environment,
+      userId: userId || undefined
+    };
   }
 }
 
@@ -325,6 +313,23 @@ ${productionPromptResult.prompt.split('🔧 PRODUCTION QUALITY ENHANCEMENT:')[1]
       console.log('[Dashboard API] Generated variations using text-only fallback:', variations.length);
     }
 
+    // Get user's plan to determine if watermark should be applied BEFORE saving to Supabase
+    let userPlanId = 'free';
+    if (usageLimitCheck.userId) {
+      try {
+        const { getUserSubscription } = await import('@/lib/supabase/subscriptions');
+        const subscription = await getUserSubscription(usageLimitCheck.userId);
+        if (subscription) {
+          userPlanId = subscription.planId;
+        }
+      } catch (planError) {
+        console.error('[Dashboard API] Error fetching user plan for watermarking, defaulting to free:', planError);
+      }
+    }
+
+    const shouldWatermarkImages = shouldApplyWatermark(userPlanId);
+    console.log('[Dashboard API] Watermark decision for storage:', { userPlanId, shouldWatermarkImages });
+
     // Save generated images to Supabase Storage if user is authenticated
     let supabaseResults: Array<{success: boolean, visualId?: string, projectId?: string, error?: string}> = [];
     if (usageLimitCheck.userId) {
@@ -340,12 +345,31 @@ ${productionPromptResult.prompt.split('🔧 PRODUCTION QUALITY ENHANCEMENT:')[1]
           productCategory: productProfile.productCategory
         };
 
-        const generatedImageData: GeneratedImageData[] = variations
-          .filter((variation) => variation.url || variation.imageData)
-          .map((variation) => ({
-            url: variation.url || variation.imageData!, // Use url (data URL) if available, fallback to imageData
-            prompt: dashboardPrompt
-          }));
+        // Watermark images BEFORE uploading to Supabase Storage for free users
+        const generatedImageData: GeneratedImageData[] = await Promise.all(
+          variations
+            .filter((variation) => variation.url || variation.imageData)
+            .map(async (variation) => {
+              let imageUrl = variation.url || variation.imageData!;
+
+              // Apply watermark to images for free users before storing
+              if (shouldWatermarkImages && imageUrl.startsWith('data:')) {
+                try {
+                  console.log('[Dashboard API] Applying watermark before Supabase Storage upload');
+                  imageUrl = await addWatermarkToBase64(imageUrl);
+                  console.log('[Dashboard API] ✅ Watermark applied before storage');
+                } catch (watermarkError) {
+                  console.error('[Dashboard API] Failed to watermark before storage:', watermarkError);
+                  // Continue with unwatermarked image
+                }
+              }
+
+              return {
+                url: imageUrl,
+                prompt: dashboardPrompt
+              };
+            })
+        );
 
         console.log('[Dashboard API] Generation request prepared:', {
           userId: generationRequest.userId,
@@ -464,6 +488,7 @@ ${productionPromptResult.prompt.split('🔧 PRODUCTION QUALITY ENHANCEMENT:')[1]
           isDataUrl: finalImageUrl.startsWith('data:'),
           isSupabaseUrl: finalImageUrl.includes('supabase.co'),
           urlSource,
+          watermarked: shouldWatermarkImages,
           urlPrefix: finalImageUrl.substring(0, 100) + '...'
         });
 
@@ -473,6 +498,7 @@ ${productionPromptResult.prompt.split('🔧 PRODUCTION QUALITY ENHANCEMENT:')[1]
           format: settings.formats[index] || settings.formats[0],
           prompt: index === 0 ? dashboardPrompt : `${dashboardPrompt} (Format: ${settings.formats[index] || 'primary'})`,
           urlSource, // Add metadata about URL source
+          watermarked: shouldWatermarkImages, // Indicate if watermark was applied (before storage)
           // Add Supabase data if available
           ...(supabaseResults[index]?.success && {
             supabaseVisualId: supabaseResults[index].visualId,
