@@ -287,7 +287,7 @@ export function createMockSubscription(
     currency: 'eur',
     usage: {
       generationsUsed: 0,
-      generationsLimit: planId === 'free' ? 25 : 100,
+      generationsLimit: planId === 'free' ? 5 : 100, // Fixed: Free plan has 5 generations
       periodStart: now,
       periodEnd: periodEnd,
     },

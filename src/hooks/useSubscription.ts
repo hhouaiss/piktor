@@ -98,7 +98,7 @@ export function useSubscription() {
           id: 'temp',
           planId: 'free',
           status: 'active',
-          generationsLimit: 25,
+          generationsLimit: 5, // Fixed: Free plan has 5 generations
           generationsUsed: 0,
           currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
           billingInterval: 'month',
@@ -130,7 +130,7 @@ export function useSubscription() {
             currency: 'eur',
             current_period_start: now.toISOString(),
             current_period_end: periodEnd.toISOString(),
-            generations_limit: 25,
+            generations_limit: 5, // Fixed: Free plan has 5 generations
             generations_used: 0,
             metadata: {},
           })
@@ -156,7 +156,7 @@ export function useSubscription() {
             id: data.id,
             planId: 'free',
             status: 'active',
-            generationsLimit: 25,
+            generationsLimit: 5, // Fixed: Free plan has 5 generations
             generationsUsed: 0,
             currentPeriodEnd: periodEnd.toISOString(),
             billingInterval: 'month',
@@ -171,7 +171,7 @@ export function useSubscription() {
           id: 'temp',
           planId: 'free',
           status: 'active',
-          generationsLimit: 25,
+          generationsLimit: 5, // Fixed: Free plan has 5 generations
           generationsUsed: 0,
           currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
           billingInterval: 'month',
