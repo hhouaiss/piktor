@@ -26,6 +26,7 @@ import {
 import { cn } from "@/lib/utils";
 import { trackEvent, trackPageView } from "@/lib/analytics";
 import { useSimpleAuth } from "@/components/auth/simple-auth-provider";
+import { useAdminStatus } from "@/hooks/useAdminStatus";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -105,6 +106,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const pathname = usePathname();
   const { user, signOut } = useSimpleAuth();
+
+  // Auto-detect and enable admin mode for admin users
+  const { isAdmin } = useAdminStatus();
 
   // Track page views for dashboard pages
   useEffect(() => {

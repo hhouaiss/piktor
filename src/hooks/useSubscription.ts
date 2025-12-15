@@ -19,6 +19,7 @@ export interface UserSubscription {
   billingInterval: 'month' | 'year';
   amount: number;
   currency: string;
+  isGrandfathered?: boolean; // True for users with 25 free generations
 }
 
 export function useSubscription() {
@@ -66,6 +67,10 @@ export function useSubscription() {
         console.log('[useSubscription] Subscription fetch result:', data ? 'Found' : 'Not found');
 
         if (data) {
+          // Check if user is grandfathered (metadata.grandfathered === true)
+          const metadata = data.metadata as any || {};
+          const isGrandfathered = metadata.grandfathered === true;
+
           // Transform database subscription to app format
           setSubscription({
             id: data.id,
@@ -77,6 +82,7 @@ export function useSubscription() {
             billingInterval: data.billing_interval as 'month' | 'year',
             amount: data.amount,
             currency: data.currency,
+            isGrandfathered,
           });
         } else {
           // No subscription found - user needs to be initialized with free tier
@@ -119,6 +125,7 @@ export function useSubscription() {
 
         console.log('[useSubscription] Creating free tier for user:', user.id);
 
+        // New free users get 5 generations (not grandfathered)
         const { data, error: insertError } = await (supabaseClient as any)
           .from('subscriptions')
           .insert({
@@ -130,9 +137,9 @@ export function useSubscription() {
             currency: 'eur',
             current_period_start: now.toISOString(),
             current_period_end: periodEnd.toISOString(),
-            generations_limit: 5, // Fixed: Free plan has 5 generations
+            generations_limit: 5, // New free users: 5 generations
             generations_used: 0,
-            metadata: {},
+            metadata: { grandfathered: false }, // Mark as NOT grandfathered
           })
           .select()
           .single();
@@ -220,6 +227,10 @@ export function useSubscription() {
       .maybeSingle();
 
     if (data) {
+      // Check if user is grandfathered
+      const metadata = data.metadata as any || {};
+      const isGrandfathered = metadata.grandfathered === true;
+
       setSubscription({
         id: data.id,
         planId: data.plan_id as UserSubscription['planId'],
@@ -230,6 +241,7 @@ export function useSubscription() {
         billingInterval: data.billing_interval as 'month' | 'year',
         amount: data.amount,
         currency: data.currency,
+        isGrandfathered,
       });
     }
     setLoading(false);

@@ -4,6 +4,7 @@
  */
 
 import { PlanTier } from '@/lib/pricing/plans';
+import { checkAdminOverride } from '@/lib/usage-limits';
 
 export interface FeatureAccess {
   hasAccess: boolean;
@@ -13,9 +14,28 @@ export interface FeatureAccess {
 }
 
 /**
+ * Check if user has admin override enabled
+ * Admin users get full access to all features
+ */
+function isAdminUser(): boolean {
+  if (typeof window === 'undefined') return false;
+  return checkAdminOverride();
+}
+
+/**
  * Check if a user's plan allows access to all formats
  */
 export function canAccessAllFormats(userPlan: PlanTier): FeatureAccess {
+  // Admin users always have access
+  if (isAdminUser()) {
+    return {
+      hasAccess: true,
+      requiredPlan: 'free',
+      requiredPlanName: 'Admin',
+      upgradeMessage: ''
+    };
+  }
+
   const hasAccess = userPlan !== 'free';
 
   return {
@@ -30,6 +50,16 @@ export function canAccessAllFormats(userPlan: PlanTier): FeatureAccess {
  * Check if a user's plan allows custom instructions/prompts
  */
 export function canAccessCustomInstructions(userPlan: PlanTier): FeatureAccess {
+  // Admin users always have access
+  if (isAdminUser()) {
+    return {
+      hasAccess: true,
+      requiredPlan: 'free',
+      requiredPlanName: 'Admin',
+      upgradeMessage: ''
+    };
+  }
+
   const hasAccess = userPlan !== 'free';
 
   return {
@@ -44,6 +74,16 @@ export function canAccessCustomInstructions(userPlan: PlanTier): FeatureAccess {
  * Check if a user's plan allows high-definition export
  */
 export function canAccessHighDefinition(userPlan: PlanTier): FeatureAccess {
+  // Admin users always have access
+  if (isAdminUser()) {
+    return {
+      hasAccess: true,
+      requiredPlan: 'free',
+      requiredPlanName: 'Admin',
+      upgradeMessage: ''
+    };
+  }
+
   const hasAccess = userPlan === 'starter' || userPlan === 'professional' ||
                     userPlan === 'business' || userPlan === 'enterprise';
 
@@ -59,6 +99,16 @@ export function canAccessHighDefinition(userPlan: PlanTier): FeatureAccess {
  * Check if a user's plan allows priority processing
  */
 export function canAccessPriorityProcessing(userPlan: PlanTier): FeatureAccess {
+  // Admin users always have access
+  if (isAdminUser()) {
+    return {
+      hasAccess: true,
+      requiredPlan: 'free',
+      requiredPlanName: 'Admin',
+      upgradeMessage: ''
+    };
+  }
+
   const hasAccess = userPlan === 'starter' || userPlan === 'professional' ||
                     userPlan === 'business' || userPlan === 'enterprise';
 
@@ -74,6 +124,11 @@ export function canAccessPriorityProcessing(userPlan: PlanTier): FeatureAccess {
  * Check if a specific format is available for the user's plan
  */
 export function isFormatAvailable(format: string, userPlan: PlanTier): boolean {
+  // Admin users always have access to all formats
+  if (isAdminUser()) {
+    return true;
+  }
+
   // Free plan only has access to square format
   if (userPlan === 'free') {
     return format === 'square-format';
@@ -87,6 +142,11 @@ export function isFormatAvailable(format: string, userPlan: PlanTier): boolean {
  * Get locked formats for a user's plan
  */
 export function getLockedFormats(userPlan: PlanTier): string[] {
+  // Admin users have no locked formats
+  if (isAdminUser()) {
+    return [];
+  }
+
   if (userPlan === 'free') {
     return ['instagram-story', 'lifestyle-horizontal'];
   }
@@ -98,6 +158,16 @@ export function getLockedFormats(userPlan: PlanTier): string[] {
  * Check if a user's plan allows image editing
  */
 export function canAccessImageEditing(userPlan: PlanTier): FeatureAccess {
+  // Admin users always have access
+  if (isAdminUser()) {
+    return {
+      hasAccess: true,
+      requiredPlan: 'free',
+      requiredPlanName: 'Admin',
+      upgradeMessage: ''
+    };
+  }
+
   const hasAccess = userPlan !== 'free';
 
   return {
@@ -112,6 +182,16 @@ export function canAccessImageEditing(userPlan: PlanTier): FeatureAccess {
  * Check if a user's plan allows generating variations
  */
 export function canAccessVariations(userPlan: PlanTier): FeatureAccess {
+  // Admin users always have access
+  if (isAdminUser()) {
+    return {
+      hasAccess: true,
+      requiredPlan: 'free',
+      requiredPlanName: 'Admin',
+      upgradeMessage: ''
+    };
+  }
+
   const hasAccess = userPlan !== 'free';
 
   return {
