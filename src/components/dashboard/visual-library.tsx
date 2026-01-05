@@ -70,6 +70,7 @@ export function VisualLibrary() {
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [currentOffset, setCurrentOffset] = useState(0);
   const hasLoadedInitially = useRef(false);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [visualToEdit, setVisualToEdit] = useState<Visual | null>(null);
@@ -95,11 +96,12 @@ export function VisualLibrary() {
 
   const loadVisuals = useCallback(async (userId: string, append: boolean = false) => {
     try {
-      console.log('[VisualLibrary] Loading visuals for user:', userId);
+      console.log('[VisualLibrary] Loading visuals for user:', userId, 'append:', append);
 
       if (!append) {
         setLoading(true);
         setError(null);
+        setCurrentOffset(0); // Reset offset when loading from start
       } else {
         setLoadingMore(true);
       }
@@ -116,8 +118,11 @@ export function VisualLibrary() {
 
       // Build pagination
       const pagination: PaginationOptions = {
-        limit: 20
+        limit: 20,
+        offset: append ? currentOffset : 0
       };
+
+      console.log('[VisualLibrary] Pagination:', pagination);
 
       const result = await supabaseService.getUserVisuals(userId, filters, sort, pagination);
       console.log('[VisualLibrary] Loaded visuals:', result.data.length, 'items');
@@ -126,8 +131,10 @@ export function VisualLibrary() {
 
       if (append) {
         setVisuals(prev => [...prev, ...result.data]);
+        setCurrentOffset(prev => prev + result.data.length); // Update offset by actual loaded count
       } else {
         setVisuals(result.data);
+        setCurrentOffset(result.data.length); // Set initial offset
       }
 
       setHasMore(result.hasMore);
@@ -150,7 +157,7 @@ export function VisualLibrary() {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [projectFilter, sortBy, sortOrder]);
+  }, [projectFilter, sortBy, sortOrder, currentOffset]);
 
   // Re-filter visuals when filters change
   useEffect(() => {
