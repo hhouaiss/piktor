@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ConditionalLayout } from "@/components/layout/conditional-layout";
 import { SimpleAuthProvider } from "@/components/auth/simple-auth-provider";
+import { ThemeProvider } from "@/components/theme/theme-provider";
 import Script from "next/script";
 
 const inter = Inter({
@@ -26,7 +27,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
         <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
@@ -48,12 +49,19 @@ export default function RootLayout({
             gtag('config', 'G-NH26LFWXZ7');
           `}
         </Script>
-        
-        <SimpleAuthProvider>
-          <ConditionalLayout>
-            {children}
-          </ConditionalLayout>
-        </SimpleAuthProvider>
+
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange={false}
+        >
+          <SimpleAuthProvider>
+            <ConditionalLayout>
+              {children}
+            </ConditionalLayout>
+          </SimpleAuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

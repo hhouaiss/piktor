@@ -460,7 +460,7 @@ export function SupportPage() {
                     <div className="space-y-3">
                       <h4 className="font-medium text-foreground">Réponses</h4>
                       {ticket.responses.map((response) => (
-                        <div key={response.id} className="bg-white p-3 rounded-lg">
+                        <div key={response.id} className="bg-muted p-3 rounded-lg">
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-sm font-medium text-primary">
                               {response.author}

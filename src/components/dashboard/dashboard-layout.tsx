@@ -26,6 +26,7 @@ import {
 import { cn } from "@/lib/utils";
 import { trackEvent, trackPageView } from "@/lib/analytics";
 import { useSimpleAuth } from "@/components/auth/simple-auth-provider";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -190,7 +191,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <div className="min-h-screen bg-background">
       {/* Top Bar */}
-      <header className="sticky top-0 z-50 w-full border-b border-sophisticated-gray-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 shadow-sm">
+      <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 shadow-sm">
         <div className="flex h-16 items-center justify-between px-4 lg:px-6">
           {/* Left section */}
           <div className="flex items-center space-x-4">
@@ -214,7 +215,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 <div className="w-8 h-8 bg-gradient-ocean-deep rounded-lg flex items-center justify-center">
                   <Sparkles className="w-4 h-4 text-white" />
                 </div>
-                <span className="font-bold text-lg text-sophisticated-gray-900">Piktor</span>
+                <span className="font-bold text-lg text-foreground">Piktor</span>
               </Link>
             </div>
           </div>
@@ -243,6 +244,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               </Button>
             )}
 
+            {/* Theme Toggle */}
+            <ThemeToggle />
+
             {/* Profile dropdown */}
             <div className="relative">
               <Button
@@ -258,7 +262,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               </Button>
 
               {profileDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white border border-border rounded-lg shadow-lg z-50">
+                <div className="absolute right-0 mt-2 w-48 bg-popover border border-border rounded-lg shadow-lg z-50">
                   <div className="p-3 border-b border-border">
                     <p className="text-sm font-medium text-foreground">
                       {getDisplayName()}

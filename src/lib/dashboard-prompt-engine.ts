@@ -42,125 +42,6 @@ export interface DashboardProductProfile {
   }>;
 }
 
-// Style Mapping to Professional Photography Terms
-const STYLE_TRANSLATIONS = {
-  moderne: {
-    aesthetic: 'Modern Contemporary',
-    description: 'Clean lines, minimalist design, geometric forms, sophisticated neutral palette',
-    lighting: 'Sharp directional lighting with subtle shadows, high contrast',
-    environment: 'Minimalist architectural setting with clean backgrounds',
-    materials: 'Emphasize sleek surfaces, metal details, glass elements'
-  },
-  rustique: {
-    aesthetic: 'Rustic Farmhouse',
-    description: 'Natural textures, weathered finishes, authentic charm, warm earth tones',
-    lighting: 'Warm ambient lighting with natural shadows, cozy atmosphere',
-    environment: 'Natural wood elements, stone textures, countryside ambiance',
-    materials: 'Highlight wood grain, natural imperfections, authentic patina'
-  },
-  industriel: {
-    aesthetic: 'Industrial Loft',
-    description: 'Raw materials, exposed elements, urban edge, concrete and metal fusion',
-    lighting: 'Dramatic warehouse lighting with strong directional shadows',
-    environment: 'Concrete walls, exposed brick, metal framework, urban setting',
-    materials: 'Showcase metal patina, concrete textures, industrial hardware'
-  },
-  scandinave: {
-    aesthetic: 'Scandinavian Minimalism',
-    description: 'Nordic simplicity, light woods, functional design, hygge atmosphere',
-    lighting: 'Soft natural light reminiscent of Nordic daylight, gentle shadows',
-    environment: 'Light wood floors, white walls, plants, natural elements',
-    materials: 'Emphasize light wood tones, natural textiles, simple forms'
-  },
-  boheme: {
-    aesthetic: 'Bohemian Eclectic',
-    description: 'Artistic layering, rich textures, global influences, creative expression',
-    lighting: 'Warm atmospheric lighting with artistic shadow play',
-    environment: 'Layered textiles, plants, artistic elements, eclectic mix',
-    materials: 'Rich fabrics, carved details, mixed textures, artisanal quality'
-  }
-};
-
-// Environment Mapping to Professional Settings
-const ENVIRONMENT_TRANSLATIONS = {
-  salon: {
-    setting: 'Contemporary Living Room',
-    description: 'Sophisticated residential living space with designer furniture arrangement',
-    props: 'Elegant side tables, decorative objects, soft lighting fixtures',
-    atmosphere: 'Welcoming yet refined, suitable for entertaining and relaxation'
-  },
-  bureau: {
-    setting: 'Professional Office Environment',  
-    description: 'Modern commercial workspace with ergonomic design principles',
-    props: 'Professional desk accessories, task lighting, organizational elements',
-    atmosphere: 'Productive, clean, ergonomically optimized for work efficiency'
-  },
-  cuisine: {
-    setting: 'Designer Kitchen Space',
-    description: 'High-end residential kitchen with premium finishes and appliances',
-    props: 'Counter surfaces, subtle kitchen elements, natural light from windows',
-    atmosphere: 'Clean, functional luxury with attention to culinary lifestyle'
-  },
-  chambre: {
-    setting: 'Luxury Bedroom Suite',
-    description: 'Serene bedroom environment with premium bedding and intimate lighting',
-    props: 'Bedside elements, soft textiles, reading lights, personal touches',
-    atmosphere: 'Restful, intimate, designed for relaxation and comfort'
-  },
-  studio: {
-    setting: 'Professional Photo Studio',
-    description: 'Clean commercial photography environment with neutral backdrop',
-    props: 'No environmental props - pure product focus with professional lighting',
-    atmosphere: 'Commercial catalog quality with zero distractions'
-  }
-};
-
-// Lighting Translation to Photography Specifications
-const LIGHTING_TRANSLATIONS = {
-  naturelle: {
-    setup: 'Natural Daylight Photography',
-    technical: 'Soft window light, 5000K-5500K color temperature, gentle shadows',
-    quality: 'Authentic daylight ambiance with natural shadow patterns',
-    mood: 'Fresh, organic, life-like illumination'
-  },
-  chaleureuse: {
-    setup: 'Warm Ambient Lighting',
-    technical: '2700K-3000K warm white, multiple soft sources, cozy atmosphere',
-    quality: 'Inviting warm glow with intimate shadow detail',
-    mood: 'Comfortable, welcoming, homestyle ambiance'
-  },
-  professionnelle: {
-    setup: 'Commercial Studio Lighting',
-    technical: 'Three-point lighting setup, 5600K daylight balance, controlled shadows',
-    quality: 'Professional catalog photography with perfect exposure balance',
-    mood: 'Clean, commercial, suitable for marketing materials'
-  }
-};
-
-// Angle Translation to Camera Positioning
-const ANGLE_TRANSLATIONS = {
-  face: {
-    position: 'Frontal Product View',
-    technical: 'Head-on perspective at eye level, symmetrical composition',
-    benefit: 'Maximum product detail visibility and formal presentation'
-  },
-  'trois-quarts': {
-    position: 'Three-Quarter Dynamic Angle',
-    technical: '45-degree offset angle showing depth and dimensionality',
-    benefit: 'Optimal balance of detail visibility and spatial depth'
-  },
-  profile: {
-    position: 'Side Profile View',
-    technical: '90-degree side angle emphasizing silhouette and proportions',
-    benefit: 'Clear outline definition and proportional accuracy'
-  },
-  plongee: {
-    position: 'Elevated Top-Down Perspective',
-    technical: 'Overhead angle showing surface details and spatial context',
-    benefit: 'Unique perspective ideal for surface textures and arrangements'
-  }
-};
-
 // Format Specifications for Optimal Generation
 const FORMAT_SPECIFICATIONS = {
   'instagram-post': {
@@ -211,154 +92,104 @@ export function buildDashboardPrompt(
   productProfile: DashboardProductProfile,
   settings: DashboardGenerationSettings
 ): string {
-  // Extract style configuration
-  const styleConfig = STYLE_TRANSLATIONS[settings.style as keyof typeof STYLE_TRANSLATIONS];
-  const environmentConfig = ENVIRONMENT_TRANSLATIONS[settings.environment as keyof typeof ENVIRONMENT_TRANSLATIONS];
-  const lightingConfig = LIGHTING_TRANSLATIONS[settings.lighting as keyof typeof LIGHTING_TRANSLATIONS];
-  const angleConfig = ANGLE_TRANSLATIONS[settings.angle as keyof typeof ANGLE_TRANSLATIONS];
-
   // Count primary and context images
-  const primaryImages = productProfile.uploadedImages.filter(img => img.isPrimary !== false);
-  const primaryCount = primaryImages.length > 0 ? 1 : 0; // First image is always primary
   const contextCount = Math.max(0, productProfile.uploadedImages.length - 1);
 
-  // Build comprehensive prompt
-  let prompt = `🏢 PROFESSIONAL FURNITURE PHOTOGRAPHY COMMISSION
+  // Build narrative-focused prompt optimized for Gemini 3 Pro Image
+  let prompt = `Create a high-resolution, studio-lit product photograph of ${productProfile.productName}, a ${getCategoryDescription(productProfile.productCategory).toLowerCase()}.`;
 
-📋 PRODUCT SPECIFICATIONS:
-- Product: ${productProfile.productName}
-- Category: ${getCategoryDescription(productProfile.productCategory)}
-- Reference Images: ${productProfile.uploadedImages.length} high-quality source images provided
-- Client Requirements: Generate ${settings.formats.length} format variations
-
-📸 MULTI-IMAGE REFERENCE SYSTEM:
-${productProfile.uploadedImages.length > 1 ? `- PRIMARY REFERENCE IMAGE (Image #1): This is the MAIN product image that defines the exact product appearance, design, colors, and overall form. The generated image MUST faithfully recreate this exact product.
-- CONTEXT IMAGES (Images #2-${productProfile.uploadedImages.length}): These ${contextCount} additional images provide supplementary context about product details, textures, alternative angles, and specific features. Use them to understand fine details, material textures, and design nuances, but the PRIMARY image defines the core product identity.
-
-MULTI-IMAGE PROCESSING RULES:
-1. ALWAYS use the first image as the authoritative reference for product shape, proportions, and main appearance
-2. Extract texture details, material quality, and fine craftsmanship from context images
-3. If context images show different angles, use them to understand 3D form for accurate rendering from any requested angle
-4. Context images may show color variations or accessories - maintain PRIMARY image color/design unless specifically requested otherwise` : `- Single reference image provided - use as the complete product reference`}
-
-🎨 ARTISTIC DIRECTION - ${styleConfig.aesthetic.toUpperCase()}:
-${styleConfig.description}
-
-STYLE REQUIREMENTS:
-- Aesthetic: ${styleConfig.aesthetic} design philosophy
-- Materials Focus: ${styleConfig.materials}
-- Visual Treatment: ${styleConfig.lighting}
-- Environmental Context: ${styleConfig.environment}
-
-🏠 ENVIRONMENTAL SETTING - ${environmentConfig.setting.toUpperCase()}:
-${environmentConfig.description}
-
-ENVIRONMENTAL SPECIFICATIONS:
-- Setting: ${environmentConfig.setting}
-- Atmosphere: ${environmentConfig.atmosphere}
-- Contextual Props: ${environmentConfig.props}
-- Spatial Context: Realistic furniture placement within appropriate interior space
-
-💡 LIGHTING CONFIGURATION - ${lightingConfig.setup.toUpperCase()}:
-${lightingConfig.technical}
-
-LIGHTING REQUIREMENTS:
-- Primary Setup: ${lightingConfig.setup}
-- Technical Specs: ${lightingConfig.technical}
-- Quality Standard: ${lightingConfig.quality}
-- Atmospheric Mood: ${lightingConfig.mood}
-
-📸 CAMERA POSITIONING - ${angleConfig.position.toUpperCase()}:
-${angleConfig.technical}
-
-COMPOSITION REQUIREMENTS:
-- Camera Angle: ${angleConfig.position}
-- Technical Position: ${angleConfig.technical}
-- Visual Benefit: ${angleConfig.benefit}
-- Professional Standards: Commercial furniture photography composition principles`;
-
-  // Add format-specific optimizations
-  if (settings.formats.length === 1) {
-    const formatKey = settings.formats[0];
-    const formatSpec = FORMAT_SPECIFICATIONS[formatKey as keyof typeof FORMAT_SPECIFICATIONS];
-    if (formatSpec) {
-      prompt += `\n\n📐 FORMAT OPTIMIZATION - ${formatKey.toUpperCase()}:
-- Dimensions: ${formatSpec.dimensions}
-- Aspect Ratio: ${formatSpec.aspectRatio}  
-- Optimization: ${formatSpec.optimization}
-- Composition: ${formatSpec.composition}`;
-    }
+  // Multi-image reference handling (critical for accuracy)
+  if (productProfile.uploadedImages.length > 1) {
+    prompt += ` The first reference image shows the definitive product form, design, and color palette that must be faithfully recreated. The ${contextCount} additional reference images reveal supplementary details about materials, textures, and craftsmanship that should inform the fine details of the rendering. Synthesize all references to understand the complete three-dimensional form while maintaining absolute fidelity to the primary image's core design.`;
   } else {
-    prompt += `\n\n📐 MULTI-FORMAT REQUIREMENTS:
-Generate optimized compositions for ${settings.formats.length} formats:`;
-    settings.formats.forEach(format => {
-      const spec = FORMAT_SPECIFICATIONS[format as keyof typeof FORMAT_SPECIFICATIONS];
-      if (spec) {
-        prompt += `\n- ${format}: ${spec.aspectRatio} (${spec.optimization})`;
-      }
-    });
+    prompt += ` Use the provided reference image as the authoritative source for all product details, proportions, materials, and design characteristics.`;
   }
 
-  // Add product dimensions if provided (for realistic proportions)
+  // Photography scene description using narrative style
+  prompt += ` Photograph this piece in ${getEnvironmentNarrative(settings.environment)} The scene embodies ${getStyleNarrative(settings.style)}`;
+
+  // Lighting setup with professional photography terminology
+  prompt += ` ${getLightingNarrative(settings.lighting)}`;
+
+  // Camera positioning and composition
+  prompt += ` ${getCameraPositionNarrative(settings.angle)}`;
+
+  // Format-specific composition guidance (concise)
+  if (settings.formats.length === 1) {
+    const formatSpec = FORMAT_SPECIFICATIONS[settings.formats[0] as keyof typeof FORMAT_SPECIFICATIONS];
+    if (formatSpec) {
+      prompt += ` Frame the composition for ${formatSpec.aspectRatio} aspect ratio, ${formatSpec.optimization.toLowerCase()}.`;
+    }
+  } else {
+    prompt += ` Compose the frame to be versatile across multiple aspect ratios while maintaining strong visual hierarchy.`;
+  }
+
+  // Product dimensions for realistic scale
   if (settings.dimensions) {
     const dims = settings.dimensions;
     const hasDimensions = dims.width || dims.depth || dims.height;
-
     if (hasDimensions) {
       const unit = dims.unit || 'cm';
       const dimensionParts = [];
-      if (dims.width) dimensionParts.push(`Width: ${dims.width}${unit}`);
-      if (dims.depth) dimensionParts.push(`Depth: ${dims.depth}${unit}`);
-      if (dims.height) dimensionParts.push(`Height: ${dims.height}${unit}`);
-
-      prompt += `\n\n📏 PRODUCT DIMENSIONS (CRITICAL FOR REALISTIC PROPORTIONS):
-${dimensionParts.join(' | ')}
-
-DIMENSIONAL ACCURACY REQUIREMENTS:
-- The product MUST be rendered with EXACT real-world proportions based on these dimensions
-- All furniture elements (legs, armrests, cushions, etc.) must be proportionally accurate
-- The product should appear at realistic scale within the environment
-- Compare against standard furniture scales: typical sofa seat height ~45cm, dining table ~75cm, coffee table ~45cm
-- Ensure the product does not appear unnaturally large or small relative to the environment
-- Use the dimensions to calculate accurate aspect ratios and depth perception in the final image`;
+      if (dims.width) dimensionParts.push(`${dims.width}${unit} wide`);
+      if (dims.depth) dimensionParts.push(`${dims.depth}${unit} deep`);
+      if (dims.height) dimensionParts.push(`${dims.height}${unit} tall`);
+      prompt += ` The furniture measures ${dimensionParts.join(', ')}, so render it at realistic scale relative to the surrounding environment, ensuring all proportions appear natural and true to these real-world dimensions.`;
     }
   }
 
-  // Add user's custom instructions if provided
+  // User custom instructions seamlessly integrated
   if (settings.customPrompt && settings.customPrompt.trim()) {
-    prompt += `\n\n💬 CLIENT SPECIAL INSTRUCTIONS:
-${settings.customPrompt}
-
-INTEGRATION REQUIREMENT: Seamlessly incorporate these client specifications while maintaining all professional photography standards above.`;
+    prompt += ` ${settings.customPrompt}`;
   }
 
-  // Add professional quality constraints
-  prompt += `\n\n🎯 PROFESSIONAL QUALITY REQUIREMENTS:
-
-MANDATORY STANDARDS:
-- Commercial furniture photography quality meeting professional catalog standards
-- Exact product fidelity - maintain all design details, proportions, and characteristics
-- Professional color accuracy with authentic material representation
-- Enterprise-grade lighting and composition following furniture industry best practices
-- High-resolution detail suitable for commercial marketing materials
-
-ABSOLUTE PROHIBITIONS:
-- No text, labels, watermarks, or written content in image
-- No unrealistic modifications to product design or structure
-- No amateur photography aesthetics or consumer-grade presentation
-- No cluttered composition that detracts from product focus
-- No inconsistent lighting or unprofessional shadow patterns
-
-🔧 TECHNICAL EXECUTION:
-- Use reference images as authoritative source for product accuracy
-- Maintain exact product proportions and design integrity
-- Apply style and environmental choices as contextual enhancement only
-- Ensure lighting choice enhances rather than alters product characteristics
-- Generate composition that showcases product optimally within chosen environment
-
-FINAL REQUIREMENT: The result must be indistinguishable from professional commercial furniture photography while perfectly executing the user's style, environment, lighting, and angle preferences.`;
+  // Professional quality standards (concise)
+  prompt += ` Execute this as a professional commercial product photograph with tack-sharp focus throughout, accurate color rendition, and museum-quality detail. The product must be rendered with complete accuracy to the reference images, preserving every design detail, material texture, and structural characteristic. Maintain clean composition with no text, watermarks, or visual distractions. The final image should be indistinguishable from high-end furniture catalog photography shot by a professional commercial photographer using professional-grade equipment.`;
 
   return prompt;
+}
+
+// Helper functions to generate narrative scene descriptions
+
+function getEnvironmentNarrative(environment: string): string {
+  const narratives: Record<string, string> = {
+    salon: `a sophisticated contemporary living room with designer furniture staging and elegant ambient lighting.`,
+    bureau: `a modern professional office space with clean architectural lines and premium commercial finishes.`,
+    cuisine: `a high-end designer kitchen featuring premium countertops and refined residential styling.`,
+    chambre: `a luxury bedroom suite with soft intimate lighting and premium textile accents.`,
+    studio: `a professional photography studio environment with a clean neutral backdrop and controlled commercial lighting setup, zero environmental distractions.`
+  };
+  return narratives[environment] || narratives['studio'];
+}
+
+function getStyleNarrative(style: string): string {
+  const narratives: Record<string, string> = {
+    moderne: `modern contemporary aesthetics with clean geometric forms, minimalist spatial design, and a sophisticated neutral color palette emphasizing sleek surfaces and precision craftsmanship.`,
+    rustique: `rustic farmhouse character with natural wood textures, weathered authentic finishes, warm earth-toned surroundings that highlight organic materials and artisanal details.`,
+    industriel: `industrial loft styling with raw concrete textures, exposed architectural elements, urban edge, and dramatic material contrasts between metal and aged surfaces.`,
+    scandinave: `Scandinavian minimalist principles featuring light Nordic woods, functional simplicity, soft natural textiles, and an airy hygge atmosphere with gentle natural illumination.`,
+    boheme: `bohemian eclectic layering with rich global textiles, artistic accessories, warm atmospheric depth, and creative expressive styling that celebrates handcrafted artisanal quality.`
+  };
+  return narratives[style] || narratives['moderne'];
+}
+
+function getLightingNarrative(lighting: string): string {
+  const narratives: Record<string, string> = {
+    naturelle: `Light the scene with soft directional window light at 5200K color temperature, creating gentle natural shadows with a 3:1 lighting ratio that evokes authentic daylight ambiance. Allow subtle shadow gradation to reveal form and dimension while maintaining open, airy tonality throughout.`,
+    chaleureuse: `Establish warm inviting illumination using 2800K tungsten-balanced light sources with soft multi-point fill creating an intimate 2:1 lighting ratio. The warm golden glow should wrap around the furniture with cozy residential character while preserving detail in both highlights and shadow areas.`,
+    professionnelle: `Deploy a classic three-point commercial studio lighting setup with a 5600K key light positioned at 45 degrees, balanced fill light maintaining a 4:1 ratio for controlled shadow detail, and subtle rim lighting to separate the product from the background. Achieve perfectly even exposure with professional catalog precision.`
+  };
+  return narratives[lighting] || narratives['professionnelle'];
+}
+
+function getCameraPositionNarrative(angle: string): string {
+  const narratives: Record<string, string> = {
+    face: `Position the camera at eye level directly facing the product in a perfectly symmetrical frontal composition, using a 50mm equivalent focal length to minimize distortion and capture maximum design detail with formal balanced presentation.`,
+    'trois-quarts': `Shoot from a dynamic three-quarter angle positioned 45 degrees offset from the front face, revealing both frontal design elements and side profile depth. This classic commercial photography angle shows dimensional form while maintaining clear visibility of key product features.`,
+    profile: `Capture a pure 90-degree side profile view that emphasizes the furniture's silhouette, proportional accuracy, and lateral design characteristics with architectural precision and clean outline definition.`,
+    plongee: `Frame from an elevated overhead perspective looking down at approximately 60 degrees, revealing surface details, spatial footprint, and top-down dimensional context ideal for showcasing surface textures and arrangement.`
+  };
+  return narratives[angle] || narratives['trois-quarts'];
 }
 
 /**

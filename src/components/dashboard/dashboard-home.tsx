@@ -381,7 +381,7 @@ export function DashboardHome() {
                           }}
                         />
                       </div>
-                      <div className="p-3 bg-white dark:bg-gray-800">
+                      <div className="p-3 bg-card">
                         <h3 className="font-medium text-foreground truncate text-sm mb-1">
                           {extractProductName(visual.metadata, visual.id)}
                         </h3>

@@ -189,10 +189,9 @@ export async function generateImageWithGemini(
           }
         });
       }
-      
-      // Add enhanced prompt that references the images
-      const enhancedPrompt = `Use the provided reference images to understand the exact product appearance, style, materials, and details. Generate a new image that maintains the same product identity while applying this instruction: ${request.prompt}`;
-      contents.push(enhancedPrompt);
+
+      // Use prompt directly - it already contains multimodal reference instructions
+      contents.push(request.prompt);
     } else {
       // Text-only generation
       console.log('Building text-only content');

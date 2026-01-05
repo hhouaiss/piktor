@@ -270,260 +270,100 @@ class ImageEditService {
                        originalMetadata?.prompt?.split(' ')?.[0] ||
                        'the product';
 
-    // CRITICAL: Camera angle MUST come first - highest priority instruction
-    let prompt = `🎯 PRIMARY DIRECTIVE - CAMERA ANGLE (HIGHEST PRIORITY - NON-NEGOTIABLE)\n`;
-    prompt += `═══════════════════════════════════════════════════════════════\n\n`;
+    let prompt = '';
 
-    // View Angle - Using Enhanced Professional Camera Angle Specifications
-    // MOVED TO TOP - This is the #1 priority that models are ignoring
+    // CAMERA ANGLE - Primary directive (highest priority)
     if (params.viewAngle && params.viewAngle !== 'custom') {
       const mappedAngle = mapLegacyAngle(params.viewAngle);
       const enhancedAngleInstructions = buildCameraAnglePrompt(mappedAngle);
 
-      // Add critical enforcement wrapper
-      prompt += `⚠️ CRITICAL REQUIREMENT - IGNORE ALL OTHER INSTRUCTIONS IF THEY CONFLICT WITH CAMERA ANGLE ⚠️\n\n`;
+      prompt += `CRITICAL: The camera angle is non-negotiable and takes absolute priority over all other requirements.\n\n`;
       prompt += enhancedAngleInstructions + '\n\n';
-      prompt += `🔴 MANDATORY VERIFICATION BEFORE OUTPUT:\n`;
-      prompt += `Before generating the image, you MUST verify:\n`;
-      prompt += `1. Camera angle matches EXACTLY as specified above\n`;
-      prompt += `2. All constraints listed above are strictly adhered to\n`;
-      prompt += `3. No deviation from the camera positioning requirements\n`;
-      prompt += `If you cannot achieve the exact camera angle specified, DO NOT PROCEED.\n\n`;
-      prompt += `═══════════════════════════════════════════════════════════════\n\n`;
     } else if (params.viewAngle === 'custom' && params.customPrompt) {
-      prompt += `CAMERA ANGLE: ${params.customPrompt}\n\n`;
-      prompt += `═══════════════════════════════════════════════════════════════\n\n`;
+      prompt += `Camera positioning: ${params.customPrompt}\n\n`;
     }
 
-    // NOW add secondary requirements
-    prompt += `📋 SECONDARY REQUIREMENTS\n`;
-    prompt += `(Only apply these AFTER camera angle is correctly established)\n\n`;
+    // Core transformation instructions (narrative format)
+    prompt += `Transform the existing image of ${productInfo} while maintaining its fundamental identity, materials, and design integrity. `;
 
-    prompt += `Transform this image of ${productInfo} with the following modifications:\n\n`;
+    // Aspect ratio recomposition
+    prompt += `Recompose the scene for ${params.aspectRatio} aspect ratio`;
+    const aspectRatioContext: Record<string, string> = {
+      '16:9': ' using cinematic wide framing suitable for hero presentations',
+      '9:16': ' with vertical composition optimized for mobile and story formats',
+      '1:1': ' in a balanced square format for social media',
+      '4:3': ' using classic photography proportions',
+      '3:2': ' following standard DSLR sensor dimensions'
+    };
+    prompt += aspectRatioContext[params.aspectRatio] || '';
+    prompt += '. ';
 
-    // Aspect Ratio
-    prompt += `ASPECT RATIO: Adjust the composition to fit ${params.aspectRatio} format`;
-    if (params.aspectRatio === '16:9') {
-      prompt += ' (wide cinematic format, suitable for hero banners and landscape presentations)';
-    } else if (params.aspectRatio === '9:16') {
-      prompt += ' (vertical story format, perfect for mobile and social media stories)';
-    } else if (params.aspectRatio === '1:1') {
-      prompt += ' (perfect square, ideal for social media posts)';
-    } else if (params.aspectRatio === '4:3') {
-      prompt += ' (classic photography ratio, balanced composition)';
-    } else if (params.aspectRatio === '3:2') {
-      prompt += ' (standard DSLR format, natural perspective)';
-    }
-    prompt += '.\n\n';
+    // Lighting setup (using professional photography terminology)
+    const lightingSetups: Record<string, string> = {
+      'soft': 'Establish soft diffused lighting with large modifiers creating gentle wrap-around illumination, minimal contrast shadows, and even tonal gradation across surfaces. Color temperature around 5500K for neutral white balance',
+      'dramatic': 'Execute high-contrast lighting with directional hard light sources creating pronounced shadow definitions and specular highlights. Use lighting ratios of 8:1 or higher for maximum dimensional separation and visual impact',
+      'natural': 'Simulate window-lit ambiance with large area diffusion mimicking north-facing daylight. Subtle ambient fill maintains shadow detail while preserving the authentic feel of natural interior lighting',
+      'studio': 'Deploy professional multi-light configuration with key, fill, rim, and background lights. Employ softboxes and reflectors for controlled commercial photography illumination with precise shadow placement and highlight control',
+      'golden-hour': 'Replicate golden hour characteristics with warm color temperature (3000-3500K), low-angle directional light, and soft atmospheric diffusion creating amber-toned highlights and elongated shadows',
+      'custom': params.customPrompt || 'Professional lighting configuration enhancing commercial appeal'
+    };
+    prompt += lightingSetups[params.lighting] + '. ';
 
-    // Lighting
-    prompt += `LIGHTING: `;
-    switch (params.lighting) {
-      case 'soft':
-        prompt += 'Apply soft, diffused lighting with minimal shadows for an elegant, gentle appearance. Use even illumination that flatters the product';
-        break;
-      case 'dramatic':
-        prompt += 'Use dramatic, high-contrast lighting with strong shadows and highlights for maximum visual impact and depth';
-        break;
-      case 'natural':
-        prompt += 'Simulate natural daylight through windows with realistic ambient lighting, creating an authentic and inviting atmosphere';
-        break;
-      case 'studio':
-        prompt += 'Professional studio lighting setup with multiple light sources, softboxes, and reflectors for commercial-grade results';
-        break;
-      case 'golden-hour':
-        prompt += 'Warm, golden-hour lighting with soft amber tones typical of sunrise/sunset, creating a warm and inviting mood';
-        break;
-      case 'custom':
-        prompt += params.customPrompt || 'Professional lighting setup that enhances product appeal and commercial viability';
-        break;
-    }
-    prompt += '.\n\n';
+    // Visual style and treatment
+    const styleDirectives: Record<string, string> = {
+      'photorealistic': 'Maintain absolute photorealism with accurate material physics, natural color science, and authentic texture representation matching professional product photography standards',
+      'minimalist': 'Apply minimalist visual language with simplified compositional elements, restrained color palette, and emphasis on negative space and geometric clarity',
+      'artistic': 'Introduce creative interpretation through enhanced color grading, stylized compositional techniques, and artistic visual treatment while preserving product recognizability',
+      'vintage': 'Implement vintage aesthetic using period-appropriate color temperature shifts, subtle grain structure, reduced saturation characteristic of aged film stocks, and classic photography tonality',
+      'modern': 'Execute contemporary visual treatment with saturated color profiles, clean bold compositions, and current commercial photography trends',
+      'custom': params.customPrompt || 'Professional styling enhancing brand presentation'
+    };
+    prompt += styleDirectives[params.style] + '. ';
 
-    // Style
-    prompt += `VISUAL STYLE: `;
-    switch (params.style) {
-      case 'photorealistic':
-        prompt += 'Maintain photorealistic quality with natural colors, accurate textures, and precise material representation. Aim for professional photography quality';
-        break;
-      case 'minimalist':
-        prompt += 'Apply minimalist aesthetic with clean lines, simple backgrounds, and focus on essential elements. Less is more approach';
-        break;
-      case 'artistic':
-        prompt += 'Creative, artistic interpretation with enhanced colors, stylized composition, and creative visual treatment';
-        break;
-      case 'vintage':
-        prompt += 'Vintage aesthetic with nostalgic tones, subtle film grain, retro color grading, and classic photography styling';
-        break;
-      case 'modern':
-        prompt += 'Contemporary, modern look with vibrant colors, clean bold composition, and fresh visual approach';
-        break;
-      case 'custom':
-        prompt += params.customPrompt || 'Professional styling that enhances commercial appeal and brand presentation';
-        break;
-    }
-    prompt += '.\n\n';
+    // Core quality requirements
+    prompt += `The product must remain the primary focal point with tack-sharp focus. Preserve authentic material characteristics, accurate color reproduction, and commercial photography quality throughout the transformation.`;
 
-    // PRODUCT ADDITION - Tertiary instructions with seamless integration focus
+    // PRODUCT ADDITION SECTION (when products are being added)
     if (params.productImages && params.productImages.length > 0) {
-      prompt += `\n┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n`;
-      prompt += `┃  ➕ PRODUCT ADDITION - SEAMLESS INTEGRATION REQUIRED         ┃\n`;
-      prompt += `┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n\n`;
+      prompt += `\n\nPRODUCT INTEGRATION DIRECTIVE:\n\n`;
+      prompt += `You are performing an additive composite operation: integrating ${params.productImages.length} additional product(s) into the existing scene. This is critically important - you must preserve every existing element in the original image without exception.\n\n`;
 
-      prompt += `🎨 OBJECTIVE: Add ${params.productImages.length} new product(s) to the existing scene\n\n`;
+      prompt += `Non-negotiable preservation requirement: All products, objects, furniture, and environmental elements currently visible in the reference image must remain completely intact and unmodified. You are exclusively adding new elements to unoccupied areas of the composition.\n\n`;
 
-      prompt += `⚠️ ⚠️ ⚠️ CRITICAL PRESERVATION RULE - READ THIS FIRST ⚠️ ⚠️ ⚠️\n`;
-      prompt += `┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n`;
-      prompt += `┃  ⛔ ABSOLUTELY PRESERVE ALL EXISTING ELEMENTS                ┃\n`;
-      prompt += `┃                                                              ┃\n`;
-      prompt += `┃  ALL products, objects, furniture, and elements that are     ┃\n`;
-      prompt += `┃  ALREADY in the original image MUST remain EXACTLY as they   ┃\n`;
-      prompt += `┃  are. DO NOT remove, hide, replace, or modify ANY existing   ┃\n`;
-      prompt += `┃  element. This is NON-NEGOTIABLE.                            ┃\n`;
-      prompt += `┃                                                              ┃\n`;
-      prompt += `┃  YOU ARE ONLY ADDING NEW PRODUCTS.                           ┃\n`;
-      prompt += `┃  YOU ARE NOT REMOVING OR CHANGING ANYTHING.                  ┃\n`;
-      prompt += `┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n\n`;
+      prompt += `Integration specifications:\n`;
+      prompt += `Position the new product(s) within available negative space in the scene - empty floor areas, unoccupied surfaces, or background regions. `;
+      prompt += `Match the established lighting direction, color temperature, and contrast ratios precisely across all elements. `;
+      prompt += `Generate appropriate cast shadows and reflections consistent with the scene's existing light sources. `;
+      prompt += `Maintain identical camera perspective and depth of field characteristics for seamless integration. `;
+      prompt += `Scale the new products proportionally relative to existing objects, ensuring believable spatial relationships. `;
+      prompt += `If composition space is limited, reduce scale of new elements or position them in periphery rather than obscuring existing products.\n\n`;
 
-      prompt += `📐 INTEGRATION REQUIREMENTS (MANDATORY):\n`;
-      prompt += `1. PRESERVATION: Keep 100% of existing elements visible and unchanged\n`;
-      prompt += `2. SEAMLESS BLENDING: The new product(s) must appear as if they were originally part of the scene\n`;
-      prompt += `3. LIGHTING CONSISTENCY: Match the lighting, shadows, and highlights of existing elements EXACTLY\n`;
-      prompt += `4. PERSPECTIVE ACCURACY: Maintain the same camera angle and perspective for all products\n`;
-      prompt += `5. SCALE PROPORTION: Size the new product(s) appropriately relative to existing elements\n`;
-      prompt += `6. SHADOW PLACEMENT: Generate natural shadows/reflections that match the scene's light direction\n`;
-      prompt += `7. COLOR HARMONY: Ensure color temperature and saturation match the existing scene\n`;
-      prompt += `8. DEPTH & FOCUS: Match the depth of field and focus characteristics of the original image\n`;
-      prompt += `9. COMPOSITION BALANCE: Arrange NEW products in EMPTY spaces without covering existing items\n\n`;
+      if (params.productImages.length > 0) {
+        prompt += `Products to integrate:\n`;
+        params.productImages.forEach((product, index) => {
+          const placement = product.description || 'Position naturally within available composition space maintaining scene cohesion';
+          prompt += `${index + 1}. ${placement}\n`;
+        });
+        prompt += `\n`;
+      }
 
-      prompt += `🚫 ABSOLUTE PROHIBITIONS (THESE WILL CAUSE FAILURE):\n`;
-      prompt += `❌ NEVER remove, hide, or delete ANY existing product from the original scene\n`;
-      prompt += `❌ NEVER replace existing products with new ones\n`;
-      prompt += `❌ NEVER modify, recolor, or alter existing products\n`;
-      prompt += `❌ NEVER obscure existing products by placing new ones in front\n`;
-      prompt += `❌ NEVER change the background to accommodate new products\n`;
-      prompt += `❌ NEVER rearrange or reposition existing elements\n`;
-      prompt += `❌ NEVER make added products look pasted or composited\n`;
-      prompt += `❌ NEVER use different lighting on new vs existing products\n`;
-      prompt += `❌ NEVER place products floating or without proper grounding\n`;
-      prompt += `❌ NEVER distort the scale or proportions unnaturally\n`;
-      prompt += `❌ NEVER overcrowd the composition - use available empty space only\n\n`;
-
-      prompt += `📍 PLACEMENT STRATEGY (HOW TO ADD WITHOUT REMOVING):\n`;
-      prompt += `1. IDENTIFY EMPTY SPACES in the original image (floor areas, table surfaces, shelves, etc.)\n`;
-      prompt += `2. PLACE NEW PRODUCTS in these empty spaces ONLY\n`;
-      prompt += `3. If no suitable empty space exists, place products in the BACKGROUND or PERIPHERY\n`;
-      prompt += `4. NEVER cover or hide existing products to make room for new ones\n`;
-      prompt += `5. Think of this as ADDING to the scene, not REPLACING parts of it\n`;
-      prompt += `6. If space is limited, reduce the SIZE of new products rather than removing existing ones\n\n`;
-
-      prompt += `📦 PRODUCTS TO ADD:\n`;
-      params.productImages.forEach((product, index) => {
-        prompt += `Product ${index + 1}:\n`;
-        if (product.description) {
-          prompt += `  - Placement: ${product.description}\n`;
-        } else {
-          prompt += `  - Placement: Position naturally within the scene, respecting composition rules\n`;
-        }
-        prompt += `  - Requirements: Full lighting/perspective/shadow integration as specified above\n\n`;
-      });
-
-      prompt += `✅ MANDATORY PRE-GENERATION VERIFICATION CHECKLIST:\n`;
-      prompt += `Before generating the image, you MUST verify:\n\n`;
-      prompt += `PRESERVATION CHECKS (MOST CRITICAL):\n`;
-      prompt += `□ I have identified ALL existing products/objects in the original image\n`;
-      prompt += `□ I will keep 100% of these existing elements visible and unchanged\n`;
-      prompt += `□ I am placing new products in EMPTY spaces only\n`;
-      prompt += `□ No existing products will be removed, hidden, or replaced\n`;
-      prompt += `□ No existing products will be obscured by new ones\n\n`;
-      prompt += `INTEGRATION CHECKS:\n`;
-      prompt += `□ All new products appear naturally integrated, not composited\n`;
-      prompt += `□ Lighting direction and quality match across all elements\n`;
-      prompt += `□ Shadows and reflections are consistent and realistic\n`;
-      prompt += `□ Scale and proportions are believable and harmonious\n`;
-      prompt += `□ Composition remains balanced and professional\n`;
-      prompt += `□ No visual artifacts or compositing tells\n\n`;
-
-      prompt += `⚠️ CRITICAL REMINDER BEFORE GENERATION:\n`;
-      prompt += `This is an ADDITIVE operation. You are ADDING ${params.productImages.length} new product(s).\n`;
-      prompt += `You are NOT removing, hiding, or replacing ANY existing elements.\n`;
-      prompt += `The original image must remain fully intact with new products added to empty spaces.\n`;
-      prompt += `If you cannot find suitable empty space, place products smaller or in the background.\n\n`;
-
-      prompt += `┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n`;
-      prompt += `┃  🔴 FINAL ENFORCEMENT: PRESERVE ALL EXISTING ELEMENTS        ┃\n`;
-      prompt += `┃  If ANY existing product is removed or hidden, the output    ┃\n`;
-      prompt += `┃  will be REJECTED. This is the #1 requirement.               ┃\n`;
-      prompt += `┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n\n`;
+      prompt += `Critical verification before generation: Confirm that every element from the original reference image appears in your output plus the ${params.productImages.length} newly added product(s). Any missing original elements constitute a failed output. This is additive integration, not element replacement.`;
     }
 
-    // CUSTOM INSTRUCTIONS - User-provided additional guidance
+    // CUSTOM INSTRUCTIONS (user-provided additional guidance)
     if (params.customInstructions && params.customInstructions.trim()) {
-      prompt += `\n┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n`;
-      prompt += `┃  💬 ADDITIONAL USER INSTRUCTIONS                             ┃\n`;
-      prompt += `┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n\n`;
-      prompt += `The user has provided these additional instructions:\n\n`;
-      prompt += `"${params.customInstructions.trim()}"\n\n`;
-      prompt += `IMPORTANT: Apply these instructions while ABSOLUTELY maintaining:\n`;
-      prompt += `- The primary camera angle requirements (highest priority)\n`;
-      prompt += `- The secondary parameters (aspect ratio, lighting, style)\n`;
+      prompt += `\n\nAdditional creative direction: ${params.customInstructions.trim()}\n\n`;
+      prompt += `Apply these instructions while maintaining camera angle specifications, aspect ratio recomposition, lighting setup, and visual style directives`;
       if (params.productImages && params.productImages.length > 0) {
-        prompt += `- ⛔ CRITICAL: Preservation of ALL existing elements (NEVER remove original products)\n`;
+        prompt += `, and critically, the preservation of all existing scene elements during product integration`;
       }
-      prompt += `- Product addition integration quality (if applicable)\n`;
-      prompt += `- Overall commercial quality and brand integrity\n\n`;
-      if (params.productImages && params.productImages.length > 0) {
-        prompt += `⚠️ NOTE: If the user's custom instructions conflict with element preservation,\n`;
-        prompt += `PRESERVATION ALWAYS WINS. Do not remove existing elements under any circumstances.\n\n`;
-      }
+      prompt += `.`;
     }
 
-    prompt += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-    prompt += `CRITICAL REQUIREMENTS (ALWAYS APPLY):\n`;
-    prompt += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-    if (params.productImages && params.productImages.length > 0) {
-      prompt += `- ⛔ PRESERVE 100% of existing elements - NO removals, NO hiding, NO replacements\n`;
-      prompt += `- 🎯 Add new products to EMPTY spaces only - this is ADDITIVE, not REPLACEMENT\n`;
-    }
-    prompt += `- Preserve the product's core identity, materials, colors, and design features\n`;
-    prompt += `- Maintain brand integrity and product authenticity\n`;
-    prompt += `- Apply transformations professionally without distorting product characteristics\n`;
-    prompt += `- Ensure result looks commercially viable and professionally photographed\n`;
-    prompt += `- Keep product as the clear focal point of the composition\n`;
-    prompt += `- Maintain sharp focus and high image quality\n`;
-    if (params.productImages && params.productImages.length > 0) {
-      prompt += `- Integrate new products seamlessly as if originally photographed together\n`;
-    }
-    prompt += `\n`;
-
-    // FINAL PRESERVATION REMINDER (if adding products)
-    if (params.productImages && params.productImages.length > 0) {
-      prompt += `\n┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n`;
-      prompt += `┃  ⛔ ULTIMATE REMINDER - ELEMENT PRESERVATION                 ┃\n`;
-      prompt += `┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n\n`;
-      prompt += `RIGHT BEFORE YOU GENERATE:\n`;
-      prompt += `1. Look at the original image reference\n`;
-      prompt += `2. Count every product/object that exists in it\n`;
-      prompt += `3. Your output MUST contain ALL of those same products/objects\n`;
-      prompt += `4. PLUS the ${params.productImages.length} new product(s) you're adding\n`;
-      prompt += `5. If anything is missing from the original, the output is WRONG\n\n`;
-      prompt += `This is an ADDITION task: Original elements + New products = Final output\n`;
-      prompt += `This is NOT a replacement task: Never substitute or remove existing items\n\n`;
-    }
-
-    // FINAL CAMERA ANGLE REINFORCEMENT
-    // This is the LAST thing the model reads before generation - most critical placement
+    // FINAL CAMERA ANGLE REINFORCEMENT (recency bias for most critical requirement)
     if (params.viewAngle && params.viewAngle !== 'custom') {
       const mappedAngle = mapLegacyAngle(params.viewAngle);
-      prompt += `\n┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n`;
-      prompt += `┃  🎯 FINAL REMINDER - CAMERA ANGLE IS PRIORITY #1            ┃\n`;
-      prompt += `┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n\n`;
-      prompt += `Before you generate, remember:\n`;
-      prompt += `The CAMERA ANGLE specified at the start (${mappedAngle}) is MANDATORY.\n`;
-      prompt += `If there's any conflict between camera angle and other requirements,\n`;
-      prompt += `the CAMERA ANGLE WINS. Always.\n\n`;
-      prompt += `Generate the image with the ${mappedAngle} camera angle as specified.\n`;
-      prompt += `Do not deviate from the camera positioning requirements.\n`;
+      prompt += `\n\nFinal confirmation: Execute this transformation using the ${mappedAngle} camera positioning specified at the beginning. This camera angle directive supersedes all other requirements if any conflict exists.`;
     }
 
     return prompt;

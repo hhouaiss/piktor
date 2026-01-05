@@ -190,10 +190,29 @@
   * {
     @apply border-border outline-ring/50;
   }
-  
+
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-feature-settings: 'rlig' 1, 'calt' 1;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  /* Smooth transitions for theme changes */
+  *,
+  *::before,
+  *::after {
+    transition-property: background-color, border-color, color, fill, stroke;
+    transition-timing-function: ease-in-out;
+    transition-duration: 200ms;
+  }
+
+  /* Disable transitions for elements that shouldn't animate */
+  .no-transition,
+  .no-transition *,
+  input,
+  textarea,
+  select {
+    transition-property: none !important;
   }
   
   /* Enhanced Typography Hierarchy */

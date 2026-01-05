@@ -1581,7 +1581,7 @@ function VisualCreationContent() {
                       {downloadingImages.has(image.id) ? 'Téléchargement...' : 'Télécharger'}
                     </Button>
                   </div>
-                  <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+                  <div className="pt-3 border-t border-border">
                     <GenerationEvaluation
                       imageId={image.id}
                       productType={productCategory || settings.environment || 'Mobilier'}
@@ -1713,7 +1713,7 @@ function VisualCreationContent() {
               <X className="w-6 h-6" />
             </Button>
             
-            <div className="bg-white dark:bg-gray-900 rounded-lg overflow-hidden shadow-premium">
+            <div className="bg-popover rounded-lg overflow-hidden shadow-premium">
               <div className="relative bg-sophisticated-gray-50 flex items-center justify-center min-h-[40vh] md:min-h-[60vh]">
                 <Image
                   src={viewingImage.url}

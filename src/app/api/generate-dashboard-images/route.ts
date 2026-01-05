@@ -225,17 +225,12 @@ export async function POST(request: NextRequest) {
       }
     );
 
-    // Create hybrid prompt combining dashboard personalization with production quality
-    const hybridPrompt = `${dashboardPrompt}
+    // Use dashboard prompt directly - it's already optimized with production quality standards
+    const hybridPrompt = dashboardPrompt;
 
-🔧 PRODUCTION QUALITY ENHANCEMENT:
-${productionPromptResult.prompt.split('🔧 PRODUCTION QUALITY ENHANCEMENT:')[1] || 'Professional commercial furniture photography standards apply.'}`;
-
-    console.log('[Dashboard API] Hybrid prompt system:', {
+    console.log('[Dashboard API] Optimized prompt system:', {
       dashboardPromptLength: dashboardPrompt.length,
-      productionPromptLength: productionPromptResult.prompt.length,
-      hybridPromptLength: hybridPrompt.length,
-      productionReady: productionPromptResult.metadata.productionReady
+      optimizedPromptLength: hybridPrompt.length
     });
 
     // Generate images using multimodal approach with reference images
